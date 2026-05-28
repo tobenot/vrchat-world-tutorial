@@ -9,7 +9,7 @@ export default defineConfig({
     starlight({
       title: bookTitle,
       description: '从零到发布的完全手册，写给新手的 VRChat 场景搭建与 Udon 开发指南。',
-      favicon: '/favicon.svg',
+      favicon: '/favicon.png',
       customCss: ['./src/styles/custom.css'],
       lastUpdated: true,
       social: [
