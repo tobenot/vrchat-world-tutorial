@@ -1,10 +1,13 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+import cloudflare from "@astrojs/cloudflare";
+
 const bookTitle = '你的第一个 VRChat 世界：从零到发布的完全手册';
 
 export default defineConfig({
   site: 'https://vrchat-world-tutorial.pages.dev',
+
   integrations: [
     starlight({
       title: bookTitle,
@@ -41,4 +44,6 @@ export default defineConfig({
       ],
     }),
   ],
+
+  adapter: cloudflare()
 });
