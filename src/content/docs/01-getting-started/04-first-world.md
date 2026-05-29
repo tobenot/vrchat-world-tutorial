@@ -59,7 +59,7 @@ VRChat 在允许玩家加入之前，必须先解答以下三个核心问题：
 
 ## 第四步：解决身份问题（添加描述组件）
 
-现在，我们需要向 VRChat SDK 提交这个场景的"身份证"。
+现在，我们需要向 VRChat SDK 提交这个场景的「身份证」。
 
 在 Hierarchy 面板空白处右键，选择 `Create Empty` 创建另一个空物体，命名为 `WorldDescriptor`。
 
