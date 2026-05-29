@@ -1,593 +1,574 @@
 /* ==========================================================================
-   VRChat-Inspired Visual System (v2.0)
-   Designed by AI Coding Assistant
-   --------------------------------------------------------------------------
-   A sophisticated design language emulating the high-tech, neon-lit VR space.
-   Featuring virtual spatial grid backdrops, luminous VRChat-brand Cyan accents,
-   vibrant VRChat+ Magenta dual-gradient touches, and deep spatial dark themes.
+   VRChat World Tutorial — Design System v3
+   ──────────────────────────────────────────────────────────────────────────
+   Design tokens →  Layout scaffolding →  Component styling
+   Dual-theme: Deep Cyber (dark) / Clear Glass (light)
    ========================================================================== */
+
+/* ═══════════════ 1. Design Tokens (CSS Variables) ═══════════════ */
 
 :root {
   color-scheme: dark;
 
-  /* Fonts Configuration */
-  --sl-font: "Inter", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --sl-font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  --sl-content-width: 54rem;
-  --sl-text-5xl: clamp(2.45rem, 5vw, 4.25rem);
-  --sl-text-4xl: clamp(2rem, 3.5vw, 3.15rem);
+  /* Typography */
+  --sl-font: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --sl-font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  --sl-content-width: 52rem;
+  --sl-text-5xl: clamp(2.5rem, 5vw, 4rem);
+  --sl-text-4xl: clamp(2rem, 3.5vw, 3rem);
 
-  /* Precise VRChat & VRChat+ Colors */
-  --vrc-cyan: #1fd2c4;            /* The official luminous VRChat Greenish Cyan */
-  --vrc-cyan-soft: #4cd3c5;       /* Softer cyber cyan for text */
-  --vrc-magenta: #ff2a85;         /* VRChat+ signature Magenta Pink */
-  --vrc-magenta-soft: #ff66ab;    /* Softer magenta for hover glow */
-  
-  /* Cyber Dark Palettes (Midnight Space Theme) */
-  --vrc-bg-dark: #0a1114;         /* Cosmic depth blue-black base */
-  --vrc-panel-dark: #111a1e;      /* Floating glassmorphic panel base */
-  --vrc-panel-soft: rgba(17, 26, 30, 0.76);
-  --vrc-border: rgba(31, 210, 196, 0.18);
-  --vrc-border-hover: rgba(31, 210, 196, 0.4);
-  --vrc-glow: 0 0 35px rgba(31, 210, 196, 0.14), 0 0 70px rgba(255, 42, 133, 0.07);
+  /* VRChat Brand */
+  --vrc-cyan: #1fd2c4;
+  --vrc-cyan-dim: #17a89c;
+  --vrc-cyan-glow: rgba(31, 210, 196, 0.55);
+  --vrc-magenta: #ff2a85;
+  --vrc-magenta-dim: rgba(255, 42, 133, 0.6);
 
-  /* Starlight Variable Overrides (Dark Theme) */
-  --sl-color-accent-low: #092c2a;
+  /* Surface & Depth */
+  --vrc-bg: #080d10;
+  --vrc-surface-1: #0d1317;
+  --vrc-surface-2: #111a1f;
+  --vrc-surface-3: #182329;
+  --vrc-border: rgba(31, 210, 196, 0.12);
+  --vrc-border-strong: rgba(31, 210, 196, 0.28);
+  --vrc-glass: rgba(13, 19, 23, 0.72);
+  --vrc-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --vrc-shadow-glow: 0 4px 24px rgba(31, 210, 196, 0.08);
+
+  /* Starlight Overrides — Dark */
+  --sl-color-accent-low: #0a2e2b;
   --sl-color-accent: var(--vrc-cyan);
-  --sl-color-accent-high: #cbfcf7;
-  --sl-color-white: #f2faf9;
-  --sl-color-gray-1: #d2e3e1;
-  --sl-color-gray-2: #a2b5b3;
-  --sl-color-gray-3: #728c89;
-  --sl-color-gray-4: #485f5b;
-  --sl-color-gray-5: #213531;
-  --sl-color-gray-6: #101c1f;
-  --sl-color-black: var(--vrc-bg-dark);
+  --sl-color-accent-high: #b8f5ef;
+  --sl-color-white: #edf8f7;
+  --sl-color-gray-1: #c2dad7;
+  --sl-color-gray-2: #8ca9a5;
+  --sl-color-gray-3: #5d7975;
+  --sl-color-gray-4: #3d524f;
+  --sl-color-gray-5: #1f2e2c;
+  --sl-color-gray-6: #111c1a;
+  --sl-color-black: var(--vrc-bg);
 }
 
-/* Polar Glacier Light Theme - Clear, crisp, and beautifully blue-tinted */
+/* ─── Light Theme Tokens ─── */
 :root[data-theme="light"] {
   color-scheme: light;
 
-  --vrc-panel: #ffffff;
-  --vrc-panel-soft: rgba(255, 255, 255, 0.88);
-  --vrc-border: rgba(10, 140, 130, 0.15);
-  --vrc-border-hover: rgba(10, 140, 130, 0.35);
-  --vrc-glow: 0 12px 35px rgba(10, 140, 130, 0.08), 0 10px 25px rgba(255, 42, 133, 0.03);
+  --vrc-bg: #f6faf9;
+  --vrc-surface-1: #ffffff;
+  --vrc-surface-2: #f0f7f6;
+  --vrc-surface-3: #e3efed;
+  --vrc-border: rgba(12, 120, 110, 0.12);
+  --vrc-border-strong: rgba(12, 120, 110, 0.28);
+  --vrc-glass: rgba(255, 255, 255, 0.82);
+  --vrc-shadow: 0 8px 32px rgba(0, 50, 45, 0.07);
+  --vrc-shadow-glow: 0 4px 24px rgba(12, 143, 133, 0.06);
 
-  /* Starlight Variable Overrides (Light Theme) */
-  --sl-color-accent-low: #e1fbf7;
-  --sl-color-accent: #0c8f85;
-  --sl-color-accent-high: #042e2a;
-  --sl-color-white: #061f1b;
-  --sl-color-gray-1: #1a332f;
-  --sl-color-gray-2: #425c58;
-  --sl-color-gray-3: #708c88;
-  --sl-color-gray-4: #9eb5b1;
-  --sl-color-gray-5: #e1ebe9;
-  --sl-color-gray-6: #f1f8f7;
+  /* Starlight Overrides — Light */
+  --sl-color-accent-low: #dcf6f3;
+  --sl-color-accent: #0a8f83;
+  --sl-color-accent-high: #053330;
+  --sl-color-white: #0a1f1c;
+  --sl-color-gray-1: #1a3330;
+  --sl-color-gray-2: #3d5c58;
+  --sl-color-gray-3: #6a8a86;
+  --sl-color-gray-4: #9bb5b1;
+  --sl-color-gray-5: #d5e5e2;
+  --sl-color-gray-6: #eef6f5;
   --sl-color-black: #ffffff;
 }
 
-/* ==========================================================================
-   Global Layout & Backgrounds
-   ========================================================================== */
+
+/* ═══════════════ 2. Base & Background ═══════════════ */
 
 html {
   scroll-behavior: smooth;
 }
 
 body {
+  background-color: var(--vrc-bg);
   background-image:
-    radial-gradient(circle at 12% 15%, rgba(31, 210, 196, 0.11), transparent 30rem),
-    radial-gradient(circle at 88% 75%, rgba(255, 42, 133, 0.06), transparent 35rem),
-    linear-gradient(to bottom, rgba(10, 17, 20, 0.9), var(--vrc-bg-dark)),
-    linear-gradient(rgba(31, 210, 196, 0.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(31, 210, 196, 0.012) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
-  background-attachment: fixed;
-  transition: background-color 0.3s ease;
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(31, 210, 196, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(255, 42, 133, 0.04), transparent);
+  min-height: 100vh;
+  transition: background-color 0.4s ease;
 }
 
 :root[data-theme="light"] body {
   background-image:
-    radial-gradient(circle at 8% 0%, rgba(31, 210, 196, 0.15), transparent 28rem),
-    radial-gradient(circle at 88% 80%, rgba(255, 42, 133, 0.05), transparent 32rem),
-    linear-gradient(180deg, #f2faf8 0%, #e2eeeb 50%, #f2faf8 100%);
-  background-size: 100% 100%, 100% 100%, 100% 100%;
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(31, 210, 196, 0.09), transparent),
+    radial-gradient(ellipse 50% 30% at 90% 0%, rgba(255, 42, 133, 0.04), transparent);
 }
 
 ::selection {
-  background: rgba(31, 210, 196, 0.25);
-  color: #ffffff;
+  background: rgba(31, 210, 196, 0.22);
+  color: var(--sl-color-white);
 }
 
-/* ==========================================================================
-   Starlight Component Tuning (Header, Sidebar, Navigation)
-   ========================================================================== */
+
+/* ═══════════════ 3. Header & Navigation Chrome ═══════════════ */
 
 .site-title {
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  background: linear-gradient(135deg, var(--sl-color-white), var(--sl-color-accent));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
 }
 
-.header {
-  border-bottom: 1px solid var(--vrc-border);
-  background: rgba(10, 17, 20, 0.75);
-  backdrop-filter: blur(20px) saturate(150%);
-  transition: all 0.3s ease;
+header.header {
+  border-bottom: 1px solid var(--vrc-border) !important;
+  background: var(--vrc-glass) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
 }
 
-:root[data-theme="light"] .header {
-  border-bottom: 1px solid var(--vrc-border);
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.sidebar-pane,
+nav.sidebar-pane,
 .right-sidebar {
   border-color: var(--vrc-border) !important;
 }
 
-/* Sidebar Links Smooth Highlight */
+/* Sidebar Link States */
 .sidebar-content a {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 8px;
-  margin-horizontal: 0.25rem;
-  padding-horizontal: 0.5rem;
+  transition: all 0.2s ease;
 }
 
-.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"] {
+  background: linear-gradient(90deg, rgba(31, 210, 196, 0.1), transparent) !important;
+  border-left: 3px solid var(--vrc-cyan) !important;
+  color: var(--sl-color-accent-high) !important;
+  font-weight: 600;
+}
+
 .sidebar-content a:hover {
+  background: rgba(31, 210, 196, 0.06) !important;
   color: var(--sl-color-accent-high) !important;
-  background: linear-gradient(90deg, rgba(31, 210, 196, 0.12), rgba(255, 42, 133, 0.04)) !important;
-  box-shadow: inset 2px 0 0 var(--vrc-cyan);
 }
 
-:root[data-theme="light"] .sidebar-content a[aria-current="page"],
-:root[data-theme="light"] .sidebar-content a:hover {
-  color: var(--sl-color-accent-high) !important;
-  background: linear-gradient(90deg, rgba(12, 143, 133, 0.1), rgba(255, 42, 133, 0.03)) !important;
-  box-shadow: inset 2px 0 0 var(--sl-color-accent);
-}
 
-/* Pagination Links Upgrade */
-.pagination-links a {
-  border-color: var(--vrc-border) !important;
-  border-radius: 14px !important;
-  background: var(--vrc-panel-soft) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.pagination-links a:hover {
-  border-color: var(--vrc-cyan) !important;
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px -5px rgba(31, 210, 196, 0.2);
-}
-
-/* ==========================================================================
-   Hero Landing Page Layout
-   ========================================================================== */
+/* ═══════════════ 4. Hero Section (Splash Template) ═══════════════ */
 
 .hero {
-  position: relative;
-  align-items: center;
-  padding-block: clamp(3.5rem, 9vw, 7.5rem);
+  padding-block: clamp(3rem, 8vw, 6rem) !important;
+  gap: 2.5rem !important;
 }
 
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 1rem 0 auto;
-  z-index: -1;
-  height: min(32rem, 72vh);
-  border: 1px solid var(--vrc-border);
-  border-radius: 2rem;
-  background:
-    linear-gradient(135deg, rgba(31, 210, 196, 0.12), rgba(255, 42, 133, 0.05) 50%, transparent),
-    linear-gradient(180deg, rgba(17, 26, 30, 0.8), rgba(10, 17, 20, 0.45));
-  box-shadow: var(--vrc-glow);
-  backdrop-filter: blur(12px);
-  transition: border-color 0.3s ease;
+/* 标题 */
+.hero h1 {
+  font-weight: 900 !important;
+  letter-spacing: -0.04em;
+  line-height: 1.1 !important;
+  background: linear-gradient(135deg, var(--sl-color-white) 40%, var(--vrc-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-:root[data-theme="light"] .hero::before {
-  background:
-    linear-gradient(135deg, rgba(12, 143, 133, 0.08), rgba(255, 42, 133, 0.04) 50%, transparent),
-    rgba(255, 255, 255, 0.8);
-  box-shadow: var(--vrc-glow);
+:root[data-theme="light"] .hero h1 {
+  background: linear-gradient(135deg, #0a1f1c 50%, #0a8f83);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.hero h1,
-.hero-title,
-h1,
-h2,
-h3 {
-  letter-spacing: -0.035em;
-  text-wrap: balance;
-  font-weight: 850;
-}
-
+/* 标语 */
 .hero .tagline {
-  max-width: 44rem;
-  color: var(--sl-color-gray-1);
-  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
-  line-height: 1.8;
-  font-weight: 450;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  font-size: clamp(1.05rem, 2vw, 1.25rem) !important;
+  color: var(--sl-color-gray-2) !important;
+  line-height: 1.8 !important;
+  max-width: 44ch;
 }
 
-.hero img {
-  filter: drop-shadow(0 20px 40px rgba(31, 210, 196, 0.25));
-  transition: transform 0.5s ease;
+/* Hero 封面图 */
+.hero > img,
+.hero > .hero-html {
+  border-radius: 16px;
+  border: 1px solid var(--vrc-border);
+  box-shadow: var(--vrc-shadow), var(--vrc-shadow-glow);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
-.hero:hover img {
-  transform: translateY(-4px) rotate(1deg);
+.hero > img:hover,
+.hero > .hero-html:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--vrc-shadow), 0 8px 40px rgba(31, 210, 196, 0.15);
 }
 
-/* Landing Actions and Buttons */
-.actions a,
-.home-actions a {
-  border-radius: 99px !important;
-  font-weight: 750 !important;
-  letter-spacing: 0.02em;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+/* Hero Actions / Buttons */
+.hero .actions {
+  gap: 1rem 1.25rem !important;
+  margin-top: 0.5rem;
 }
 
-.actions a.primary,
-.home-actions a:first-child {
-  background: linear-gradient(135deg, var(--vrc-cyan), #1aa396) !important;
-  color: #050a0c !important;
-  box-shadow: 0 6px 20px rgba(31, 210, 196, 0.35) !important;
+.hero .actions a,
+.hero .actions .sl-link-button {
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem;
+  padding: 0.7rem 1.5rem !important;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}
+
+/* Primary Button */
+.hero .actions a[data-variant="primary"],
+.hero .actions .sl-link-button.primary {
+  background: linear-gradient(135deg, var(--vrc-cyan), var(--vrc-cyan-dim)) !important;
+  color: #050d0c !important;
   border: none !important;
+  box-shadow: 0 4px 16px rgba(31, 210, 196, 0.3) !important;
 }
 
-.actions a.primary:hover,
-.home-actions a:first-child:hover {
-  box-shadow: 0 8px 30px rgba(31, 210, 196, 0.6) !important;
-  transform: translateY(-2px) scale(1.02);
+.hero .actions a[data-variant="primary"]:hover,
+.hero .actions .sl-link-button.primary:hover {
+  box-shadow: 0 6px 28px rgba(31, 210, 196, 0.5) !important;
+  transform: translateY(-2px);
 }
 
-.actions a.secondary,
-.home-actions a:last-child {
-  background: rgba(17, 26, 30, 0.6) !important;
-  border: 1px solid var(--vrc-border) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+/* Secondary Button */
+.hero .actions a[data-variant="secondary"],
+.hero .actions .sl-link-button:not(.primary) {
+  background: var(--vrc-surface-2) !important;
+  border: 1px solid var(--vrc-border-strong) !important;
+  color: var(--sl-color-white) !important;
 }
 
-.actions a.secondary:hover,
-.home-actions a:last-child:hover {
+.hero .actions a[data-variant="secondary"]:hover,
+.hero .actions .sl-link-button:not(.primary):hover {
   border-color: var(--vrc-cyan) !important;
   background: rgba(31, 210, 196, 0.08) !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(31, 210, 196, 0.18) !important;
+  box-shadow: 0 4px 16px rgba(31, 210, 196, 0.12) !important;
 }
 
-/* ==========================================================================
-   Home Landing Interactive Elements (Cards, Routes, Panels)
-   ========================================================================== */
 
+/* ═══════════════ 5. Home Landing Content Area ═══════════════ */
+
+/* Shared Card Foundation */
 .home-intro,
 .home-card,
 .home-route,
 .progress-panel {
+  background: var(--vrc-surface-1);
   border: 1px solid var(--vrc-border);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
-    var(--vrc-panel-soft);
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
+  border-radius: 16px;
+  box-shadow: var(--vrc-shadow-glow);
+  transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-:root[data-theme="light"] .home-intro,
-:root[data-theme="light"] .home-card,
-:root[data-theme="light"] .home-route,
-:root[data-theme="light"] .progress-panel {
-  border: 1px solid var(--vrc-border);
-  background: var(--vrc-panel-soft);
-  box-shadow: 0 10px 30px rgba(10, 140, 130, 0.04);
-}
-
+/* ─── Home Intro Panel ─── */
 .home-intro {
-  padding: clamp(1.5rem, 4vw, 2.25rem);
+  margin-top: 2.5rem;
+  padding: clamp(1.5rem, 3.5vw, 2.5rem);
+  position: relative;
+  overflow: hidden;
 }
 
 .home-intro::before {
   content: "";
   position: absolute;
-  top: -1px;
-  left: 24px;
-  width: 90px;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--vrc-cyan), transparent);
-  border-radius: 99px;
+  background: linear-gradient(90deg, var(--vrc-cyan), var(--vrc-magenta), transparent 80%);
+  border-radius: 3px 3px 0 0;
 }
 
-.home-intro:hover,
-.progress-panel:hover {
-  border-color: var(--vrc-border-hover);
-  box-shadow: 0 16px 48px rgba(31, 210, 196, 0.1);
+.home-intro:hover {
+  border-color: var(--vrc-border-strong);
+  box-shadow: var(--vrc-shadow), 0 0 0 1px var(--vrc-border);
 }
 
-.home-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.95rem;
-  margin-top: 1.6rem;
+/* Home Intro Text Styling */
+.home-intro p {
+  margin: 0;
+  line-height: 1.85;
+  color: var(--sl-color-gray-1);
+  font-size: 1.02rem;
 }
 
-.home-actions a {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 2.85rem;
-  padding: 0.7rem 1.4rem;
-  text-decoration: none;
+.home-intro strong {
+  color: var(--sl-color-white);
+  font-weight: 700;
 }
 
-/* Home Grids */
-.home-grid,
+/* ─── Section Headings (Home) ─── */
+.sl-markdown-content > h2:first-of-type {
+  margin-top: 3rem;
+}
+
+/* ─── Route Cards Grid ─── */
 .home-route-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.15rem;
-  margin-block: 1.6rem 2.4rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-block: 1.2rem 2.5rem;
 }
 
-.home-card,
 .home-route {
-  padding: 1.35rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.home-card:hover,
-.home-route:hover {
-  transform: translateY(-5px);
-  border-color: var(--vrc-border-hover);
-  box-shadow: 0 16px 40px -6px rgba(31, 210, 196, 0.14), 0 4px 15px rgba(255, 42, 133, 0.04);
-}
-
-.home-card strong,
-.home-route strong {
-  display: block;
-  margin-bottom: 0.45rem;
-  color: var(--sl-color-white);
-  font-size: 1.15rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  transition: color 0.3s ease;
-}
-
-.home-card:hover strong,
-.home-route:hover strong {
-  color: var(--vrc-cyan);
-}
-
-.home-card p,
-.home-route p,
-.progress-panel p {
-  margin: 0;
-  color: var(--sl-color-gray-2);
-  line-height: 1.7;
-  font-size: 0.96rem;
-}
-
-/* Glowing Step Numbers for Routes */
-.home-route {
+  padding: 1.4rem;
   position: relative;
   overflow: hidden;
 }
 
+.home-route:hover {
+  transform: translateY(-4px);
+  border-color: var(--vrc-border-strong);
+  box-shadow: var(--vrc-shadow), var(--vrc-shadow-glow);
+}
+
+/* Step Number Badge */
 .home-route::before {
   content: attr(data-step);
   display: inline-grid;
   place-items: center;
-  width: 2.35rem;
-  height: 2.35rem;
-  margin-bottom: 1.1rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  margin-bottom: 0.9rem;
   border-radius: 50%;
-  border: 1px solid var(--vrc-border);
-  background: linear-gradient(135deg, rgba(31, 210, 196, 0.22), rgba(255, 42, 133, 0.12));
-  color: var(--vrc-cyan-soft);
-  font-weight: 850;
-  font-size: 1.1rem;
-  box-shadow: 0 0 12px rgba(31, 210, 196, 0.12);
+  border: 1.5px solid var(--vrc-border-strong);
+  background: linear-gradient(135deg, rgba(31, 210, 196, 0.15), rgba(255, 42, 133, 0.08));
+  color: var(--vrc-cyan);
+  font-weight: 800;
+  font-size: 1rem;
   transition: all 0.3s ease;
 }
 
 .home-route:hover::before {
+  background: var(--vrc-cyan);
   border-color: var(--vrc-cyan);
-  background: linear-gradient(135deg, var(--vrc-cyan), var(--vrc-magenta));
-  color: #050a0c;
-  box-shadow: 0 0 22px rgba(31, 210, 196, 0.5);
+  color: #050d0c;
+  box-shadow: 0 0 16px var(--vrc-cyan-glow);
   transform: scale(1.08);
 }
 
+.home-route strong {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--sl-color-white);
+  font-size: 1.05rem;
+  font-weight: 750;
+  transition: color 0.2s;
+}
+
+.home-route:hover strong {
+  color: var(--vrc-cyan);
+}
+
+.home-route p {
+  margin: 0;
+  color: var(--sl-color-gray-2);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* ─── Feature Cards Grid ─── */
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-block: 1.2rem 2.5rem;
+}
+
+.home-card {
+  padding: 1.4rem;
+}
+
+.home-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--vrc-border-strong);
+  box-shadow: var(--vrc-shadow), var(--vrc-shadow-glow);
+}
+
+.home-card strong {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--sl-color-white);
+  font-size: 1.05rem;
+  font-weight: 750;
+  transition: color 0.2s;
+}
+
+.home-card:hover strong {
+  color: var(--vrc-cyan);
+}
+
+.home-card p {
+  margin: 0;
+  color: var(--sl-color-gray-2);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+/* ─── Progress Status Panel ─── */
 .progress-panel {
-  margin-top: 2.5rem;
-  background:
-    linear-gradient(135deg, rgba(31, 210, 196, 0.11), rgba(255, 42, 133, 0.05)),
-    var(--vrc-panel-soft);
+  margin-top: 2rem;
+  padding: 1.4rem 1.6rem;
   border-left: 4px solid var(--vrc-cyan);
+  background:
+    linear-gradient(135deg, rgba(31, 210, 196, 0.04), rgba(255, 42, 133, 0.02)),
+    var(--vrc-surface-1);
 }
 
 .progress-panel strong {
   display: block;
-  font-size: 1.15rem;
-  color: var(--vrc-cyan-soft);
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.01em;
+  margin-bottom: 0.4rem;
+  color: var(--vrc-cyan);
+  font-weight: 750;
+  font-size: 1.05rem;
 }
 
-/* ==========================================================================
-   Markdown Content Typographical Refining
-   ========================================================================== */
+.progress-panel p {
+  margin: 0;
+  color: var(--sl-color-gray-2);
+  line-height: 1.7;
+}
+
+.progress-panel a {
+  color: var(--vrc-cyan) !important;
+  text-decoration-color: rgba(31, 210, 196, 0.4);
+}
+
+
+/* ═══════════════ 6. Markdown Content Typography ═══════════════ */
 
 .sl-markdown-content {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   line-height: 1.82;
-  letter-spacing: 0.01em;
-}
-
-.sl-markdown-content p {
-  margin-bottom: 1.4rem;
-  color: var(--sl-color-gray-1);
 }
 
 .sl-markdown-content > :is(h2, h3) {
-  scroll-margin-top: 6.5rem;
+  scroll-margin-top: 6rem;
 }
 
-/* Enhanced Subheadings with Left Deco Bar */
 .sl-markdown-content h2 {
   position: relative;
-  margin-top: 3.5rem;
-  padding-top: 0.25rem;
-  padding-left: 0.85rem;
-  border-top: none; /* Strip off the default boring line */
-  border-left: 4px solid var(--vrc-cyan);
-  box-shadow: -6px 0 16px -4px rgba(31, 210, 196, 0.3);
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px solid var(--vrc-border);
+  font-weight: 800;
   letter-spacing: -0.02em;
 }
 
-:root[data-theme="light"] .sl-markdown-content h2 {
-  box-shadow: -6px 0 16px -4px rgba(12, 143, 133, 0.25);
-}
-
 .sl-markdown-content h3 {
-  margin-top: 2.2rem;
+  margin-top: 2rem;
+  font-weight: 700;
   color: var(--sl-color-accent-high);
 }
 
+/* Links */
 .sl-markdown-content a:not(:where(.not-content *)) {
-  color: var(--vrc-cyan-soft);
-  text-decoration-color: rgba(31, 210, 196, 0.4);
-  text-underline-offset: 0.25em;
-  text-decoration-thickness: 0.09em;
+  color: var(--vrc-cyan);
+  text-decoration-color: rgba(31, 210, 196, 0.35);
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 0.08em;
   transition: all 0.2s ease;
 }
 
 .sl-markdown-content a:not(:where(.not-content *)):hover {
-  color: var(--vrc-cyan);
   text-decoration-color: var(--vrc-cyan);
-  text-shadow: 0 0 12px rgba(31, 210, 196, 0.25);
 }
 
-/* Smooth Blockquotes with Cyan-to-Magenta Gradient */
+/* Blockquotes */
 .sl-markdown-content blockquote {
-  margin-block: 2rem;
-  border-inline-start: 4px solid !important;
-  border-image: linear-gradient(to bottom, var(--vrc-cyan), var(--vrc-magenta)) 1 100%;
-  border-radius: 0 14px 14px 0;
-  background: linear-gradient(90deg, rgba(31, 210, 196, 0.09), rgba(255, 42, 133, 0.02) 60%, transparent);
+  margin-block: 1.8rem;
+  padding: 1rem 1.4rem;
+  border-inline-start: 4px solid var(--vrc-cyan) !important;
+  border-radius: 0 12px 12px 0;
+  background: rgba(31, 210, 196, 0.04);
   color: var(--sl-color-gray-1);
-  padding: 1.1rem 1.5rem;
-  box-shadow: inset 0 0 0 1px rgba(31, 210, 196, 0.05);
 }
 
-:root[data-theme="light"] .sl-markdown-content blockquote {
-  background: linear-gradient(90deg, rgba(12, 143, 133, 0.06), rgba(255, 42, 133, 0.01) 60%, transparent);
-  box-shadow: inset 0 0 0 1px rgba(12, 143, 133, 0.05);
-}
-
-/* Inline Code Elements Refinement */
+/* Inline Code */
 .sl-markdown-content code:not(:where(pre *)) {
-  border: 1px solid rgba(31, 210, 196, 0.22) !important;
-  border-radius: 6px !important;
-  background: rgba(17, 26, 30, 0.65) !important;
-  color: var(--vrc-cyan-soft) !important;
-  padding: 0.16em 0.4em !important;
-  font-size: 0.88em !important;
+  padding: 0.15em 0.4em;
+  border: 1px solid var(--vrc-border);
+  border-radius: 6px;
+  background: var(--vrc-surface-2);
+  color: var(--vrc-cyan);
+  font-size: 0.87em;
   font-weight: 550;
-  word-break: break-word;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 :root[data-theme="light"] .sl-markdown-content code:not(:where(pre *)) {
-  border: 1px solid rgba(12, 143, 133, 0.2) !important;
-  background: rgba(225, 235, 233, 0.7) !important;
-  color: var(--sl-color-accent) !important;
-  box-shadow: none;
+  background: var(--vrc-surface-3);
+  color: var(--sl-color-accent);
 }
 
-/* Code Blocks Container and Expressive Code */
+/* Code Blocks */
 .sl-markdown-content pre,
 .expressive-code .frame {
   border: 1px solid var(--vrc-border) !important;
-  border-radius: 14px !important;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32) !important;
-  transition: border-color 0.3s ease;
-  overflow: hidden;
+  border-radius: 12px !important;
+  box-shadow: var(--vrc-shadow) !important;
 }
 
-.sl-markdown-content pre:hover,
-.expressive-code .frame:hover {
-  border-color: var(--vrc-border-hover) !important;
-}
-
-/* Table Design Modernization */
+/* Tables */
 .sl-markdown-content table {
   overflow: hidden;
-  border: 1px solid var(--vrc-border) !important;
-  border-radius: 14px;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--vrc-border);
+  border-radius: 12px;
   border-collapse: separate;
   border-spacing: 0;
-  margin-block: 2rem;
+  box-shadow: var(--vrc-shadow-glow);
+  margin-block: 1.5rem;
   width: 100%;
 }
 
 .sl-markdown-content th {
-  background: rgba(31, 210, 196, 0.11) !important;
-  color: var(--vrc-cyan) !important;
-  font-weight: 750;
-  padding: 0.85rem 1.1rem !important;
-  border-bottom: 1px solid var(--vrc-border) !important;
-}
-
-:root[data-theme="light"] .sl-markdown-content th {
-  background: rgba(12, 143, 133, 0.08) !important;
-  color: var(--sl-color-accent) !important;
-  border-bottom: 1px solid var(--vrc-border) !important;
+  background: rgba(31, 210, 196, 0.07);
+  color: var(--vrc-cyan);
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--vrc-border);
+  text-align: left;
 }
 
 .sl-markdown-content td {
-  padding: 0.85rem 1.1rem !important;
-  border-bottom: 1px solid rgba(31, 210, 196, 0.06) !important;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--vrc-border);
 }
 
 .sl-markdown-content tr:last-child td {
-  border-bottom: none !important;
+  border-bottom: none;
 }
 
 .sl-markdown-content tr:nth-child(even) td {
-  background: rgba(31, 210, 196, 0.02) !important;
+  background: rgba(31, 210, 196, 0.02);
 }
 
-/* Markdown Image Shadow */
+/* Images */
 .sl-markdown-content img {
-  border-radius: 14px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
   border: 1px solid var(--vrc-border);
-  transition: all 0.3s ease;
+  box-shadow: var(--vrc-shadow);
 }
 
-.sl-markdown-content img:hover {
-  transform: scale(1.01);
-  border-color: var(--vrc-border-hover);
+/* Ordered/Unordered List */
+.sl-markdown-content li {
+  line-height: 1.8;
+  margin-bottom: 0.35rem;
 }
 
-/* ==========================================================================
-   Responsive Adaptation
-   ========================================================================== */
+.sl-markdown-content li::marker {
+  color: var(--sl-color-gray-3);
+}
+
+
+/* ═══════════════ 7. Pagination ═══════════════ */
+
+.pagination-links a {
+  border: 1px solid var(--vrc-border) !important;
+  border-radius: 12px !important;
+  background: var(--vrc-surface-1) !important;
+  transition: all 0.3s ease !important;
+}
+
+.pagination-links a:hover {
+  border-color: var(--vrc-border-strong) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--vrc-shadow-glow) !important;
+}
+
+
+/* ═══════════════ 8. Responsive ═══════════════ */
 
 @media (max-width: 50rem) {
   :root {
@@ -595,18 +576,18 @@ h3 {
   }
 
   .hero {
-    padding-block: clamp(2rem, 6vw, 4rem);
-  }
-
-  .hero::before {
-    inset-inline: -0.75rem;
-    border-radius: 1.5rem;
-    height: 100%;
+    padding-block: clamp(2rem, 5vw, 3.5rem) !important;
   }
 
   .home-grid,
   .home-route-grid {
     grid-template-columns: 1fr;
-    gap: 0.95rem;
+  }
+}
+
+@media (min-width: 50rem) and (max-width: 72rem) {
+  .home-grid,
+  .home-route-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
