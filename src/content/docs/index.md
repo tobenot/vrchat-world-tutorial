@@ -75,7 +75,7 @@ hero:
 
 <strong>当前状态</strong>
 
-本项目还在持续写作中。第一部已经开始成形，你可以从 <a href="/preface/">前言：打开一扇门</a> 读起，也可以直接进入 <a href="/01-getting-started/01-curiosity/">第一章：一个玩家的好奇心</a>。
+本项目还在持续写作中。第一部和第二部已经开始成形，你可以从 <a href="/preface/">前言：打开一扇门</a> 读起，也可以直接进入 <a href="/01-getting-started/01-curiosity/">第一章：一个玩家的好奇心</a>。
 
 </div>
 
