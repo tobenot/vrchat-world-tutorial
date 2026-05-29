@@ -1,0 +1,86 @@
+---
+// 覆盖 Starlight 默认 PageTitle：
+//  · 保留 H1 与 #_top 锚点（不破坏返回顶部 / 滚动监听）
+//  · 在标题正下方追加「阅读时间 / 难度 / 章节类型」元信息条
+//
+// 读者价值：阅读时间是「读之前的判断」，应当出现在开始读之前；
+// 把它放在 Footer 与"读完"动作混在一起会失去这个意义。
+//
+// 安静页（splash / 部入口 / 减法 frontmatter）一律不显示元信息。
+
+const route = Astro.locals.starlightRoute;
+const entry = route?.entry;
+const data = (entry?.data ?? {}) as Record<string, unknown>;
+const body = ((entry as any)?.body ?? '') as string;
+
+function estimateMinutes(md: string, override?: number) {
+  if (override && override > 0) return override;
+  if (!md) return undefined;
+  const stripped = md
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/!\[[^\]]*\]\([^\)]*\)/g, '')
+    .replace(/\[[^\]]*\]\([^\)]*\)/g, ' ')
+    .replace(/[#>*_`~\-]/g, ' ');
+  const cjk = (stripped.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const ascii = (stripped.match(/[A-Za-z0-9]+/g) || []).length;
+  const minutes = cjk / 350 + ascii / 200;
+  return Math.max(1, Math.round(minutes));
+}
+
+const minutes = estimateMinutes(body, (data as any).estimatedMinutes);
+const difficulty = (data as any).difficulty as string | undefined;
+const chapterType = (data as any).chapterType as string | undefined;
+
+const tpl = (data as any).template as string | undefined;
+const editOff = (data as any).editUrl === false;
+const lastOff = (data as any).lastUpdated === false;
+const isQuietPage =
+  tpl === 'splash' || chapterType === 'part-intro' || (editOff && lastOff);
+
+const chapterTypeLabel: Record<string, string> = {
+  'hands-on': '动手章',
+  concept: '理解章',
+  'creator-view': '创作者视角',
+};
+
+const title = (data as any).title as string;
+---
+
+<h1 id="_top">{title}</h1>
+
+{!isQuietPage && (minutes || difficulty || chapterType) && (
+  <div class="vrc-meta vrc-meta--top not-content">
+    {minutes && (
+      <span class="vrc-meta__chip vrc-meta__chip--time" title="按中文 350 字/分、英文 200 词/分估算">
+        约 {minutes} 分钟
+      </span>
+    )}
+    {difficulty && (
+      <span class={`vrc-meta__chip vrc-meta__chip--diff vrc-meta__chip--diff-${difficulty}`}>
+        难度：{difficulty}
+      </span>
+    )}
+    {chapterType && chapterTypeLabel[chapterType] && (
+      <span class="vrc-meta__chip vrc-meta__chip--type">
+        {chapterTypeLabel[chapterType]}
+      </span>
+    )}
+  </div>
+)}
+
+<style>
+  @layer starlight.core {
+    h1 {
+      margin-top: 1rem;
+      font-size: var(--sl-text-h1);
+      line-height: var(--sl-line-height-headings);
+      font-weight: 600;
+      color: var(--sl-color-white);
+    }
+  }
+  /* 顶部版的元信息条：紧贴标题，间距比底部版收紧 */
+  .vrc-meta--top {
+    margin-top: 0.6rem;
+    margin-bottom: 0.25rem;
+  }
+</style>

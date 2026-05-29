@@ -43,6 +43,11 @@ export default defineConfig({
 
       social: [
         {
+          icon: 'heart',
+          label: '催更 / 赞助',
+          href: '/about/#sponsor',
+        },
+        {
           icon: 'external',
           label: '博客',
           href: 'https://tobenot.top',
@@ -56,8 +61,11 @@ export default defineConfig({
       editLink: {
         baseUrl: 'https://github.com/tobenot/vrchat-world-tutorial/edit/main/',
       },
-      // 组件覆盖：在默认 Footer 下追加阅读估算 / 反馈条 / Mermaid 运行时
+      // 组件覆盖：
+      //  · PageTitle：在标题下方加阅读时间 / 难度 / 章节类型徽章
+      //  · Footer：追加反馈条 + Mermaid 运行时 + 外站链接新标签页处理
       components: {
+        PageTitle: './src/overrides/PageTitle.astro',
         Footer: './src/overrides/Footer.astro',
       },
       // 自动生成侧栏：写新章只需加文件，不再回来改配置
@@ -75,6 +83,10 @@ export default defineConfig({
           label: '第二部：认识你的工作台',
           collapsed: false,
           autogenerate: { directory: '02-workbench' },
+        },
+        {
+          label: '关于',
+          items: [{ slug: 'about' }],
         },
       ],
       plugins: [

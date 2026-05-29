@@ -609,3 +609,40 @@ nav.sidebar-pane,
   letter-spacing: 0.03em;
   opacity: 0.7;
 }
+
+
+/* ═══════════════ 10. About / Sponsor Page ═══════════════ */
+
+.vrc-qr-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.vrc-qr {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--vrc-border);
+  border-radius: 12px;
+  background: var(--vrc-surface-1);
+  text-align: center;
+}
+
+.vrc-qr img {
+  display: block;
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+  /* about 页的二维码不要继承 .sl-markdown-content img 的边框/阴影 */
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.vrc-qr figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--sl-color-gray-2);
+}
