@@ -1,9 +1,7 @@
 ---
 title: 4. 你的第一个世界
-description: 创建一个最小 VRChat World：地板、出生点、VRC Scene Descriptor、Build & Test。理解每一步为什么要这样做。
+description: 创建一个最小 VRChat 世界：地板、出生点、VRC Scene Descriptor、Build & Test。理解每一步为什么要这样做。
 ---
-
-# 4. 你的第一个世界
 
 这一章的目标很简单：让你站进自己做的世界里。
 
@@ -13,9 +11,9 @@ description: 创建一个最小 VRChat World：地板、出生点、VRC Scene De
 
 ## 三个问题
 
-在动手之前，先想一想：一个"世界"最少需要什么？
+在动手之前，先想一想：一个「世界」最少需要什么？
 
-VRChat 要回答三个问题才能让一个玩家进入：
+VRChat 要回答三个问题才能让玩家进入：
 
 1. **空间里有什么可以站的地方？** → 需要一块有碰撞体的地面
 2. **玩家进来之后站在哪里、面朝哪里？** → 需要一个出生点
@@ -25,7 +23,7 @@ VRChat 要回答三个问题才能让一个玩家进入：
 
 ## 保存一个新场景
 
-打开上一章创建的 World 项目。
+打开上一章创建的世界项目。
 
 在 Unity 里新建一个场景（File → New Scene），然后马上保存它（Ctrl+S）。名字叫 `MyFirstWorld`，放在 `Assets/Scenes/` 下面。没有这个目录就建一个。
 
@@ -45,7 +43,7 @@ VRChat 要回答三个问题才能让一个玩家进入：
 
 材质先不用管。默认灰白色就行。第一版世界的重点是能跑，好看是下一步的事。
 
-🤔 **为什么是 Cube 而不是 Plane？** Unity 有一个 Plane 对象，看起来更像"地面"。但 Plane 是单面的（只有上面），在某些角度看会消失。Cube 是六面都有的实体，作为地板更不容易出奇怪的视觉问题。而且 Cube 自带 Box Collider（碰撞体），玩家踩上去不会穿过去。
+🤔 **为什么是 Cube 而不是 Plane？** Unity 有一个 Plane 对象，看起来更像「地面」。但 Plane 是单面的（只有上面），在某些角度看会消失。Cube 是六面都有的实体，作为地板更不容易出奇怪的视觉问题。而且 Cube 自带 `Box Collider`（碰撞体），玩家踩上去不会穿过去。
 
 ## 第二个问题：站在哪里、面朝哪里
 
@@ -63,13 +61,13 @@ VRChat 需要知道：玩家进来之后，站在哪里？面朝哪个方向？
 
 ## 第三个问题：让 VRChat 认识这个场景
 
-每个 VRChat World 场景都需要一个 VRC Scene Descriptor 组件。它的作用是告诉 VRChat SDK：这个 Unity 场景是一个要发布成 VRChat World 的场景。
+每个 VRChat 世界场景都需要一个 `VRC Scene Descriptor` 组件。它的作用是告诉 VRChat SDK：这个 Unity 场景是一个要发布成 VRChat 世界的场景。
 
 创建另一个空物体，改名叫 `WorldDescriptor`。选中它，在 Inspector 里点 Add Component，搜索 `VRC Scene Descriptor`，加上去。
 
 加好之后，在 Descriptor 组件里找到 Spawns 相关的设置，把刚才创建的 `Spawn` 拖进去。这样 VRChat 就知道玩家应该从这个位置进入世界。
 
-🤔 **为什么需要这个组件？** Unity 是一个通用引擎，它不知道你在做 VRChat 世界还是在做单机游戏。VRC Scene Descriptor 是你跟 VRChat 说的第一句话："嗨，这是给你的。玩家从这里进来。" 没有它，SDK 的 Build & Test 按钮不会让你按。
+🤔 **为什么需要这个组件？** Unity 是一个通用引擎，它不知道你在做 VRChat 世界还是在做单机游戏。`VRC Scene Descriptor` 是你跟 VRChat 说的第一句话：「嗨，这是给你的。玩家从这里进来。」没有它，SDK 的 `Build & Test` 按钮不会让你按。
 
 ## 让场景亮起来
 
@@ -97,7 +95,7 @@ Unity 会开始构建本地测试版本。这个过程需要一两分钟。构�
 
 ## 如果没有成功
 
-**看不到 VRChat SDK 菜单？** 回到 VCC，确认这个项目是 World 项目，并且 Worlds SDK 已经安装好了。
+**看不到 VRChat SDK 菜单？** 回到 VCC，确认这个项目是世界项目，并且 Worlds SDK 已经安装好了。
 
 **SDK 面板提示缺少 Descriptor？** 检查当前打开的场景里有没有 `VRC Scene Descriptor` 组件。注意它要在当前场景里，在项目文件夹里有但没放进场景里是不行的。
 
@@ -113,17 +111,17 @@ Unity 会开始构建本地测试版本。这个过程需要一两分钟。构�
 
 ## 你刚刚做了什么
 
-回顾一下。你做了一个最小 VRChat World：
+回顾一下。你做了一个最小 VRChat 世界：
 
 - 一个 Unity 场景文件（`MyFirstWorld.unity`）
 - 一块有碰撞体的地板（`Floor`，Cube 缩放成扁板）
 - 一个标记进入位置的空物体（`Spawn`）
-- 一个告诉 VRChat "这是世界"的组件（`VRC Scene Descriptor`）
-- 一次成功的 Build & Test
+- 一个告诉 VRChat 「这是世界」的组件（`VRC Scene Descriptor`）
+- 一次成功的 `Build & Test`
 
 这几件事看起来很普通，但它们完成了一件重要的事：**把 Unity 场景变成了 VRChat 可以打开的世界。** 后面所有的内容，都是在这个基础上往上加东西：加材质、加灯光、加声音、加交互、加同步、加性能优化。
 
-地基打好了。以后不管做多复杂的世界，底下都是同样的结构：一个场景、可以站的地面、出生点、Scene Descriptor。
+地基打好了。以后不管做多复杂的世界，底下都是同样的结构：一个场景、可以站的地面、出生点、`VRC Scene Descriptor`。
 
 ## 自己改着玩
 
@@ -138,7 +136,7 @@ Unity 会开始构建本地测试版本。这个过程需要一两分钟。构�
 
 ---
 
-你已经站进去了。接下来，我们回头看看刚才那些东西到底是什么。下一部开始认识 Unity 这张工作台。
+你已经站进去了。接下来，我们回头看看刚才那些东西到底是什么。下一章，开始认识 Unity 这张工作台。
 
 ## 本章参考
 
