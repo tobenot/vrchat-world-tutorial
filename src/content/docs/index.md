@@ -19,14 +19,9 @@ hero:
 
 <div class="home-intro">
 
-面向新手的 VRChat 场景搭建与 Udon 开发公开笔记。从安装工具、创建第一个世界开始，一路走到交互、多人同步、空间体验、性能优化和发布维护。
+📘 面向新手的 **VRChat 场景搭建与 Udon 开发**公开笔记。从安装工具、创建第一个世界开始，一路走到交互、多人同步、空间体验、性能优化和发布维护。
 
-刚打开 Unity 就被一整面面板吓住？没关系。这本书默认你从零开始。
-
-<div class="home-actions">
-  <a href="/preface/">开始阅读</a>
-  <a href="/01-getting-started/01-curiosity/">进入第一章</a>
-</div>
+刚打开 Unity 就被一整面面板吓住？没关系——这本书默认你**从零开始**。
 
 </div>
 
