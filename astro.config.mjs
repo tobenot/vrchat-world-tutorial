@@ -59,6 +59,8 @@ export default defineConfig({
             { label: '6. 组件，给物体装能力', link: '/02-workbench/06-components/' },
             { label: '7. Prefab，把东西做成模具', link: '/02-workbench/07-prefabs/' },
             { label: '8. 材质和光的第一印象', link: '/02-workbench/08-materials-light/' },
+            { label: '理解章 B：为什么一切都是空壳加零件', link: '/02-workbench/09-unity-philosophy/' },
+            { label: '创作者视角：从模糊画面到具体清单', link: '/02-workbench/10-from-picture-to-list/' },
           ],
         },
         {
