@@ -1,19 +1,13 @@
 ---
-title: 网站搭建与部署指南
+title: 附录：网站搭建与部署
 description: 从本地预览、GitHub 推送到 Cloudflare Pages 部署的操作清单。
+sidebar:
+  label: 附录：部署指南
 ---
 
-# 网站搭建与部署指南
+# 网站搭建与部署
 
-这一页是本项目的操作检查清单。以后忘了怎么更新网站，就回来看这里。
-
-## 当前项目已经完成的事
-
-- 已使用 Astro + Starlight 搭好文档站。
-- 已配置站点标题、描述、GitHub 链接和侧边栏。
-- 已创建 `src/assets/images/`，后续截图、GIF、配图都放这里。
-- 已采用 MIT License，内容和示例代码都尽量保持轻量开放。
-- 已保留 `design/book-plan-warm.md` 作为写作规划源文件。
+操作检查清单。以后忘了怎么更新网站，回来看这里。
 
 ## 本地写作流程
 
@@ -83,38 +77,14 @@ git push
 | Root directory | 留空，使用仓库根目录 |
 | Production branch | `main` |
 
-部署成功后，站点地址预计是：
+部署成功后，站点地址：
 
 ```text
 https://vrchat-world-tutorial.pages.dev
 ```
 
-## GitHub 仓库 SEO 清单
-
-仓库 About 区域建议填写：
-
-```text
-VRChat 世界开发中文教程。The complete guide and tutorial for VRChat world creation, Unity setup, and UdonSharp programming.
-```
-
-Topics 建议添加：
-
-```text
-vrchat
-vrchat-world
-vrchat-tutorial
-udon
-udonsharp
-unity
-guide
-book
-```
-
-可以在仓库 Settings 里开启 Discussions，后续用来收集读者问题。
-
 ## 避坑提醒
 
-- 不要把 `node_modules/`、`dist/` 提交到仓库。
-- 不要把大于 25MB 的超大 GIF、UnityPackage 或素材包直接塞进仓库。
-- 大资源建议放到 GitHub Releases，再在文章里贴下载链接。
+- `node_modules/`、`dist/` 不要提交到仓库。
+- 大于 25MB 的超大 GIF、UnityPackage 或素材包不要直接塞进仓库，放到 GitHub Releases 再在文章里贴下载链接。
 - 技术章节写完后，尽量标注使用的 Unity、VRChat SDK、UdonSharp 版本。

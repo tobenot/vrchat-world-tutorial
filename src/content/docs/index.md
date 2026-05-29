@@ -1,21 +1,68 @@
 ---
 title: 你的第一个 VRChat 世界
 description: 从零到发布的完全手册，写给新手的 VRChat 世界开发教程。
+template: splash
+hero:
+  tagline: 带你从「这世界怎么做的」，走到「我做了一个世界快来玩」。
+  image:
+    file: ../../assets/cover.svg
+    alt: VRChat 世界开发教程封面
+  actions:
+    - text: 从前言开始
+      link: /preface/
+      icon: right-arrow
+      variant: primary
+    - text: 进入第一章
+      link: /01-getting-started/01-curiosity/
+      variant: secondary
 ---
 
-# 你的第一个 VRChat 世界：从零到发布的完全手册
+<div class="home-intro">
 
-> 带你从「这世界怎么做的」，走到「我做了一个世界快来玩」。
+面向新手的 VRChat 场景搭建与 Udon 开发公开笔记。从安装工具、创建第一个世界开始，一路走到交互、多人同步、空间体验、性能优化和发布维护。
 
-这是一本面向新手的 VRChat 场景搭建与 Udon 开发公开笔记。它会从安装工具、创建第一个世界开始，一路走到交互、多人同步、空间体验、性能优化和发布维护。
+刚打开 Unity 就被一整面面板吓住？没关系。这本书默认你从零开始。
 
-如果你刚打开 Unity 就被一整面面板吓住，没关系。这本书默认你可以从零开始。
+<div class="home-actions">
+  <a href="/preface/">开始阅读</a>
+  <a href="/01-getting-started/01-curiosity/">进入第一章</a>
+</div>
 
-## 现在可以做什么
+</div>
 
-- 先读 [前言：打开一扇门](/preface/)，确认这本书是不是写给你的。
-- 查看 [全书规划](/book-plan/)，了解完整章节路线。
-- 如果你是在搭网站，照着 [网站搭建与部署指南](/deploy-guide/) 完成上线。
+## 这条路会怎样走
+
+<div class="home-route-grid">
+  <div class="home-route" data-step="1">
+    <strong>先站进去</strong>
+    <p>从玩家的好奇心出发，理解一个 VRChat 世界到底由哪些东西组成。</p>
+  </div>
+  <div class="home-route" data-step="2">
+    <strong>做出第一个可见成果</strong>
+    <p>安装工具、创建 Unity 场景、配置 SDK，完成第一次 Build & Test。</p>
+  </div>
+  <div class="home-route" data-step="3">
+    <strong>让世界真正可玩</strong>
+    <p>逐步加入交互、同步、空间设计、性能优化和发布维护。</p>
+  </div>
+</div>
+
+## 适合谁读
+
+<div class="home-grid">
+  <div class="home-card">
+    <strong>刚开始做世界的新手</strong>
+    <p>默认你没碰过 Unity、C# 或 Udon，从最小可运行结果讲起。</p>
+  </div>
+  <div class="home-card">
+    <strong>想把想法落地的玩家</strong>
+    <p>把「我想做个地方」拆成场景、交互、体验和发布步骤。</p>
+  </div>
+  <div class="home-card">
+    <strong>需要路线图的自学者</strong>
+    <p>把散落的概念铺成一条能顺着走的学习路线。</p>
+  </div>
+</div>
 
 ## 写作原则
 
@@ -23,3 +70,12 @@ description: 从零到发布的完全手册，写给新手的 VRChat 世界开�
 2. 少甩术语，多给画面和手感。
 3. 每章尽量留下一个能运行、能看见、能改着玩的成果。
 4. 涉及 VRChat SDK、Unity、UdonSharp 的具体行为时，以官方文档和实际测试为准。
+
+<div class="progress-panel">
+
+<strong>当前状态</strong>
+
+本项目还在持续写作中。第一部已经开始成形，你可以从 <a href="/preface/">前言：打开一扇门</a> 读起，也可以直接进入 <a href="/01-getting-started/01-curiosity/">第一章：一个玩家的好奇心</a>。
+
+</div>
+
