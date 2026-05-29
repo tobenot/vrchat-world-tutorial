@@ -26,9 +26,9 @@ export default defineConfig({
 
       social: [
         {
-          icon: 'github',
-          label: 'GitHub',
-          href: 'https://github.com/tobenot/vrchat-world-tutorial',
+          icon: 'external',
+          label: '博客',
+          href: 'https://tobenot.top',
         },
       ],
       editLink: {
@@ -63,14 +63,7 @@ export default defineConfig({
             { label: '创作者视角：从模糊画面到具体清单', link: '/02-workbench/10-from-picture-to-list/' },
           ],
         },
-        {
-          label: '附录',
-          collapsed: true,
-          items: [
-            { label: '全书规划', link: '/book-plan/' },
-            { label: '网站搭建与部署', link: '/deploy-guide/' },
-          ],
-        },
+
       ],
     }),
   ],
