@@ -36,6 +36,15 @@ const minutes = estimateMinutes(body, (data as any).estimatedMinutes);
 const difficulty = (data as any).difficulty as string | undefined;
 const chapterType = (data as any).chapterType as string | undefined;
 
+// 部入口页 / splash / 显式 template: splash 的页面，以及前言这类「减法页面」，
+// 都不再追加阅读估算与反馈条。判断标准：template 为 splash，或 chapterType=part-intro，
+// 或同时关闭了 editUrl 与 lastUpdated（典型的"减法"frontmatter）。
+const tpl = (data as any).template as string | undefined;
+const editOff = (data as any).editUrl === false;
+const lastOff = (data as any).lastUpdated === false;
+const isQuietPage =
+  tpl === 'splash' || chapterType === 'part-intro' || (editOff && lastOff);
+
 // —— 反馈链接 ——
 const issueTitle = encodeURIComponent(`[反馈] ${(data as any).title ?? slug}`);
 const issueBody = encodeURIComponent(
@@ -53,8 +62,8 @@ const chapterTypeLabel: Record<string, string> = {
 
 <Default {...Astro.props}><slot /></Default>
 
-{/* —— 章节元信息条 —— */}
-{(minutes || difficulty || chapterType) && (
+{/* —— 章节元信息条（splash / 部入口 / 减法页面跳过） —— */}
+{!isQuietPage && (minutes || difficulty || chapterType) && (
   <div class="vrc-meta not-content">
     {minutes && (
       <span class="vrc-meta__chip vrc-meta__chip--time" title="按中文 350 字/分、英文 200 词/分估算">
@@ -74,13 +83,15 @@ const chapterTypeLabel: Record<string, string> = {
   </div>
 )}
 
-{/* —— 反馈条 —— */}
-<div class="vrc-feedback not-content">
-  <span class="vrc-feedback__text">这一节有错或讲不清？</span>
-  <a class="vrc-feedback__btn" href={issueUrl} target="_blank" rel="noopener">提个 Issue</a>
-  <span class="vrc-feedback__sep">·</span>
-  <a class="vrc-feedback__btn vrc-feedback__btn--ghost" href={editFullUrl} target="_blank" rel="noopener">直接改文档</a>
-</div>
+{/* —— 反馈条（splash / 部入口 / 减法页面跳过） —— */}
+{!isQuietPage && (
+  <div class="vrc-feedback not-content">
+    <span class="vrc-feedback__text">这一节有错或讲不清？</span>
+    <a class="vrc-feedback__btn" href={issueUrl} target="_blank" rel="noopener">提个 Issue</a>
+    <span class="vrc-feedback__sep">·</span>
+    <a class="vrc-feedback__btn vrc-feedback__btn--ghost" href={editFullUrl} target="_blank" rel="noopener">直接改文档</a>
+  </div>
+)}
 
 {/* —— Mermaid 客户端运行时（仅当页面里有 .mermaid 才加载主包） —— */}
 <script>

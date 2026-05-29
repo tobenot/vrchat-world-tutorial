@@ -1,0 +1,65 @@
+---
+title: 第二部 · 认识你的工作台
+description: 第一部跑起来的那个世界，是怎么由「物体 + 组件 + 模具 + 材质 + 光」搭出来的。
+template: splash
+hero:
+  tagline: 把 Unity 拆成五块积木，看穿每一块。
+  actions:
+    - text: 从第 5 章开始
+      link: ./05-gameobjects/
+      icon: right-arrow
+      variant: primary
+    - text: 直接读理解章
+      link: ./09-unity-philosophy/
+      variant: minimal
+sidebar:
+  label: 第二部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第一部你已经站进了一个世界。这一部回头看：刚才那一切，到底是用什么搭出来的。
+
+四个动手章 + 一个理解章 + 一个创作者视角，按顺序读最稳。
+
+<CardGrid>
+  <LinkCard
+    title="5. Unity 里的一切都是物体"
+    href="./05-gameobjects/"
+    description="GameObject、Scene、Hierarchy、Transform——三维空间的组织方式。"
+  />
+  <LinkCard
+    title="6. 组件，给物体装能力"
+    href="./06-components/"
+    description="Inspector 里的每一块都是一种「能力」，按需挂、按情况删。"
+  />
+  <LinkCard
+    title="7. Prefab，把东西做成模具"
+    href="./07-prefabs/"
+    description="Prefab、Prefab Instance、Override，把可复用的东西整理出来。"
+  />
+  <LinkCard
+    title="8. 材质和光的第一印象"
+    href="./08-materials-light/"
+    description="用最少的概念让世界开始有气氛。"
+  />
+  <LinkCard
+    title="理解章 B · 为什么一切都是空壳加零件"
+    href="./09-unity-philosophy/"
+    description="把前四章串起来，看清 Unity 的组合式设计哲学。"
+  />
+  <LinkCard
+    title="创作者视角 · 从模糊画面到具体清单"
+    href="./10-from-picture-to-list/"
+    description="把心里的画面拆成物体、组件、材质、灯光和交互任务。"
+  />
+</CardGrid>
+
+读完这六篇，再看任何 VRChat 世界的 Unity 工程，你都不会觉得 Hierarchy 是一团乱码。
+
+读完之后回到 [第一部](../01-getting-started/) 再看一眼，会有「原来当时我是这么搭起来的」的感觉。

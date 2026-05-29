@@ -14,8 +14,8 @@ export const collections = {
         estimatedMinutes: z.number().int().positive().optional(),
         // 是否要求 VRChat SDK 已就绪
         requiresSDK: z.boolean().default(false),
-        // 章节类型：动手章 / 理解章 / 创作者视角
-        chapterType: z.enum(['hands-on', 'concept', 'creator-view']).optional(),
+        // 章节类型：动手章 / 理解章 / 创作者视角 / 部入口页
+        chapterType: z.enum(['hands-on', 'concept', 'creator-view', 'part-intro']).optional(),
         // 给 RSS / 卡片用的简短摘要，独立于 description
         summary: z.string().optional(),
       }),

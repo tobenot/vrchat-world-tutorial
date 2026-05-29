@@ -28,15 +28,17 @@
 
 新增一章只要做两件事：
 
-1. 在对应的目录下新建文件，**文件名带数字前缀**（决定排序）：
+1. 在对应的目录下新建文件，**文件名带数字前缀**（决定排序），扩展名统一用 `.mdx`：
 
    ```
-   src/content/docs/01-getting-started/05-my-new-chapter.md
+   src/content/docs/01-getting-started/05-my-new-chapter.mdx
    ```
+
+   > 全书章节文件统一用 `.mdx`，方便随时插入 `<Steps>`、`<FileTree>`、`<CardGrid>` 等组件，纯 Markdown 内容也完全兼容。
 
 2. 在 frontmatter 里写好 `title` 与 `description`：
 
-   ```md
+   ```mdx
    ---
    title: 5. 一个新的章节
    description: 这一章讲什么。
@@ -198,30 +200,66 @@ flowchart LR
 
 适合「部入口页」「封面页」「展示页」。在 frontmatter 加：
 
-```md
+```mdx
 ---
-title: 前言：打开一扇门
+title: 第一部 · 先站进去再说
 description: 一句话副标题
 template: splash
 hero:
-  tagline: 从零到发布的完全手册
-  image:
-    file: ../../assets/cover.svg
-    alt: 封面
+  tagline: 从「这世界怎么做的」走到「我自己跑起来了」。
   actions:
-    - text: 立刻开始
-      link: /01-getting-started/01-curiosity/
+    - text: 开始第 1 章
+      link: ./01-curiosity/
       icon: right-arrow
       variant: primary
-    - text: 查看进度
-      link: /preface/
-      variant: secondary
+    - text: 直接看第一个世界怎么搭
+      link: ./04-first-world/
+      variant: minimal
+sidebar:
+  label: 第一部 · 总览
+  order: 0
 ---
 ```
 
-`template: splash` 会去掉右侧目录、加宽内容、用 hero 取代 H1。书的首页 `index.md` 是范例。
+`template: splash` 会去掉右侧目录、加宽内容、用 hero 取代 H1。书的首页 `index.mdx` 与每"部"的 `index.mdx` 都是范例。
 
-> 现有的 `preface.md` 没启用 splash，刻意保留正文的"开门"叙事。要不要改成 splash 看你写法偏好。
+### 6.1 「减法」处理前言（重要）
+
+`preface.mdx` 不走 splash 路线。前言的钩子是文字本身，加装饰会破坏「客观视角钩子」原则。这里反过来用减法——抽掉默认的"文档构件"，让正文回到读者面前：
+
+```yaml
+---
+title: 前言：打开一扇门
+description: 这本 VRChat 世界开发教程写给谁，以及它会怎样带你入门。
+tableOfContents: false   # 前言不需要右侧目录
+pagefind: false          # 不参与全文搜索（避免被切碎当结果出现）
+editUrl: false           # 前言上不显示「修改本页」
+lastUpdated: false       # 不显示「最后更新于」
+prev: false              # 上面没有前页
+next:                    # 显式接到第 1 章
+  link: /01-getting-started/01-curiosity/
+  label: 第 1 章 · 一个玩家的好奇心
+sidebar:
+  badge:
+    text: 先读这页       # 侧栏小徽章
+    variant: tip
+---
+```
+
+效果：页面只剩 `title` + 正文 + 底部"下一章"按钮，读起来像一封信而不是一篇文档。这套写法适用于任何「以文字为主体、不希望被文档样式干扰」的页面（前言、致谢、结语）。
+
+### 6.2 部入口页
+
+每"部"在自己目录下放一个 `index.mdx`，做成 splash 入口。它会被 autogenerate 收为该 group 的第一项（靠 `sidebar.order: 0` 排序，靠 `sidebar.label` 改写显示标签避免与 group 标题重复）。
+
+模板见 `01-getting-started/index.mdx` 与 `02-workbench/index.mdx`。要点：
+
+- `template: splash` 让它真正像一张"扉页"
+- `hero.actions` 给两个入口：顺序读 vs 直奔重点
+- `tableOfContents: false` + `pagefind: false`：入口页本身不需要被搜索，搜到具体章节即可
+- 用 `<CardGrid>` + `<LinkCard>` 列出该部所有章节，配 `description` 让读者扫一眼能选
+
+部入口页之间互相用相对链接 `../02-workbench/` 跳转，末尾留一两句过渡，让一部读完能自然进下一部。
 
 ---
 
