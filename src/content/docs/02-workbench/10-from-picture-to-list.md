@@ -1,5 +1,6 @@
 ---
 title: 创作者视角：从模糊画面到具体清单
+chapterType: creator-view
 description: 把心里想做的 VRChat 世界拆成物体、组件、材质、灯光和交互任务，开始用创作者的方式看空间。
 ---
 

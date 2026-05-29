@@ -1,0 +1,197 @@
+---
+title: Starlight 组件实战示例
+description: 这一页展示本书启用的所有 Starlight 写作组件，写新章时可以拷贝过去改。
+sidebar:
+  hidden: true
+chapterType: concept
+summary: 写新章前看这一页：所有可用组件的活样例，照抄即可。
+---
+
+import { Steps, FileTree, Tabs, TabItem, Card, CardGrid, LinkCard, Aside, Badge, Icon } from '@astrojs/starlight/components';
+
+这一页只服务写作者，不在侧栏出现，但通过 URL `/dev/components-demo/` 可以直接访问。所有样例都是真渲染——看到效果，再回章节里照抄。
+
+## 1. Steps：教程步骤
+
+`<Steps>` 把有序列表渲染成带圆点编号的步骤条，比纯 `1. 2. 3.` 更醒目。
+
+<Steps>
+
+1. 打开 Unity Hub，新建 World 项目。
+2. 等 VRChat SDK 自动安装完成，进度条会到 100% 才算结束。
+3. 菜单栏 `File → New Scene`，选 `Basic`，按 `Ctrl+S` 命名 `MyFirstWorld`。
+4. Hierarchy 右键 `3D Object → Cube`，缩放成 `10, 0.2, 10` 当地板。
+
+</Steps>
+
+## 2. FileTree：项目目录树
+
+讲项目结构、SDK 文件布局时极好用。粗体的项会高亮，注释跟在节点后。
+
+<FileTree>
+
+- Assets/
+  - Scenes/
+    - **MyFirstWorld.unity** ← 你的世界主场景
+    - Backups/
+      - 2025-08-01.unity
+  - Materials/
+    - Mat_Floor_WarmGray.mat
+  - Scripts/
+    - LampToggle.cs ← 第一个交互脚本
+- Packages/
+- ProjectSettings/
+
+</FileTree>
+
+## 3. Tabs：平台 / 方案差异
+
+例：Windows 与 macOS 的快捷键差异。
+
+<Tabs>
+  <TabItem label="Windows">
+    保存场景：`Ctrl + S`
+
+    打开 SDK 控制面板：`VRChat SDK → Show Control Panel`
+  </TabItem>
+  <TabItem label="macOS">
+    保存场景：`Cmd + S`
+
+    macOS 上 VRChat 客户端不支持上传，仅适合查文档和准备场景。
+  </TabItem>
+  <TabItem label="Quest 工作流">
+    Quest 平台需要切换 Build Target 到 Android，再用 SDK 控制面板上传 Quest 版本。
+  </TabItem>
+</Tabs>
+
+## 4. CardGrid + Card / LinkCard
+
+每一部的入口、章节末尾的「相关阅读」最常用。
+
+<CardGrid>
+  <Card title="先做出来" icon="rocket">
+    第 1–4 章带你装好工具、跑出第一个最小世界。
+  </Card>
+  <Card title="再看懂" icon="open-book">
+    第 5–10 章拆开 Unity 的组合式设计，让你看任何 GameObject 都不再害怕。
+  </Card>
+</CardGrid>
+
+<CardGrid>
+  <LinkCard title="第 5 章：一切都是物体" href="/02-workbench/05-gameobjects/" description="GameObject 只是空壳，能力来自组件。" />
+  <LinkCard title="第 6 章：组件" href="/02-workbench/06-components/" description="Add Component / Inspector / 引用槽。" />
+  <LinkCard title="第 8 章：材质和光" href="/02-workbench/08-materials-light/" description="给空间装上第一缕氛围。" />
+</CardGrid>
+
+## 5. Aside（提示框）：四种语义
+
+Markdown 简写优先，组件式备用。
+
+:::note[note 信息]
+中性的补充说明，常用来引出"扩展阅读"。
+:::
+
+:::tip[为什么是这样？]
+讲设计原理、对比"如果不这样会怎样"。这是本书的高频侧栏。
+:::
+
+:::caution[踩坑预警]
+具体到哪个按钮、哪个字段。新手最容易在这里翻车。
+:::
+
+:::danger[千万别]
+真的会让数据丢失或上传失败的硬错误，留给极少数情况。
+:::
+
+如果想用组件式（更灵活的标题与子内容），用 `<Aside>`：
+
+<Aside type="tip" title="组件式 Aside（仅 MDX）">
+  组件版可以在标题里嵌徽章、子组件，比 Markdown 简写更灵活。
+</Aside>
+
+## 6. 代码块的隐藏招式（Expressive Code）
+
+只在 `\`\`\`lang` 之后追加 meta 信息即可，无需任何额外组件：
+
+```cs title="LampToggle.cs" {3-5} ins={6-7} del={8} collapse={1-1}
+using UdonSharp;
+public class LampToggle : UdonSharpBehaviour {
+    public Light targetLight;
+    void Interact() {
+        targetLight.enabled = !targetLight.enabled;
+    }
+    // ↑ 这两行被高亮为「新增」
+    public AudioSource clickSfx; // ↓ 这行高亮为「删除」
+    public string legacyTag;
+    // ↓ 默认折叠的样板代码
+    private void OnEnable() {}
+    private void OnDisable() {}
+}
+```
+
+**Meta 速查表**
+
+| 写法 | 作用 |
+| :--- | :--- |
+| `title="…"` | 加文件名标题栏 |
+| `{3-5}` | 高亮第 3–5 行 |
+| `ins={6-7}` | 标为绿色「新增」 |
+| `del={8}` | 标为红色「删除」 |
+| `collapse={10-30}` | 默认折叠，点击展开 |
+| `"关键词"` | 把行内某段词高亮 |
+| `frame="terminal"` | 把代码块伪装成终端 |
+| `frame="none"` | 关掉边框 |
+
+## 7. Badge：徽章
+
+可以放在标题、列表、表格里，标记状态。
+
+- 章节状态：<Badge text="新" variant="tip" /> <Badge text="WIP" variant="caution" /> <Badge text="实验" variant="note" /> <Badge text="弃用" variant="danger" /> <Badge text="稳定" variant="success" />
+
+## 8. Icon：图标
+
+Starlight 内置一批 Icon，可以混排到标题或卡片里。
+
+<Icon name="rocket" /> 起步章节 &nbsp;|&nbsp; <Icon name="puzzle" /> 组件话题 &nbsp;|&nbsp; <Icon name="warning" /> 重点提醒
+
+## 9. Mermaid：图
+
+无需额外组件，本项目已注入 Mermaid 客户端运行时。直接写 `<div class="mermaid">…</div>` 即可。
+
+<div class="mermaid">
+flowchart LR
+  A[Unity 场景] --> B[VRChat SDK 包装]
+  B --> C[Build & Test 本地预览]
+  B --> D[Build & Publish 上传]
+  D --> E[(VRChat 服务器)]
+  E --> F[玩家在客户端进入]
+</div>
+
+也支持时序、类图等：
+
+<div class="mermaid">
+sequenceDiagram
+  participant 玩家
+  participant 客户端
+  participant 服务器
+  玩家->>客户端: 选择世界
+  客户端->>服务器: 请求世界数据
+  服务器-->>客户端: 返回 AssetBundle
+  客户端->>玩家: 加载并渲染
+</div>
+
+## 10. 代码块标题 + 行号 + 关键字高亮
+
+在 ```` ```lang ```` 后追加 `showLineNumbers` 和带引号的关键字即可：
+
+```cs title="同步开关灯片段" showLineNumbers
+public override void Interact() {
+  if (Networking.IsOwner(gameObject)) {
+    targetLight.enabled = !targetLight.enabled;
+  }
+}
+```
+
+---
+
+这一页页脚的「约 X 分钟 / 难度 / 章节类型」徽章，由本书的 `Footer.astro` 覆盖根据 frontmatter 自动渲染。要点亮，只要在文章 frontmatter 里加上 `difficulty / estimatedMinutes / chapterType`。

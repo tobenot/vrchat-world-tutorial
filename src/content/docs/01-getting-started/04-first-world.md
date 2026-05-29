@@ -1,6 +1,11 @@
 ---
 title: 4. 你的第一个世界
 description: 创建一个最小 VRChat 世界：地板、出生点、VRC Scene Descriptor、Build & Test。理解每一步在做什么。
+difficulty: 新手
+estimatedMinutes: 30
+chapterType: hands-on
+requiresSDK: true
+summary: 用一块地板、一个出生点、一个 VRC Scene Descriptor，做出能站进去走两步的最小世界。
 ---
 
 这一章的目标很明确：让你站进自己做的世界里。

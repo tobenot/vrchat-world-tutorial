@@ -1,0 +1,234 @@
+---
+// 覆盖 Starlight 默认 Footer：
+//  · 保留默认的「上次更新 / 上一篇下一篇 / 编辑链接」
+//  · 在下方追加阅读估算、章节难度徽章、给作者反馈的入口
+//  · 顺便注入 Mermaid 客户端运行时（按需懒加载）
+//
+// 阅读估算原理：从 Astro.locals.starlightRoute.entry.body（原文 markdown 字符串）
+// 中按中文/英文混排估字数，再除以平均阅读速度。
+import Default from '@astrojs/starlight/components/Footer.astro';
+
+const route = Astro.locals.starlightRoute;
+const entry = route?.entry;
+const data = entry?.data ?? ({} as Record<string, unknown>);
+const slug = entry?.id ?? '';
+const editPath = entry?.filePath ?? '';
+const repoBase = 'https://github.com/tobenot/vrchat-world-tutorial';
+
+// —— 阅读估算 ——
+const body = (entry as any)?.body ?? '';
+function estimateMinutes(md: string, override?: number) {
+  if (override && override > 0) return override;
+  if (!md) return undefined;
+  const stripped = md
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/!\[[^\]]*\]\([^\)]*\)/g, '')
+    .replace(/\[[^\]]*\]\([^\)]*\)/g, ' ')
+    .replace(/[#>*_`~\-]/g, ' ');
+  const cjk = (stripped.match(/[\u4e00-\u9fa5]/g) || []).length;
+  const ascii = (stripped.match(/[A-Za-z0-9]+/g) || []).length;
+  // 中文 350 字/分钟，英文词 200 词/分钟
+  const minutes = cjk / 350 + ascii / 200;
+  return Math.max(1, Math.round(minutes));
+}
+
+const minutes = estimateMinutes(body, (data as any).estimatedMinutes);
+const difficulty = (data as any).difficulty as string | undefined;
+const chapterType = (data as any).chapterType as string | undefined;
+
+// —— 反馈链接 ——
+const issueTitle = encodeURIComponent(`[反馈] ${(data as any).title ?? slug}`);
+const issueBody = encodeURIComponent(
+  `页面：/${slug}/\n文件：${editPath}\n\n问题或建议：\n`
+);
+const issueUrl = `${repoBase}/issues/new?title=${issueTitle}&body=${issueBody}`;
+const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
+
+const chapterTypeLabel: Record<string, string> = {
+  'hands-on': '动手章',
+  concept: '理解章',
+  'creator-view': '创作者视角',
+};
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+{/* —— 章节元信息条 —— */}
+{(minutes || difficulty || chapterType) && (
+  <div class="vrc-meta not-content">
+    {minutes && (
+      <span class="vrc-meta__chip vrc-meta__chip--time" title="按中文 350 字/分、英文 200 词/分估算">
+        约 {minutes} 分钟
+      </span>
+    )}
+    {difficulty && (
+      <span class={`vrc-meta__chip vrc-meta__chip--diff vrc-meta__chip--diff-${difficulty}`}>
+        难度：{difficulty}
+      </span>
+    )}
+    {chapterType && chapterTypeLabel[chapterType] && (
+      <span class="vrc-meta__chip vrc-meta__chip--type">
+        {chapterTypeLabel[chapterType]}
+      </span>
+    )}
+  </div>
+)}
+
+{/* —— 反馈条 —— */}
+<div class="vrc-feedback not-content">
+  <span class="vrc-feedback__text">这一节有错或讲不清？</span>
+  <a class="vrc-feedback__btn" href={issueUrl} target="_blank" rel="noopener">提个 Issue</a>
+  <span class="vrc-feedback__sep">·</span>
+  <a class="vrc-feedback__btn vrc-feedback__btn--ghost" href={editFullUrl} target="_blank" rel="noopener">直接改文档</a>
+</div>
+
+{/* —— Mermaid 客户端运行时（仅当页面里有 .mermaid 才加载主包） —— */}
+<script>
+  (async () => {
+    const nodes = document.querySelectorAll('.mermaid');
+    if (!nodes.length) return;
+
+    // 缓存原始源码，方便主题切换时重渲染
+    nodes.forEach((el) => {
+      const e = el as HTMLElement;
+      if (!e.dataset.source) e.dataset.source = e.textContent ?? '';
+    });
+
+    const { default: mermaid } = await import('mermaid');
+    const isDark = () => document.documentElement.dataset.theme !== 'light';
+
+    const renderAll = async () => {
+      document.querySelectorAll<HTMLElement>('.mermaid').forEach((el) => {
+        if (el.dataset.processed === 'true') {
+          el.removeAttribute('data-processed');
+          el.innerHTML = el.dataset.source ?? '';
+        }
+      });
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: isDark() ? 'dark' : 'default',
+        securityLevel: 'loose',
+        fontFamily: 'inherit',
+      });
+      try {
+        await mermaid.run({ querySelector: '.mermaid' });
+      } catch (e) {
+        console.warn('[mermaid] render error', e);
+      }
+    };
+
+    await renderAll();
+
+    // 主题切换 → 重画
+    const observer = new MutationObserver(renderAll);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+  })();
+</script>
+
+<style is:global>
+  /* —— Mermaid 容器 —— */
+  .mermaid {
+    display: block;
+    margin-block: 1.6rem;
+    padding: 1rem;
+    border: 1px solid var(--vrc-border);
+    border-radius: 12px;
+    background: var(--vrc-surface-1);
+    overflow-x: auto;
+    text-align: center;
+  }
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* —— 元信息徽章 —— */
+  .vrc-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 2rem;
+  }
+  .vrc-meta__chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--vrc-border);
+    background: var(--vrc-surface-2);
+    color: var(--sl-color-gray-2);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .vrc-meta__chip--time {
+    border-color: var(--vrc-border-strong);
+    color: var(--vrc-cyan);
+  }
+  .vrc-meta__chip--diff-新手 {
+    background: rgba(31, 210, 196, 0.08);
+    color: var(--vrc-cyan);
+    border-color: rgba(31, 210, 196, 0.3);
+  }
+  .vrc-meta__chip--diff-进阶 {
+    background: rgba(255, 170, 60, 0.08);
+    color: #ffb84d;
+    border-color: rgba(255, 170, 60, 0.3);
+  }
+  .vrc-meta__chip--diff-硬核 {
+    background: rgba(255, 42, 133, 0.08);
+    color: var(--vrc-magenta);
+    border-color: var(--vrc-magenta-dim);
+  }
+
+  /* —— 反馈条 —— */
+  .vrc-feedback {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.8rem;
+    margin-top: 1.5rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px dashed var(--vrc-border-strong);
+    border-radius: 12px;
+    background: var(--vrc-surface-1);
+    color: var(--sl-color-gray-2);
+    font-size: 0.92rem;
+  }
+  .vrc-feedback__text {
+    font-weight: 600;
+    color: var(--sl-color-gray-1);
+  }
+  .vrc-feedback__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--vrc-cyan), var(--vrc-cyan-dim));
+    color: #050d0c !important;
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-decoration: none !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .vrc-feedback__btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(31, 210, 196, 0.3);
+  }
+  .vrc-feedback__btn--ghost {
+    background: transparent;
+    color: var(--vrc-cyan) !important;
+    border: 1px solid var(--vrc-border-strong);
+  }
+  .vrc-feedback__btn--ghost:hover {
+    background: rgba(31, 210, 196, 0.08);
+    box-shadow: 0 2px 10px rgba(31, 210, 196, 0.12);
+  }
+  .vrc-feedback__sep {
+    color: var(--sl-color-gray-4);
+    user-select: none;
+  }
+</style>

@@ -1,5 +1,7 @@
 ---
 title: 理解章 B：为什么一切都是空壳加零件
+chapterType: concept
+difficulty: 新手
 description: 把 GameObject、Component、Prefab、Material、Light 串起来，看清 Unity 的组合式设计思路。
 ---
 

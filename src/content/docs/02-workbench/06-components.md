@@ -1,6 +1,10 @@
 ---
 title: 6. 组件，给物体装能力
 description: 看清 Unity Component 系统怎么用：怎么加、怎么调、怎么删，以及 VRChat SDK 自带的那批组件是干嘛的。
+difficulty: 新手
+estimatedMinutes: 22
+chapterType: hands-on
+summary: Inspector 里的每一块组件都是一种「能力」。学会按需挂、按情况删，以后看任何 GameObject 都不再害怕。
 ---
 
 上一章你验证了一件事：关掉 Mesh Renderer 物体隐形，拿掉 Collider 玩家穿过去。能力是组件给的，不是物体本身有的。
