@@ -1,0 +1,89 @@
+---
+// 自定义 404 页面
+// 目的：失败页面也是流量入口——别让用户两步关掉浏览器，给他们一条路回来。
+// 同时显式 noindex，避免 404 进搜索结果。
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage
+  frontmatter={{
+    title: '走丢了 · 404',
+    description: '你访问的页面不存在或已经搬家。回到首页或搜一下你想看的章节吧。',
+    template: 'splash',
+    tableOfContents: false,
+    pagefind: false,
+    editUrl: false,
+    lastUpdated: false,
+    head: [
+      { tag: 'meta', attrs: { name: 'robots', content: 'noindex, nofollow' } },
+    ],
+  }}
+>
+  <div class="not-found">
+    <p class="not-found__hint">可能是链接拼错了，也可能是这一节还在草稿里。</p>
+
+    <div class="not-found__actions">
+      <a href="/" class="not-found__btn not-found__btn--primary">回到首页</a>
+      <a href="/preface/" class="not-found__btn">从前言开始读</a>
+      <a href="/01-getting-started/" class="not-found__btn">直接进第一部</a>
+    </div>
+
+    <p class="not-found__hint not-found__hint--small">
+      或者按 <kbd>/</kbd> 打开搜索，找你想看的章节。
+    </p>
+  </div>
+</StarlightPage>
+
+<style>
+  .not-found {
+    max-width: 32rem;
+    margin: 2rem auto 0;
+    text-align: center;
+  }
+  .not-found__hint {
+    color: var(--sl-color-gray-2);
+    font-size: 1.05rem;
+    margin-block: 1rem;
+  }
+  .not-found__hint--small {
+    font-size: 0.9rem;
+    margin-top: 2rem;
+  }
+  .not-found__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+  .not-found__btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 1.2rem;
+    border-radius: 10px;
+    border: 1px solid var(--vrc-border-strong, rgba(31, 210, 196, 0.4));
+    background: transparent;
+    color: var(--vrc-cyan, #1fd2c4);
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .not-found__btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(31, 210, 196, 0.18);
+  }
+  .not-found__btn--primary {
+    background: linear-gradient(135deg, var(--vrc-cyan, #1fd2c4), var(--vrc-cyan-dim, #18a89c));
+    color: #050d0c;
+    border-color: transparent;
+  }
+  kbd {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid var(--sl-color-gray-5);
+    background: var(--vrc-surface-1, rgba(255, 255, 255, 0.04));
+    font-size: 0.85em;
+    font-family: var(--__sl-font-mono);
+  }
+</style>

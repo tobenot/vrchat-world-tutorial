@@ -1,0 +1,160 @@
+---
+// 覆盖 Starlight 默认 Head：
+//  · 保留 Starlight 自动注入的 title / description / canonical / og:title / og:description / og:url
+//  · 在此基础上追加 JSON-LD 结构化数据，给 Google 富搜索结果用
+//
+// 注入策略：
+//  · 首页 (index)：WebSite + Book schema
+//  · 章节页：TechArticle + BreadcrumbList
+//  · 减法页（about / preface）：Article + BreadcrumbList
+//  · /dev/ 内部页：不注入（会被 sitemap 过滤掉，noindex）
+import Default from '@astrojs/starlight/components/Head.astro';
+
+const route = Astro.locals.starlightRoute;
+const entry = route?.entry;
+const data = (entry?.data ?? {}) as Record<string, any>;
+
+const id: string = entry?.id ?? '';
+const isHome = id === '' || id === 'index';
+const isDev = id.startsWith('dev/');
+
+const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? '';
+const pageUrl = new URL(Astro.url.pathname, Astro.site ?? 'https://vrchat-world-tutorial.pages.dev/').toString();
+const ogImage = `${siteUrl}/social-card.png`;
+
+const bookTitle = '你的第一个 VRChat 世界：从零到发布的完全手册';
+const author = {
+  '@type': 'Person',
+  name: '萝北来信',
+  url: 'https://tobenot.top',
+};
+
+// 面包屑：按 URL 路径段拼出来
+function buildBreadcrumb(): any | null {
+  if (isHome) return null;
+  const segments = id.split('/').filter(Boolean);
+  if (!segments.length) return null;
+
+  const partLabels: Record<string, string> = {
+    '01-getting-started': '第一部 · 先站进去再说',
+    '02-workbench': '第二部 · 认识你的工作台',
+  };
+
+  const items: any[] = [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: '首页',
+      item: `${siteUrl}/`,
+    },
+  ];
+
+  let acc = '';
+  segments.forEach((seg, idx) => {
+    acc += `/${seg}`;
+    const isLast = idx === segments.length - 1;
+    let name: string;
+    if (isLast) {
+      name = (data.title as string) ?? seg;
+    } else {
+      name = partLabels[seg] ?? seg;
+    }
+    items.push({
+      '@type': 'ListItem',
+      position: idx + 2,
+      name,
+      item: `${siteUrl}${acc}/`,
+    });
+  });
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items,
+  };
+}
+
+// 章节页 / 减法页：Article 系列
+function buildArticle(): any | null {
+  if (isHome) return null;
+  const isTech = !!data.chapterType && data.chapterType !== 'part-intro';
+  const lastUpdated =
+    data.lastUpdated instanceof Date
+      ? data.lastUpdated.toISOString()
+      : typeof data.lastUpdated === 'string'
+      ? data.lastUpdated
+      : undefined;
+  return {
+    '@context': 'https://schema.org',
+    '@type': isTech ? 'TechArticle' : 'Article',
+    headline: data.title,
+    description: data.description ?? data.summary,
+    inLanguage: 'zh-CN',
+    isPartOf: {
+      '@type': 'Book',
+      name: bookTitle,
+      url: `${siteUrl}/`,
+    },
+    author,
+    publisher: author,
+    image: ogImage,
+    mainEntityOfPage: pageUrl,
+    url: pageUrl,
+    ...(lastUpdated ? { dateModified: lastUpdated } : {}),
+  };
+}
+
+// 首页：WebSite + Book
+function buildHomeLd(): any[] {
+  if (!isHome) return [];
+  return [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: bookTitle,
+      url: `${siteUrl}/`,
+      inLanguage: 'zh-CN',
+      description: data.description,
+      author,
+      publisher: author,
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Book',
+      name: bookTitle,
+      url: `${siteUrl}/`,
+      inLanguage: 'zh-CN',
+      bookFormat: 'https://schema.org/EBook',
+      author,
+      publisher: author,
+      image: ogImage,
+      about: ['VRChat', 'Unity', 'UdonSharp', 'VRChat SDK', 'VR 世界开发'],
+      audience: {
+        '@type': 'PeopleAudience',
+        suggestedMinAge: 14,
+      },
+    },
+  ];
+}
+
+const lds: any[] = [];
+if (!isDev) {
+  if (isHome) {
+    lds.push(...buildHomeLd());
+  } else {
+    const article = buildArticle();
+    if (article) lds.push(article);
+    const crumbs = buildBreadcrumb();
+    if (crumbs) lds.push(crumbs);
+  }
+}
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+{/* /dev/ 路径整体 noindex，防止开发样例页被索引 */}
+{isDev && <meta name="robots" content="noindex, nofollow" />}
+
+{lds.map((ld) => (
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+))}

@@ -1,0 +1,31 @@
+{
+  "name": "你的第一个 VRChat 世界：从零到发布的完全手册",
+  "short_name": "VRChat 世界教程",
+  "description": "面向新手的 VRChat 世界开发教程，覆盖 Unity 基础、VRChat SDK、UdonSharp、多人同步、空间体验设计、性能优化与发布维护。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "minimal-ui",
+  "background_color": "#0d1117",
+  "theme_color": "#1fd2c4",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "prebuild": "node scripts/build-og.mjs",
     "build": "astro build",
-    "build:strict": "cross-env CHECK_LINKS=1 astro build",
+    "build:strict": "cross-env CHECK_LINKS=1 npm run prebuild && astro build",
     "preview": "astro preview",
     "check:links": "cross-env CHECK_LINKS=1 astro build",
+    "build:og": "node scripts/build-og.mjs",
     "astro": "astro"
   },
   "dependencies": {

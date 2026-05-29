@@ -3,6 +3,9 @@ title: Starlight 组件实战示例
 description: 这一页展示本书启用的所有 Starlight 写作组件，写新章时可以拷贝过去改。
 sidebar:
   hidden: true
+# 内部样例页：不进站内搜索、不进 sitemap（sitemap 过滤在 astro.config.mjs）、
+# Head.astro 覆盖会基于 id 前缀 dev/ 自动注入 noindex meta。
+pagefind: false
 chapterType: concept
 summary: 写新章前看这一页：所有可用组件的活样例，照抄即可。
 ---
