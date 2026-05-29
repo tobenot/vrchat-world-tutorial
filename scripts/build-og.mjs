@@ -32,6 +32,7 @@ const docsDir = resolve(projectRoot, 'src/content/docs');
 const outDir = resolve(projectRoot, 'public/og');
 const fontDir = resolve(__dirname, '.cache/og-fonts');
 const fallbackPng = resolve(projectRoot, 'public/social-card.png');
+const fallbackSvg = resolve(projectRoot, 'public/social-card.svg');
 
 // ============================== 字体 ==============================
 
@@ -135,6 +136,11 @@ const COLORS = {
 
 const SITE_FOOTER = '萝北来信 · vrchat-world-tutorial.pages.dev';
 const BOOK_NAME = '你的第一个 VRChat 世界';
+// 首页专用：主标题分两行呈现「正书名 + 副标题」，避免和右下角书名重复
+const HOME_TITLE_LINES = ['你的第一个 VRChat 世界', '从零到发布的完全手册'];
+// 首页徽章：站点级元信息，不与左上 eyebrow（面向新手 · 中文教程）撞语义
+// 阅读邀请：低门槛承诺（免费）+ 易读承诺（浅显易懂）+ 完成度承诺（从零到发布）
+const HOME_BADGES = ['免费阅读', '浅显易懂', '从零到发布'];
 
 function clip(s, max) {
   if (!s) return '';
@@ -154,12 +160,75 @@ function template(meta) {
 
   // 徽章
   const badges = [];
-  if (meta.difficulty) badges.push(`难度：${meta.difficulty}`);
-  if (meta.minutes) badges.push(`约 ${meta.minutes} 分钟`);
-  if (meta.chapterType && CHAPTER_TYPE_LABELS[meta.chapterType]) {
-    badges.push(CHAPTER_TYPE_LABELS[meta.chapterType]);
+  if (meta.isHome) {
+    // 首页直接使用站点级徽章组，避免和 eyebrow 重复
+    badges.push(...HOME_BADGES);
+  } else {
+    if (meta.difficulty) badges.push(`难度：${meta.difficulty}`);
+    if (meta.minutes) badges.push(`约 ${meta.minutes} 分钟`);
+    if (meta.chapterType && CHAPTER_TYPE_LABELS[meta.chapterType]) {
+      badges.push(CHAPTER_TYPE_LABELS[meta.chapterType]);
+    }
+    if (!badges.length) badges.push('面向新手 · 从零讲起');
   }
-  if (!badges.length) badges.push('面向新手 · 从零讲起');
+
+  // 主标题块：首页双行（正书名 + 副标题），子页单行
+  const titleNode = meta.isHome
+    ? {
+        type: 'div',
+        props: {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            marginBottom: '32px',
+            maxWidth: '1020px',
+          },
+          children: [
+            {
+              type: 'div',
+              props: {
+                style: {
+                  fontSize: '78px',
+                  fontWeight: 700,
+                  lineHeight: 1.12,
+                  color: COLORS.fg,
+                  display: 'flex',
+                },
+                children: HOME_TITLE_LINES[0],
+              },
+            },
+            {
+              type: 'div',
+              props: {
+                style: {
+                  fontSize: '52px',
+                  fontWeight: 700,
+                  lineHeight: 1.18,
+                  marginTop: '14px',
+                  color: COLORS.accent,
+                  display: 'flex',
+                },
+                children: `——${HOME_TITLE_LINES[1]}`,
+              },
+            },
+          ],
+        },
+      }
+    : {
+        type: 'div',
+        props: {
+          style: {
+            fontSize: `${titleFontSize}px`,
+            fontWeight: 700,
+            lineHeight: 1.18,
+            marginBottom: '32px',
+            color: COLORS.fg,
+            display: 'flex',
+            maxWidth: '1020px',
+          },
+          children: clip(meta.title || BOOK_NAME, 36),
+        },
+      };
 
   return {
     type: 'div',
@@ -221,22 +290,8 @@ function template(meta) {
             children: eyebrow,
           },
         },
-        // 主标题
-        {
-          type: 'div',
-          props: {
-            style: {
-              fontSize: `${titleFontSize}px`,
-              fontWeight: 700,
-              lineHeight: 1.18,
-              marginBottom: '32px',
-              color: COLORS.fg,
-              display: 'flex',
-              maxWidth: '1020px',
-            },
-            children: clip(meta.title || BOOK_NAME, 36),
-          },
-        },
+        // 主标题（首页：两行书名+副标题；子页：单行章节名）
+        titleNode,
         // 副标题 / description
         {
           type: 'div',
@@ -290,7 +345,7 @@ function template(meta) {
                   })),
                 },
               },
-              // 右：书名 + 作者
+              // 右：署名区（首页：只留站点+作者；子页：书名 + 站点+作者）
               {
                 type: 'div',
                 props: {
@@ -299,32 +354,47 @@ function template(meta) {
                     flexDirection: 'column',
                     alignItems: 'flex-end',
                   },
-                  children: [
-                    {
-                      type: 'div',
-                      props: {
-                        style: {
-                          fontSize: '24px',
-                          color: COLORS.fg,
-                          fontWeight: 700,
-                          display: 'flex',
+                  children: meta.isHome
+                    ? [
+                        // 首页：完整书名已在主标题区呈现，这里只放作者署名
+                        {
+                          type: 'div',
+                          props: {
+                            style: {
+                              fontSize: '22px',
+                              color: COLORS.muted,
+                              display: 'flex',
+                            },
+                            children: SITE_FOOTER,
+                          },
                         },
-                        children: BOOK_NAME,
-                      },
-                    },
-                    {
-                      type: 'div',
-                      props: {
-                        style: {
-                          fontSize: '20px',
-                          color: COLORS.muted,
-                          marginTop: '6px',
-                          display: 'flex',
+                      ]
+                    : [
+                        {
+                          type: 'div',
+                          props: {
+                            style: {
+                              fontSize: '24px',
+                              color: COLORS.fg,
+                              fontWeight: 700,
+                              display: 'flex',
+                            },
+                            children: BOOK_NAME,
+                          },
                         },
-                        children: SITE_FOOTER,
-                      },
-                    },
-                  ],
+                        {
+                          type: 'div',
+                          props: {
+                            style: {
+                              fontSize: '20px',
+                              color: COLORS.muted,
+                              marginTop: '6px',
+                              display: 'flex',
+                            },
+                            children: SITE_FOOTER,
+                          },
+                        },
+                      ],
                 },
               },
             ],
@@ -346,7 +416,7 @@ async function renderPng(meta, fonts) {
   })
     .render()
     .asPng();
-  return png;
+  return { svg, png };
 }
 
 async function main() {
@@ -384,7 +454,12 @@ async function main() {
     if (existsSync(outPath)) {
       const srcMt = (await stat(abs)).mtimeMs;
       const dstMt = (await stat(outPath)).mtimeMs;
-      if (dstMt >= srcMt) {
+      let fresh = dstMt >= srcMt;
+      // 首页除了 PNG 还要落盘 social-card.svg，缺一不可
+      if (fresh && rel === 'index.mdx') {
+        fresh = existsSync(fallbackSvg) && (await stat(fallbackSvg)).mtimeMs >= srcMt;
+      }
+      if (fresh) {
         skipped++;
         continue;
       }
@@ -392,8 +467,14 @@ async function main() {
 
     const meta = deriveMeta(rel, data);
     try {
-      const png = await renderPng(meta, fonts);
+      const { svg, png } = await renderPng(meta, fonts);
       await writeFile(outPath, png);
+      // 首页 satori SVG 一并落盘到 public/social-card.svg
+      // —— 用作向量兜底，色彩 / 排版与 PNG 完全一致
+      if (meta.isHome) {
+        await writeFile(fallbackSvg, svg, 'utf-8');
+        console.log('[build-og]   ✔ /social-card.svg updated (vector mirror)');
+      }
       made++;
       console.log(`[build-og]   ✔ ${urlPath} → og/${fileName}`);
     } catch (err) {
