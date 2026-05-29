@@ -597,26 +597,15 @@ nav.sidebar-pane,
 
 /* 全站常驻 AI 生成标记 — 显示在每个页面内容区底部 */
 .sl-markdown-content::after {
-  content: "🤖 本站内容由 AI 生成";
+  content: "本站内容由 AI 生成";
   display: block;
   margin-top: 3rem;
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--vrc-border);
-  border-radius: 8px;
-  background: linear-gradient(135deg, rgba(31, 210, 196, 0.05), rgba(255, 42, 133, 0.03));
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--vrc-border);
   color: var(--sl-color-gray-3);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 500;
   text-align: center;
-  letter-spacing: 0.02em;
-  opacity: 0.85;
-  transition: opacity 0.2s ease;
-}
-
-.sl-markdown-content:hover::after {
-  opacity: 1;
-}
-
-:root[data-theme="light"] .sl-markdown-content::after {
-  background: linear-gradient(135deg, rgba(12, 143, 133, 0.05), rgba(255, 42, 133, 0.02));
+  letter-spacing: 0.03em;
+  opacity: 0.7;
 }
