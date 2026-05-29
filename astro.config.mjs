@@ -8,7 +8,9 @@ const bookTitle = '你的第一个 VRChat 世界：从零到发布的完全手�
 const bookDescription =
   '面向新手的 VRChat 世界开发教程，从零讲起 Unity 基础、VRChat SDK、UdonSharp 编程、多人同步、空间体验设计与性能优化，带你做出第一个能发布的 VRChat 世界。';
 const siteUrl = 'https://vrchat-world-tutorial.pages.dev';
-const ogImage = `${siteUrl}/social-card.png`;
+// 注意：og:image / twitter:image 不再在这里全站注入，
+// 改由 src/overrides/Head.astro 按当前页 slug 输出 per-page 动态 OG 卡，
+// 缺图时回退到 /social-card.png（首页统一卡）。
 
 // 死链检查在构建时和 CHECK_LINKS=1 时启用；开发模式默认跳过，写作不被打断
 const enableLinksValidator =
@@ -41,19 +43,14 @@ export default defineConfig({
         { tag: 'meta', attrs: { name: 'theme-color', content: '#1fd2c4' } },
 
         // —— Open Graph（社交分享卡）——
-        // 注意：og:image 必须是绝对 URL，且必须是 PNG/JPG，SVG 多数平台不支持。
         // og:title / og:description / og:url 由 Starlight 基于 frontmatter 自动注入；
+        // og:image / twitter:image 改由 src/overrides/Head.astro 按页注入（per-page 卡）。
         // 这里只补 Starlight 不会写的全站级字段。
         { tag: 'meta', attrs: { property: 'og:site_name', content: bookTitle } },
         { tag: 'meta', attrs: { property: 'og:locale', content: 'zh_CN' } },
-        { tag: 'meta', attrs: { property: 'og:image', content: ogImage } },
-        { tag: 'meta', attrs: { property: 'og:image:width', content: '1200' } },
-        { tag: 'meta', attrs: { property: 'og:image:height', content: '630' } },
-        { tag: 'meta', attrs: { property: 'og:image:type', content: 'image/png' } },
 
-        // —— Twitter Card ——
+        // —— Twitter Card（image 同样在 Head.astro 里按页输出）——
         { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
-        { tag: 'meta', attrs: { name: 'twitter:image', content: ogImage } },
 
         // PWA 基础（manifest）
         { tag: 'link', attrs: { rel: 'manifest', href: '/manifest.webmanifest' } },
@@ -109,12 +106,12 @@ export default defineConfig({
         {
           label: '第一部：先站进去再说',
           collapsed: false,
-          autogenerate: { directory: '01-getting-started' },
+          autogenerate: { directory: 'getting-started' },
         },
         {
           label: '第二部：认识你的工作台',
           collapsed: false,
-          autogenerate: { directory: '02-workbench' },
+          autogenerate: { directory: 'workbench' },
         },
         {
           label: '关于',

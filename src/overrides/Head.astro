@@ -20,7 +20,17 @@ const isDev = id.startsWith('dev/');
 
 const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? '';
 const pageUrl = new URL(Astro.url.pathname, Astro.site ?? 'https://vrchat-world-tutorial.pages.dev/').toString();
-const ogImage = `${siteUrl}/social-card.png`;
+
+// per-page OG 卡片：与 scripts/build-og.mjs 的命名规则保持一致
+//   首页（id 为空 / 'index'）→ /og/index.png
+//   其他页（id = 'getting-started/curiosity' 等）→ /og/getting-started__curiosity.png
+// PNG 由 prebuild 钩子统一生成，落在 /public/og/ 下，不入 git。
+function ogImageFor(entryId: string): string {
+  const trimmed = (entryId || '').replace(/^\/+|\/+$/g, '');
+  const fileName = !trimmed || trimmed === 'index' ? 'index.png' : trimmed.replace(/\//g, '__') + '.png';
+  return `${siteUrl}/og/${fileName}`;
+}
+const ogImage = ogImageFor(id);
 
 const bookTitle = '你的第一个 VRChat 世界：从零到发布的完全手册';
 const author = {
@@ -36,8 +46,8 @@ function buildBreadcrumb(): any | null {
   if (!segments.length) return null;
 
   const partLabels: Record<string, string> = {
-    '01-getting-started': '第一部 · 先站进去再说',
-    '02-workbench': '第二部 · 认识你的工作台',
+    'getting-started': '第一部 · 先站进去再说',
+    'workbench': '第二部 · 认识你的工作台',
   };
 
   const items: any[] = [
@@ -154,6 +164,19 @@ if (!isDev) {
 
 {/* /dev/ 路径整体 noindex，防止开发样例页被索引 */}
 {isDev && <meta name="robots" content="noindex, nofollow" />}
+
+{/* per-page 社交分享卡：覆盖 astro.config.mjs 里删掉的全局 og:image */}
+{!isDev && (
+  <>
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:secure_url" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={data.title ?? bookTitle} />
+    <meta name="twitter:image" content={ogImage} />
+  </>
+)}
 
 {lds.map((ld) => (
   <script type="application/ld+json" set:html={JSON.stringify(ld)} />

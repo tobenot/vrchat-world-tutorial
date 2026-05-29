@@ -25,7 +25,11 @@
     "starlight-links-validator": "^0.19.0"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "cross-env": "^7.0.3",
+    "glob": "^13.0.6",
+    "gray-matter": "^4.0.3",
+    "satori": "^0.26.0",
     "typescript": "^5.9.3"
   }
 }

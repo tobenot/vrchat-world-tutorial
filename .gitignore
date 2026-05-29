@@ -19,3 +19,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .vscode/
+
+# OG 卡生成器：字体缓存（首次跑时拉取，体积大不入仓）
+scripts/.cache/
+
+# OG 卡生成器：per-page 派生 PNG（由 prebuild 钩子从 mdx 派生，不入仓）
+public/og/

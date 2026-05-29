@@ -28,20 +28,22 @@
 
 新增一章只要做两件事：
 
-1. 在对应的目录下新建文件，**文件名带数字前缀**（决定排序），扩展名统一用 `.mdx`：
+1. 在对应的目录下新建文件，**文件名用纯英文 slug**（**不要带数字前缀**——侧栏顺序由 frontmatter `sidebar.order` 控制，避免未来插章导致 URL 全断），扩展名统一用 `.mdx`：
 
    ```
-   src/content/docs/01-getting-started/05-my-new-chapter.mdx
+   src/content/docs/getting-started/my-new-chapter.mdx
    ```
 
    > 全书章节文件统一用 `.mdx`，方便随时插入 `<Steps>`、`<FileTree>`、`<CardGrid>` 等组件，纯 Markdown 内容也完全兼容。
 
-2. 在 frontmatter 里写好 `title` 与 `description`：
+2. 在 frontmatter 里写好 `title` / `description` / `sidebar.order`：
 
    ```mdx
    ---
    title: 5. 一个新的章节
    description: 这一章讲什么。
+   sidebar:
+     order: 5
    ---
    ```
 
@@ -111,7 +113,7 @@ import { Steps, FileTree, Tabs, TabItem, CardGrid, Card, LinkCard, Aside, Badge,
 {/* 卡片 / 链接卡 */}
 <CardGrid>
   <Card title="标题" icon="rocket">描述。</Card>
-  <LinkCard title="去某章" href="/01-getting-started/01-curiosity/" description="一句话提要。" />
+  <LinkCard title="去某章" href="/getting-started/curiosity/" description="一句话提要。" />
 </CardGrid>
 
 {/* 徽章 */}
@@ -209,11 +211,11 @@ hero:
   tagline: 从「这世界怎么做的」走到「我自己跑起来了」。
   actions:
     - text: 开始第 1 章
-      link: ./01-curiosity/
+      link: ./curiosity/
       icon: right-arrow
       variant: primary
     - text: 直接看第一个世界怎么搭
-      link: ./04-first-world/
+      link: ./first-world/
       variant: minimal
 sidebar:
   label: 第一部 · 总览
@@ -237,7 +239,7 @@ editUrl: false           # 前言上不显示「修改本页」
 lastUpdated: false       # 不显示「最后更新于」
 prev: false              # 上面没有前页
 next:                    # 显式接到第 1 章
-  link: /01-getting-started/01-curiosity/
+  link: /getting-started/curiosity/
   label: 第 1 章 · 一个玩家的好奇心
 sidebar:
   badge:
@@ -252,14 +254,14 @@ sidebar:
 
 每"部"在自己目录下放一个 `index.mdx`，做成 splash 入口。它会被 autogenerate 收为该 group 的第一项（靠 `sidebar.order: 0` 排序，靠 `sidebar.label` 改写显示标签避免与 group 标题重复）。
 
-模板见 `01-getting-started/index.mdx` 与 `02-workbench/index.mdx`。要点：
+模板见 `getting-started/index.mdx` 与 `workbench/index.mdx`。要点：
 
 - `template: splash` 让它真正像一张"扉页"
 - `hero.actions` 给两个入口：顺序读 vs 直奔重点
 - `tableOfContents: false` + `pagefind: false`：入口页本身不需要被搜索，搜到具体章节即可
 - 用 `<CardGrid>` + `<LinkCard>` 列出该部所有章节，配 `description` 让读者扫一眼能选
 
-部入口页之间互相用相对链接 `../02-workbench/` 跳转，末尾留一两句过渡，让一部读完能自然进下一部。
+部入口页之间互相用相对链接 `../workbench/` 跳转，末尾留一两句过渡，让一部读完能自然进下一部。
 
 ---
 
@@ -403,7 +405,7 @@ frontmatter 字段写错了。常见：
 链接里 slug 写错或目标文件被删。注意：
 
 - Starlight 的内部链接是 `/章节-id/` 形式，**末尾要有斜杠**。
-- `01-getting-started/01-curiosity` 不带斜杠会被判 404。
+- `getting-started/curiosity` 不带斜杠会被判 404。
 
 ### 「Mermaid 图不渲染」
 

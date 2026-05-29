@@ -1,0 +1,22 @@
+# Cloudflare Pages 重定向规则
+# 文档：https://developers.cloudflare.com/pages/configuration/redirects/
+#
+# 2026-05 URL slug 重构：去掉数字前缀（避免未来插章导致全站断链）。
+# 旧 URL → 新 URL（永久重定向 301），保住外链与搜索引擎已收录的页面。
+# 列表是显式枚举，不用通配符——通配符在 _redirects 里很容易误伤静态资源。
+
+# —— 第一部：先站进去再说 ——
+/01-getting-started/                       /getting-started/                    301
+/01-getting-started/01-curiosity/          /getting-started/curiosity/          301
+/01-getting-started/02-ai-partner/         /getting-started/ai-partner/         301
+/01-getting-started/03-tools/              /getting-started/tools/              301
+/01-getting-started/04-first-world/        /getting-started/first-world/        301
+
+# —— 第二部：认识你的工作台 ——
+/02-workbench/                             /workbench/                          301
+/02-workbench/05-gameobjects/              /workbench/gameobjects/              301
+/02-workbench/06-components/               /workbench/components/               301
+/02-workbench/07-prefabs/                  /workbench/prefabs/                  301
+/02-workbench/08-materials-light/          /workbench/materials-light/          301
+/02-workbench/09-unity-philosophy/         /workbench/unity-philosophy/         301
+/02-workbench/10-from-picture-to-list/     /workbench/from-picture-to-list/     301
