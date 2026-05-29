@@ -5,176 +5,102 @@ description: 理解 Unity Component：怎么看、怎么加、怎么删，以及
 
 # 6. 组件，给物体装能力
 
-上一章我们说：GameObject 是容器。
+上一章我们说 GameObject 是空壳。
 
-这一章看容器里真正干活的东西：Component。
+这一章看看空壳里装的东西：Component，组件。
 
-一个物体能被看见、能碰撞、能发光、能播放声音、能响应点击，靠的都是组件。你以后做 VRChat 世界，大部分时间都在做三件事：选中物体，添加组件，调整组件参数。
+一个物体能被看见，是因为它身上有渲染组件。能被踩到，是因为有碰撞组件。能发光，是因为有 Light 组件。能被拿起来，是因为有 VRC Pickup 组件。你以后做 VRChat 世界，大部分时间就在做同一件事：找到对的物体，给它加上对的组件，然后调参数。
 
-## 先从一个 Cube 看起
+## 从一个 Cube 开始
 
-在 Unity 里创建一个 Cube。选中它，看 Inspector。
+在 Unity 里新建一个 Cube，选中它，看 Inspector 面板。
 
-你通常会看到这些组件：
+你会看到四个组件叠在一起。最上面是 Transform，决定位置和大小。下面是 Mesh Filter，它提供了立方体的形状数据。再往下是 Mesh Renderer，负责把那个形状真正画到画面里。最底下是 Box Collider，让这个方块有物理存在感，别人踩到它会停下来。
 
-| 组件 | 它让 Cube 拥有什么能力 |
-|---|---|
-| Transform | 有位置、旋转和大小 |
-| Mesh Filter | 有立方体的形状 |
-| Mesh Renderer | 能被画到画面里 |
-| Box Collider | 能参与碰撞 |
+四个组件配合，一个能看见、能站上去的方块就出来了。
 
-这四个组件组合起来，Cube 才像一个能站上去的方块。
+试试看：选中 Cube，把 Mesh Renderer 前面的勾取消。Cube 从画面里消失了，但 Hierarchy 里它还在。把勾打回来，它又出现了。这就是组件的意义：每个组件管一件事，关掉哪个，哪个能力就没了。
 
-如果你把它拉扁，它可以是地板。如果你把它竖起来，它可以是墙。如果你删掉渲染组件，它还在，只是看不见。如果你删掉碰撞组件，它还看得见，但玩家可能穿过去。
+## Add Component：给物体加能力
 
-## Add Component 是你的工具箱
+选中任何一个 GameObject，在 Inspector 最下面有一个 `Add Component` 按钮。点它，会弹出搜索框。
 
-选中一个 GameObject，在 Inspector 里点击 `Add Component`。
+输入 `Light`，回车，这个物体就会开始发光。输入 `Audio Source`，它就能播声音。输入 `Rigidbody`，它就会受重力往下掉。
 
-你会看到一个搜索框。输入组件名，就能把组件加到当前物体上。
+你现在不需要记住所有组件的名字。你只需要记住这个动作：想给物体一个能力，去 Add Component 里搜。
 
-常见组件先记这些：
+后面你会渐渐熟悉常用的那十来个组件。Light 让东西发光。Audio Source 播声音。Collider 让东西有物理体积。Animator 控制动画。Udon Behaviour 挂逻辑脚本。VRC Pickup 让玩家能拿起物体。这些会在实际做功能的时候一个个碰到。
 
-| 组件 | 常见用途 |
-|---|---|
-| Light | 让物体发出光照 |
-| Audio Source | 播放声音 |
-| Box Collider | 做方形碰撞或触发区域 |
-| Mesh Renderer | 显示模型表面 |
-| Animator | 播放动画 |
-| Udon Behaviour | 挂 Udon 或 UdonSharp 逻辑 |
-| VRC Scene Descriptor | 描述 VRChat 世界 |
-| VRC Pickup | 让物体可以被玩家拿起 |
-| VRC Spatial Audio Source | 调整 VRChat 里的空间音频 |
+## Inspector 里调参数
 
-你不用现在记全。先知道：要给物体能力，就去找组件。
+组件加上去，通常还需要调参数。
 
-## Inspector 是参数面板
+比如你给一个球加了 Light 组件。Inspector 里会多出一片字段。Color 是光的颜色，你可以点开色板改成暖黄或冷蓝。Intensity 是强度，数字越大越亮。Range 是影响范围，太小了只照到脚底，太大了整个场景都被它笼罩。
 
-组件加上去之后，还要调参数。
+再比如 Audio Source。你得告诉它播哪个声音文件（Audio Clip 字段），是不是一开场就播（Play On Awake），要不要循环（Loop），音量多大（Volume）。
 
-比如 `Light` 组件里会有：
+以后你跟教程做功能时，步骤经常是这样的：选中某个物体，找到某个组件，把某个字段改成某个值。整个 Unity 的日常操作就藏在这里。
 
-| 字段 | 作用 |
-|---|---|
-| Type | 光源类型 |
-| Color | 光的颜色 |
-| Intensity | 光的强度 |
-| Range | 点光源和聚光灯的影响范围 |
+## 引用字段：把东西拖进去
 
-`Box Collider` 里会有：
+有些字段比较特殊。它们不是填数字、改颜色或者打勾，而是一个空槽，要你指定场景里的某个对象。
 
-| 字段 | 作用 |
-|---|---|
-| Is Trigger | 勾上后变成触发区域 |
-| Center | 碰撞体中心偏移 |
-| Size | 碰撞体大小 |
+比如你以后写一个开灯脚本，脚本里会有一个字段叫 `targetLight`。它想让你告诉它：你想控制哪盏灯？这时候你需要把 Hierarchy 里那盏灯拖到这个字段里。
 
-`Audio Source` 里会有：
+这个动作叫做「赋引用」。新手最常见的问题之一就是：脚本写对了，组件也挂对了，最后功能没反应。一看 Inspector，那个字段还写着 `None`。
 
-| 字段 | 作用 |
-|---|---|
-| Audio Clip | 要播放的声音资源 |
-| Play On Awake | 场景开始时自动播放 |
-| Loop | 循环播放 |
-| Volume | 音量 |
+如果你发现某个功能不工作，第一件事就是去检查 Inspector 里有没有空着的引用字段。
 
-以后你跟教程做功能，很多步骤会写成：选中某个物体，在某个组件里，把某个字段改成某个值。
+## 删组件之前想一想
 
-这就是 Unity 的日常。
+组件可以删。在 Inspector 里找到组件右上角的小齿轮或三个点的菜单，选 Remove Component。
 
-## 引用字段：把对象拖进去
+但删之前想一下：别的东西有没有在依赖它？
 
-有些组件字段是对象槽，需要你指定场景里的对象、组件或项目资源。
+删掉 Collider，玩家的点击和触发区域就不起作用了。删掉 Renderer，模型就看不见了。删掉 VRC Scene Descriptor，整个场景就不能作为 VRChat World 构建了。
 
-比如脚本里可能有一个字段叫：
+如果你只是想测试「没有这个组件会怎样」，可以先把组件前面的勾取消掉（禁用），而不急着删掉它。确认真的不需要了，再动手。
 
-```text
-Target Light
-```
+## Play Mode 里试参数
 
-它想要你指定一盏灯。你就把 Hierarchy 里的灯拖到这个字段里。
+Unity 有一个 Play Mode。点顶部的播放按钮，场景就会运行起来。
 
-这个动作很重要。很多新手脚本写对了，组件也挂对了，最后功能没反应，就是忘了把目标对象拖进字段。
+在 Play Mode 里你可以临时改组件参数，马上看到效果。灯太亮？把 Intensity 拖低一点，立刻就暗了。碰撞体太小？拉大一点，马上就能踩到。
 
-你可以这样检查：
+但有一个陷阱：退出 Play Mode 之后，你刚才改的所有值都会消失，回到进入 Play Mode 之前的状态。
 
-- 字段是不是显示 `None`；
-- 拖进去的是 GameObject 还是某个 Component；
-- 目标对象是不是在当前场景里；
-- 目标对象有没有被删掉或改名。
+所以流程是这样的：进 Play Mode 试参数，找到一个满意的值，记下来（哪怕是写在纸上），退出 Play Mode，再把值填回去。
 
-## Remove Component 要小心
+听起来笨，但所有 Unity 开发者都这样做。
 
-组件可以删。点击组件右上角的菜单，选择 `Remove Component`。
+## VRChat 的组件
 
-删之前先问自己：这个组件是不是别的组件依赖的？
+除了 Unity 自带的组件，VRChat SDK 还会给你一批以 `VRC` 开头的专用组件。
 
-比如：
+`VRC Scene Descriptor` 你已经用过了，它让 Unity 场景能被 VRChat 识别为世界。以后你还会碰到 `VRC Pickup`，让玩家能拿起物体。`VRC Object Sync`，同步物体的位置给所有玩家看到。`VRC Spatial Audio Source`，让声音有空间感。`VRC Mirror Reflection`，做镜子。`VRC Portal Marker`，做传送门。
 
-- 没有 Collider，玩家点击和触发可能失效；
-- 没有 Renderer，模型看不见；
-- 没有 Descriptor，场景无法作为 VRChat World 构建；
-- 没有 Udon Behaviour，脚本逻辑不会跑。
+这些名字现在不用记。当你做到「我想让玩家能拿起这个东西」的时候，你自然会去搜 `VRC Pickup`。当你做到「我想做面镜子」的时候，你自然会搜 `VRC Mirror`。
 
-你可以先把组件折叠起来，或者取消某些勾选做测试。确认没用之后再删。
+你只需要知道一件事：VRC 开头的组件是 VRChat 专属的，它们处理的是玩家、网络、世界上传、客户端行为这些只有 VRChat 才有的事情。
 
-## Play Mode 里的修改会恢复
+## 动手：做一个会发光的球
 
-Unity 进入 Play Mode 后，你可以临时调组件参数。
+回到你的项目。我们做一个简单的东西。
 
-这很适合测试：灯太亮了，调低一点；按钮范围太小了，把 Collider 放大一点；音量太吵了，先降到 0.3。
+1. 在 Hierarchy 里创建一个 Sphere，命名为 `GlowBall`。
+2. 把它的 Position 设成 `0, 1.5, 0`，让它浮在地板上方。
+3. 选中它，点 Add Component，搜索 `Light`，加上去。
+4. 在 Light 组件里，把 Type 改成 Point。
+5. 颜色选一个浅蓝色。
+6. Intensity 填 2。Range 填 5。
+7. 进 Play Mode 看看效果。如果太亮就降 Intensity，太暗就升一点。
+8. 记住满意的值，退出 Play Mode，把值填回去，保存场景。
 
-但要记住：Play Mode 里改的值，退出后通常会恢复。
+做完之后你会看到：一个球体在地板上方发着柔和的蓝光。这个球身上有 Transform（位置大小）、Mesh Filter（球形形状）、Mesh Renderer（画出来）、Sphere Collider（碰撞体）和 Light（发光）。五个组件各管各的事，组合出一个有存在感的发光球。
 
-所以你在 Play Mode 里试出一个好参数，要记下来。退出 Play Mode 后，再把它填回去。
+---
 
-我建议你用最笨但有效的方法：旁边开个文本文件，写下今天试出来的数值。
-
-## VRChat SDK 组件是什么
-
-Unity 自带很多组件，VRChat SDK 也会给你一批组件。
-
-这些组件让 Unity 场景能和 VRChat 的世界系统接上。
-
-比如：
-
-| VRChat 组件 | 它大概负责什么 |
-|---|---|
-| VRC Scene Descriptor | 让当前 Scene 成为 VRChat World |
-| VRC Pickup | 让物体可以被玩家拿起 |
-| VRC Object Sync | 同步物体位置和物理状态 |
-| VRC Spatial Audio Source | 调整 VRChat 空间音频表现 |
-| VRC Portal Marker | 创建通往其他世界的传送门 |
-| VRC Mirror Reflection | 创建镜子 |
-
-先不用深入。你只要知道：看到 `VRC` 开头的组件，就要把它放回 VRChat 的语境里理解。它们通常关系到玩家、网络、世界上传、VRChat 客户端行为。
-
-## 这一章的小练习
-
-回到你的第一个世界，做一个「会发光的球」。
-
-1. 创建一个 Sphere，命名为 `GlowBall`；
-2. 把它放到地板上方，Position 设为 `0, 1.5, 0`；
-3. 给它添加一个 Point Light；
-4. 把 Light 的 Color 改成浅蓝色；
-5. 把 Intensity 调到 `2`；
-6. 把 Range 调到 `5`；
-7. 进入 Play Mode 或 Build & Test 看效果。
-
-如果场景太亮或太暗，回来调 Intensity 和 Range。先用眼睛判断，不急着追求完美。
-
-## 这一章你要带走的东西
-
-- Component 决定 GameObject 的能力；
-- Add Component 是给物体加能力的入口；
-- Inspector 是调整组件参数的地方；
-- 引用字段需要把对象或资源拖进去；
-- Play Mode 里的修改适合试参数，最终值要退出后再保存；
-- VRChat SDK 组件负责把 Unity 场景接到 VRChat 世界系统。
-
-下一章，我们把一组配置好的物体做成 Prefab。那会让你少做很多重复劳动。
+下一章，我们把配置好的东西做成 Prefab，这样你就可以复制出很多份，还能统一管理。
 
 ## 本章参考
 

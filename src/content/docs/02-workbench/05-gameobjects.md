@@ -15,19 +15,17 @@ description: 用 GameObject、Scene、Hierarchy 和 Transform 理解 Unity 工�
 
 ## Scene 是一个世界文件
 
-Unity 的 Scene 可以理解成一个空间文件。
+Unity 的 Scene 可以理解成一个空间文件。你在里面摆物体，调位置，放灯光，挂脚本。保存之后，这些信息会写进一个 `.unity` 文件。
 
-你在 Scene 里摆物体，调位置，放灯光，挂脚本，保存之后，这些信息会写进 `.unity` 场景文件。
+在 VRChat World 开发里，一个 Scene 通常对应一个准备构建成世界的场景。它还需要 `VRC Scene Descriptor` 告诉 SDK：这个 Unity 场景要作为 VRChat 世界来处理。
 
-在 VRChat World 开发里，一个 Scene 通常对应一个准备构建成世界的场景。它还需要 `VRC Scene Descriptor` 这样的 VRChat 组件，告诉 SDK：这个 Unity 场景要作为 VRChat 世界来处理。
+你上一章做的 `MyFirstWorld.unity`，就是一个 Scene。
 
-第一章你做的 `MyFirstWorld.unity`，就是一个 Scene。
+## Hierarchy 是你的物体清单
 
-## Hierarchy 是场景里的物体清单
+Unity 左侧那个面板叫 Hierarchy。它列出了当前 Scene 里的所有 GameObject。
 
-Unity 左侧的 Hierarchy 面板，是当前 Scene 里的 GameObject 清单。
-
-你可以把它想成一个目录：
+你可以把它想成目录。你的第一个世界里大概长这样：
 
 ```text
 MyFirstWorld
@@ -38,91 +36,61 @@ MyFirstWorld
 └─ Main Camera
 ```
 
-每一行都是一个 GameObject。
+每一行就是一个 GameObject。选中哪一行，右侧 Inspector 就会展示它身上的详细信息。以后排查问题，你会反复做同一个动作：在 Hierarchy 里找到东西，去 Inspector 里看它身上挂了什么。
 
-选中某一行，右侧 Inspector 就会显示它身上有哪些东西。你以后排查问题，很多时候就是在 Hierarchy 里找到对象，再去 Inspector 里看组件和参数。
+## GameObject 本身是个空壳
 
-## GameObject 是容器
+这是 Unity 里最重要的一个认知：GameObject 本身什么都做不了。
 
-Unity 官方文档里对 GameObject 的解释很关键：GameObject 是 Unity 场景中的基础对象，它本身作为组件的容器存在，具体功能由挂在它身上的 Component 决定。
+它像一个空盒子。你往里放什么，它就变成什么。
 
-这句话刚开始有点抽象。我们拿你已经做过的 `Floor` 来看。
+拿你做的 `Floor` 来说。它看起来是一块地板，但它之所以能被看见、能站上去，是因为身上挂着一组叫做 Component 的东西。`Mesh Filter` 给了它形状，`Mesh Renderer` 把它画出来，`Box Collider` 让玩家站上去不会掉。
 
-`Floor` 看起来是一块地板，但它能成为地板，是因为它身上有一组组件：
+如果你删掉 `Mesh Renderer`，地板还在 Hierarchy 里，但画面上看不见了。如果删掉 `Box Collider`，它还看得见，但你可能会直接穿过去掉下去。
 
-| 组件 | 作用 |
-|---|---|
-| Transform | 决定它在哪里、多大、朝向哪里 |
-| Mesh Filter | 提供立方体的形状数据 |
-| Mesh Renderer | 把它画出来 |
-| Box Collider | 让玩家站在上面，不会掉下去 |
+所以以后看到一个物体，不要只看它叫什么名字。要看它身上挂了什么组件。名字可以骗你，组件不会。
 
-删掉 `Mesh Renderer`，它还在场景里，但你看不见。
+## Transform：位置、旋转、缩放
 
-删掉 `Box Collider`，它还看得见，但你可能会掉下去。
+每个 GameObject 都有一个叫 `Transform` 的组件。它删不掉，绕不开，永远在最上面。
 
-改 `Transform` 的 Scale，它就从小方块变成大地板。
+Transform 只管三件事。Position 决定它在空间里的哪个位置。Rotation 决定它朝向哪里。Scale 决定它有多大。
 
-所以你要建立一个习惯：看到物体时，不只看它叫什么，还要看它身上挂了什么组件。
+你把 Cube 的 Scale Y 改成 0.2，它就变成一块薄板。你把出生点的 Rotation Y 改成 180，玩家进来就会面朝相反方向。
 
-## Transform 是每个物体都有的组件
+这三个值你以后会改无数次。改到最后你会发现，大部分操作都只是在找对的物体，改对的 Transform。
 
-每个 GameObject 都有 `Transform`。它删不掉，也绕不开。
+## 父子层级：一起动
 
-`Transform` 负责三件事：
+Hierarchy 里的对象可以一层嵌套一层。把一个物体拖到另一个物体下面，它就变成了子物体。
 
-| 字段 | 意思 |
-|---|---|
-| Position | 位置 |
-| Rotation | 旋转 |
-| Scale | 缩放 |
-
-你移动地板，改的是 Position。
-
-你让出生点面向另一个方向，改的是 Rotation。
-
-你把 Cube 拉成一块地板，改的是 Scale。
-
-先把这三个字段练熟，后面学灯光、摄像机、按钮、触发区域都会用到它们。
-
-## Parent 和 Child 是层级关系
-
-Hierarchy 里的对象可以一层套一层。
-
-例如你以后做一扇门，可能会有这样的结构：
+假设你以后做一扇门。门有门框、门板、把手、开门的音效。你可以把它们都放到一个叫 `Door` 的空物体下面：
 
 ```text
 Door
-├─ DoorModel
-├─ DoorHandle
+├─ DoorFrame
+├─ DoorPanel
+├─ Handle
 └─ OpenSound
 ```
 
-`Door` 是父物体，下面三个是子物体。
+这样做有一个直接好处：移动 `Door`，底下所有东西跟着动。旋转 `Door`，底下所有东西跟着转。你不用一个一个挪。
 
-父物体移动时，子物体会跟着移动。父物体旋转时，子物体也会跟着转。这个规则很适合整理复杂对象。
+以后你做按钮、家具、灯具、任何由好几块东西拼成的物件，都可以用这个思路来组织。
 
-比如你做一个按钮，不妨把模型、碰撞体、脚本都整理到同一个父物体下面。以后移动按钮时，只动父物体就行。
+## 空物体很有用
 
-## Empty GameObject 有什么用
+空物体在场景里看不见，但它可能是整个世界里最忙碌的东西。
 
-空物体没有模型，看起来像什么都没有。它依然很有用。
+你上一章创建的 `Spawn` 就是一个空物体。它的工作是标记一个位置和一个朝向，让 VRChat 知道玩家该从哪里进来。
 
-你上一章创建的 `Spawn` 就可以是空物体。它的作用是提供一个位置和方向。
+空物体的典型用法：当一组物体的父容器，用来整理层级。当旋转轴心，门绕着它转。当脚本挂载点，逻辑放在一个看不见的物体上。当标记点，触发区域的中心、路径的拐角、音乐播放的起点。
 
-空物体常见用途：
+以后你看到 Hierarchy 里有一个空物体，先看看它的名字和位置。很多世界里的关键机制都藏在看不见的对象上。
 
-- 作为出生点；
-- 作为一组物体的父物体；
-- 作为旋转轴心；
-- 作为脚本挂载点；
-- 作为触发逻辑的标记点。
+## 命名这件小事
 
-以后你看到一个空物体，不要急着删。先看它的名字、位置、子物体和组件。很多世界里的关键逻辑都挂在看不见的对象上。
-
-## 命名会救你很多次
-
-新手常见场景长这样：
+新手的场景打开之后经常长这样：
 
 ```text
 Cube
@@ -132,40 +100,24 @@ GameObject
 GameObject (1)
 ```
 
-一开始还能忍。对象一多，你就找不到谁是谁。
+五个对象还好。二十个的时候你会开始骂自己：到底哪个 Cube 是地板、哪个是墙、哪个是按钮的底座？
 
-从现在开始养成命名习惯：
+从现在开始改名字。地板叫 `Floor`，出生点叫 `Spawn`，按钮叫 `Button_LightSwitch`，触发区域叫 `Trigger_MusicStart`。名字不用完美，但要让你半个月后还能找到它。
 
-| 对象 | 推荐名字 |
-|---|---|
-| 地板 | `Floor` |
-| 出生点 | `Spawn` |
-| 世界描述器 | `WorldDescriptor` |
-| 门 | `Door_Main` |
-| 按钮 | `Button_LightSwitch` |
-| 触发区域 | `Trigger_MusicStart` |
+## 动手：给房间加两面墙
 
-名字不用完美，但要能让半个月后的你看懂。
+打开你的第一个世界项目，试着做这几件事：
 
-## 这一章的小练习
+1. 选中 `Floor`，按 Ctrl+D 复制一份。改名叫 `Wall_Left`。
+2. 调整它的 Position、Rotation 和 Scale，让它竖起来变成一面墙，贴在地板左边缘。
+3. 再复制一面墙，叫 `Wall_Right`，放到右边。
+4. 在 Hierarchy 里新建一个空物体，命名为 `Room`。
+5. 把 `Floor`、`Wall_Left`、`Wall_Right` 全部拖到 `Room` 下面。
+6. 选中 `Room`，移动它。三块物体应该会一起跟着动。
 
-打开上一章的项目，做这几件事：
+做完这个练习，你就理解了 Transform、层级和命名这三件事为什么重要。
 
-1. 把 `Floor` 复制两份，改名为 `Wall_Left` 和 `Wall_Right`；
-2. 调整它们的 Position、Rotation、Scale，摆成两面墙；
-3. 创建一个空物体，命名为 `Room`；
-4. 把 `Floor`、`Wall_Left`、`Wall_Right` 拖到 `Room` 下面；
-5. 移动 `Room`，观察三块物体是否一起移动。
-
-做完后，你会真正理解父子层级的意义。
-
-## 这一章你要带走的东西
-
-- Scene 是场景文件，Hierarchy 是场景里的 GameObject 清单；
-- GameObject 是容器，功能来自它身上的 Component；
-- Transform 决定位置、旋转和缩放，每个 GameObject 都有它；
-- 父子层级能帮你整理复杂对象；
-- 命名是项目变大后的第一道防线。
+---
 
 下一章，我们专门看 Component。你会发现 Unity 里的很多问题，最后都能变成一句话：这个对象身上少了哪个组件？
 

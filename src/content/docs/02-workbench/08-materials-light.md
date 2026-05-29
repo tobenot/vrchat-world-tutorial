@@ -1,203 +1,109 @@
 ---
 title: 8. 材质和光的第一印象
-description: 用最少概念理解材质、颜色、贴图和 Unity 光源，让第一个世界开始有气氛。
+description: 用最少概念理解材质、颜色和 Unity 光源，让第一个世界开始有气氛。
 ---
 
 # 8. 材质和光的第一印象
 
-你现在的世界能跑，但可能很像默认样板间：灰地板、白墙、默认天空。
+你的世界现在能跑了。但进去看一眼，大概会觉得哪里不对。灰色地板，白色墙壁，默认天空。像一个刚搭好框架的样板间，干净但毫无感觉。
 
-这一章我们只碰一点材质和光。
+这一章我们只碰两件事：材质和光。
 
-目标很小：让你知道为什么同样一块地板，换个材质和光照之后，感觉会变很多。
+目标很小：让你体会到同一个空间，换一下颜色和光的角度，氛围就会完全不同。
 
-## 材质决定表面看起来像什么
+## 材质是表面的外衣
 
-Unity 里的 Material 可以理解成物体表面的外观设置。
+Unity 里，模型的形状由 Mesh 决定，但表面看起来是什么样子，靠 Material。
 
-一个模型的形状由 Mesh 决定，但表面颜色、质感、纹理，通常由 Material 决定。
+同一个 Cube，穿上深色材质就像金属盒子，穿上暖色材质就像木块，穿上半透明材质就像玻璃。形状没变，感觉完全两回事。
 
-同一个 Cube，换不同材质，可以变成：
+现在我们只做最简单的事：给地板换一个颜色。
 
-- 白色塑料块；
-- 深色金属盒；
-- 木头地板；
-- 发光按钮；
-- 半透明玻璃。
+## 给地板换件衣服
 
-第一阶段先不追求真实。你只要会创建材质、改颜色、拖到物体上，就够用了。
+在 Project 面板里新建一个 `Assets/Materials/` 目录。右键，Create，Material。给它起个名字，比如 `Mat_Floor_WarmGray`。
 
-## 创建一个地板材质
+选中这个材质，Inspector 里会出现一堆选项。先别管别的，只找颜色。在不同 Unity 版本里它可能叫 Albedo、Base Map 或 Base Color，都是同一个意思：这个表面最基本的颜色。
 
-在 Project 面板里建一个目录：
+点开色板，选一个偏暖的灰色。如果你想要精确一点，试试 `#8A8178`。
 
-```text
-Assets/Materials/
-```
+然后把这个材质从 Project 面板拖到场景里的 `Floor` 上。
 
-在里面创建一个 Material，命名为：
+地板立刻变色了。
 
-```text
-Mat_Floor_WarmGray
-```
+就这么简单。你给一个物体换材质，就是把另一件衣服拖到它身上。
 
-选中材质，在 Inspector 里找到基础颜色。不同 Unity 版本和渲染管线里名字可能略有差异，常见叫 `Albedo`、`Base Map` 或 `Base Color`。
+## 颜色先于一切细节
 
-先把颜色改成暖一点的灰色。
+新手阶段先只用纯色。不贴纹理，不调粗糙度，不管金属感。
 
-比如：
+原因是：纯色最容易控制整体调性。你用暖灰色做地板，米白色做墙壁，浅蓝做发光球，三个颜色放在一起就已经有了「安静小屋」的雏形。一旦你开始贴纹理，细节太多，反而容易把空间搞得很乱。
 
-```text
-#8A8178
-```
+给墙壁也做一个材质吧。叫 `Mat_Wall_OffWhite`，颜色设成 `#D8D2C4`。给 `GlowBall` 也做一个，叫 `Mat_GlowBall_Cyan`，颜色设成 `#6EE7F9`。
 
-然后把这个材质拖到场景里的 `Floor` 上。
+把材质拖上去。你的房间从「默认方块」变成了有一点设计的空间。
 
-地板立刻就会变色。
+## 光决定你怎么看见这些颜色
 
-## Albedo 是基础颜色
+材质给了表面颜色，但你能看见颜色，靠的是光。
 
-Unity 的 Standard Shader 文档里，`Albedo` 用来控制材质的基础颜色和透明度。
+同样一面米白色的墙，在冷白色的光下像办公室，在暖黄色的光下像咖啡馆，在低角度的橙光下像黄昏。材质没变，光变了，整个空间的感觉就变了。
 
-你可以把它理解成「这个表面最基本的颜色」。
+## Directional Light：场景里的太阳
 
-它可以是一种纯色，也可以是一张贴图。
+新场景通常自带一个 Directional Light。你可以把它想成太阳。
 
-| 设置方式 | 效果 |
-|---|---|
-| 纯色 | 整个表面使用一个基础颜色 |
-| 贴图 | 用图片决定表面颜色细节 |
-| 贴图 + 颜色 | 图片会被颜色轻微染色 |
-| Alpha | 控制透明度相关表现 |
+Directional Light 有一个特点：它的位置不重要，方向很重要。不管它放在场景的哪个角落，光都是平行照过来的。决定光线方向的是它的 Rotation。
 
-新手阶段先从纯色开始。纯色最容易理解，也最容易控制整体气氛。
+选中 Directional Light，试着改它的 Rotation。
 
-## 给墙和球也加材质
+如果让光从正上方照下来，场景看起来很平，像正午。把 X 轴改到 50 左右，光从侧上方照来，地面会出现阴影，场景立刻有了层次感。再把 Y 轴加一点偏移，光就不再是正面打过来的，物体侧面会有明暗变化。
 
-继续创建两个材质：
+试试 Rotation 设为 `50, -30, 0`。如果场景太亮，把 Intensity 从 1 降到 0.6 左右。
 
-```text
-Mat_Wall_OffWhite
-Mat_GlowBall_Cyan
-```
+你会发现：只是改了光的角度和强度，同一个场景看起来就从「白天办公室」变成了「午后小屋」。
 
-建议颜色：
+## Point Light：局部的灯
 
-| 材质 | 颜色 |
-|---|---|
-| `Mat_Wall_OffWhite` | `#D8D2C4` |
-| `Mat_GlowBall_Cyan` | `#6EE7F9` |
+Directional Light 是全局的，照亮整个场景。Point Light 是局部的，像一个灯泡。
 
-把墙体材质拖到墙上，把球材质拖到 `GlowBall` 上。
+你的 `GlowBall` 身上已经有 Point Light 了。它从一个点向四周发光，照亮附近的物体。
 
-现在你的场景会从「默认方块」变成一个稍微有点设计的空间。
+调 Point Light 的感觉很直觉。颜色决定氛围，浅蓝色偏科幻，暖黄色偏家居，浅紫色偏神秘。Intensity 决定亮度，1 到 3 之间通常够用。Range 决定能照多远，3 到 6 的范围适合小型物件。
 
-## 光决定你怎么看见它
+但要记住一件事：实时灯是「贵」的。你每多放一盏实时灯，Unity 就要多算一遍光照。VRChat 世界尤其在意性能。第一阶段不用太紧张，但养成意识：灯很好用，也不能随便堆。
 
-材质是表面，光是观看方式。
+## 动手：调出「雨夜小屋」第一版
 
-同样一面墙，在冷白光下会像办公室，在暖黄光下会像小屋，在低角度光下会有傍晚的感觉。
+现在试一件事。不加新模型，不加新脚本，只改材质和光，看看能不能让你的房间开始有一点点「雨夜小屋」的感觉。
 
-Unity 常见光源类型先记四个：
+1. 地板用暖灰色材质。
+2. 墙壁用偏米色材质。
+3. 把 Directional Light 的 Intensity 降到 0.4，Rotation 调成偏低角度，模拟黄昏或阴天。
+4. 把 `GlowBall` 放到房间一个角落，光色设为浅蓝，Intensity 设为 2，Range 设为 5。
+5. Build & Test，进 VRChat 里走一圈。
 
-| 光源 | 适合模拟什么 |
-|---|---|
-| Directional Light | 太阳、月光、大方向光 |
-| Point Light | 灯泡、蜡烛、发光球 |
-| Spot Light | 手电筒、舞台灯、车灯 |
-| Area Light | 面光源，常用于更柔和的烘焙光照 |
+你会发现：模型几乎没变，地板还是那块地板，墙还是那面墙。但空间的感觉已经不同了。角落里有一团柔和的蓝光，整个房间暗下来了，像一个安静的夜晚。
 
-你现在最常用的是 Directional Light 和 Point Light。
+这就是材质和光的力量。它们改变的是感受，而感受决定了玩家愿不愿意在你的世界里多待一会儿。
 
-## 调整 Directional Light
+## 以后会更复杂，现在先到这里
 
-新场景通常自带一个 Directional Light。
+光照这个话题以后会变得很深：实时光和烘焙光的区别、Lightmap 的烘焙流程、Reflection Probe 做反射、Light Probe 给动态物体补光、Quest 平台上的光照限制。
 
-它很像太阳。它的位置影响不大，旋转方向很重要。
+这些全都会在后面的章节里慢慢展开。
 
-选中 `Directional Light`，试着改 Rotation：
+现在你只需要带走一个认知：材质和光是 VRChat 世界感觉的基础。你可以没有复杂交互，没有多人同步，但只要颜色和光对了，一个空房间就能让人想待着。
 
-| 方向 | 感觉 |
-|---|---|
-| 从上往下 | 白天、清楚、普通 |
-| 从侧面斜照 | 傍晚、有阴影、有层次 |
-| 从下往上 | 怪异、舞台感、恐怖感 |
+---
 
-先试一个柔和的角度：
+第二部到这里结束。你已经认识了 Unity 工作台上最常碰的东西：GameObject、Component、Prefab、Material 和 Light。
 
-```text
-Rotation: 50, -30, 0
-```
-
-如果场景太亮，把 Intensity 调低一点。
-
-## Point Light 做局部气氛
-
-`GlowBall` 身上的 Point Light 可以做局部氛围。
-
-选中它，试这些参数：
-
-| 字段 | 建议值 |
-|---|---|
-| Color | 浅蓝或浅紫 |
-| Intensity | `1.5` 到 `3` |
-| Range | `3` 到 `6` |
-
-Point Light 会从一个点向四周发光。它很适合做灯泡、魔法球、小夜灯。
-
-但不要一口气放很多实时灯。灯光会影响性能。VRChat 世界尤其要在好看和跑得动之间找平衡。
-
-第一阶段，你只要知道：灯很好用，也要省着用。
-
-## 一个小小的气氛练习
-
-试着把你的房间调成「雨夜小屋」的第一版。
-
-只做这些事：
-
-1. 地板换成暖灰色；
-2. 墙换成偏米色；
-3. Directional Light 调暗一点；
-4. 放一个浅蓝色 `GlowBall` 当作小灯；
-5. 把小灯放在房间角落；
-6. Build & Test 进去看感觉。
-
-你会发现：模型几乎没变，气氛已经变了。
-
-这就是材质和光的力量。
-
-## VRChat 里要注意性能
-
-以后做正式世界时，光照会变复杂：实时光、烘焙光、Lightmap、Reflection Probe、Quest 限制，全都会出现。
-
-现在先记一个原则：先让场景看得舒服，再慢慢学习更省性能的做法。
-
-几个早期习惯：
-
-- 实时灯不要随便堆；
-- 能用少量大方向光解决的，就先别放十几个点光；
-- 材质命名清楚，别让 `New Material 1` 到处都是；
-- 颜色先统一，再做细节；
-- 每次大改光照后，都进 VRChat 里看一眼。
-
-Unity Scene 视图里的效果和 VRChat 客户端里的体感可能不一样。最终还是要进去看。
-
-## 这一章你要带走的东西
-
-- Material 决定物体表面看起来像什么；
-- Albedo 或 Base Color 是材质的基础颜色入口；
-- Directional Light 像太阳，方向比位置重要；
-- Point Light 像灯泡，适合局部气氛；
-- 材质和光能快速改变空间感；
-- VRChat 世界要一直记着性能，实时灯别滥用。
-
-第二部到这里，你已经认识了 Unity 工作台上最常碰的东西：GameObject、Component、Prefab、Material 和 Light。
-
-下一部，我们开始碰一点编程。先别怕，我们只学刚好够用的那部分。
+下一部，我们开始碰一点编程。先别怕。我们只学刚好够让灯亮起来的那部分。
 
 ## 本章参考
 
-- [Unity Manual: Set the color of a material in the Standard Shader](https://docs.unity3d.com/Manual/StandardShaderMaterialParameterAlbedoColor.html)
+- [Unity Manual: Set the color of a material](https://docs.unity3d.com/Manual/StandardShaderMaterialParameterAlbedoColor.html)
 - [Unity Manual: Types of Light component](https://docs.unity3d.com/Manual/Lighting.html)
 - [Unity Manual: Materials](https://docs.unity3d.com/Manual/Materials.html)
 - [VRChat Performance Tips](https://creators.vrchat.com/worlds/performance-tips/)
