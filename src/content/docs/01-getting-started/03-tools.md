@@ -31,7 +31,7 @@ VRChat Creator Companion (VCC)
 
 你可以把这个关系想象成：VCC 是领班，Unity Hub 是工具柜，Unity Editor 是工作台，SDK 是工作台上的一套专用工具。
 
-🤔 **为什么需要这么多层？** 因为 VRChat 世界不是用自己的编辑器做的，而是借用了 Unity 这个已经存在二十年的专业游戏引擎。SDK 是一座桥，把 Unity 的能力（3D 渲染、物理、脚本）接到 VRChat 的系统（多人、世界上传、玩家控制）上。VCC 则帮你确保这座桥两头的版本对得上。
+🤔 **为什么需要这么多层？** 因为 VRChat 世界借用了 Unity 这个存在二十年的专业游戏引擎来搭建。SDK 是一座桥，把 Unity 的能力（3D 渲染、物理、脚本）接到 VRChat 的系统（多人、世界上传、玩家控制）上。VCC 则帮你确保这座桥两头的版本对得上。
 
 ## 第一步：装 VCC
 
@@ -43,7 +43,7 @@ VCC 装好后，你以后打开项目都尽量从它开始。它知道你的每�
 
 ## 第二步：确认 Unity 版本
 
-这一步非常重要：**不要凭感觉装最新版 Unity。**
+这一步非常重要：**一定要装 VRChat 官方指定的那个 Unity 版本。**
 
 VRChat 对 Unity 版本有严格要求。官方只支持一个特定版本（包括次版本号）。装错了版本，轻则 SDK 不工作，重则项目损坏。
 
@@ -55,7 +55,7 @@ VRChat 对 Unity 版本有严格要求。官方只支持一个特定版本（包
 
 ## 第三步：用 VCC 创建 World 项目
 
-打开 VCC，进入 Projects 页面，选择创建新项目。项目类型选 **World**（不是 Avatar）。
+打开 VCC，进入 Projects 页面，选择创建新项目。项目类型选 **World**（我们做的是世界，Avatar 是做模型用的）。
 
 项目名先简单一点就好，比如 `MyFirstWorld`。放到一个专门的目录下面，比如 `D:\VRChatProjects\MyFirstWorld`。
 
@@ -66,9 +66,9 @@ VCC 会帮你准备好一个适合 VRChat World 的 Unity 项目，Worlds SDK �
 这是个小事但能帮你避免很多莫名其妙的问题：
 
 - 用英文路径。`D:\VRChatProjects\` ✓，`D:\我的项目\` ✗
-- 路径别太深。`D:\a\b\c\d\e\f\g\MyWorld` 可能触发 Windows 的路径长度限制
-- 不要放在网盘同步目录里。OneDrive、iCloud、Google Drive 会跟 Unity 的文件监视冲突
-- 不要放在桌面上。桌面路径往往包含用户名，有时候用户名里有特殊字符
+- 路径保持短。`D:\a\b\c\d\e\f\g\MyWorld` 可能触发 Windows 的路径长度限制
+- 避开网盘同步目录。OneDrive、iCloud、Google Drive 会跟 Unity 的文件监视冲突
+- 避开桌面。桌面路径往往包含用户名，有时候用户名里有特殊字符
 
 ## 第四步：打开项目
 
@@ -83,11 +83,11 @@ VCC 会帮你准备好一个适合 VRChat World 的 Unity 项目，Worlds SDK �
 3. Console 面板没有一大片红色错误（黄色警告可以先忽略）
 4. 场景能正常保存（Ctrl+S）
 
-如果 Console 有红色报错，先不要继续。把错误完整复制下来留着查。很多时候是包还没导完、脚本还在编译、或者 Unity 版本不匹配。
+如果 Console 有红色报错，先停下来。把错误完整复制下来留着查。很多时候是包还没导完、脚本还在编译、或者 Unity 版本不匹配。
 
 ## Unity 编辑器：初次见面
 
-第一次打开 Unity，你会看到一个由很多面板组成的界面。先不要被它吓住。你眼下只需要认识四块区域：
+第一次打开 Unity，你会看到一个由很多面板组成的界面。看着密密麻麻的，但你眼下只需要认识四块区域：
 
 - **Scene 视图**（中间大区域）— 你搭世界的画布，3D 视角看场景
 - **Hierarchy**（左侧）— 场景里所有物体的列表
@@ -116,7 +116,7 @@ VCC 会帮你准备好一个适合 VRChat World 的 Unity 项目，Worlds SDK �
 
 **Unity 打开项目很慢？** 第一次打开慢很正常。等右下角的进度条跑完再说。如果卡了超过十分钟还在转，可以关掉重开一次试试。
 
-**Console 里有红色错误？** 先保存完整错误信息。看里面有没有 `UdonSharp`、`VRChat SDK`、`package`、`version` 这些关键词。不要只截最后一行，完整的报错才能判断原因。
+**Console 里有红色错误？** 先保存完整错误信息。看里面有没有 `UdonSharp`、`VRChat SDK`、`package`、`version` 这些关键词。尽量截完整的报错，只有最后一行往往判断不了原因。
 
 **项目创建失败？** 换一个更短的英文路径试试。先避开桌面、下载目录、OneDrive、带中文的路径。
 

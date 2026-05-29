@@ -63,7 +63,7 @@ VRChat 需要知道：玩家进来之后，站在哪里？面朝哪个方向？
 
 ## 第三个问题：让 VRChat 认识这个场景
 
-每个 VRChat World 场景都需要一个 VRC Scene Descriptor 组件。它的作用是告诉 VRChat SDK：这不是一个普通 Unity 项目，这是一个要发布成 VRChat World 的场景。
+每个 VRChat World 场景都需要一个 VRC Scene Descriptor 组件。它的作用是告诉 VRChat SDK：这个 Unity 场景是一个要发布成 VRChat World 的场景。
 
 创建另一个空物体，改名叫 `WorldDescriptor`。选中它，在 Inspector 里点 Add Component，搜索 `VRC Scene Descriptor`，加上去。
 
@@ -103,7 +103,7 @@ Unity 会开始构建本地测试版本。这个过程需要一两分钟。构�
 
 **玩家进去之后直接往下掉？** 通常是地板的 Collider 被删了，或者出生点放到了地板下面。Cube 默认带 Box Collider，确认你没有手动删掉它。也确认 Spawn 的 Y 值大于地板上表面。
 
-**构建失败了？** 打开 Console，先看红色错误。不要急着到处改东西。第一步是确认错误来自哪里：是 Unity 本身的报错，还是 VRChat SDK 的，还是你写的脚本的（现在还没写脚本，所以如果有脚本错误，可能是 SDK 包没装好）。
+**构建失败了？** 打开 Console，先看红色错误。第一步是确认错误来自哪里：是 Unity 本身的报错，还是 VRChat SDK 的，还是你写的脚本的（现在还没写脚本，所以如果有脚本错误，可能是 SDK 包没装好）。
 
 **进入后面朝的方向很奇怪？** 调整 `Spawn` 的 Rotation Y。玩家进入世界时会跟随出生点的朝向。
 
