@@ -17,7 +17,7 @@ export default defineConfig({
       favicon: '/favicon.png',
       customCss: ['./src/styles/custom.css'],
       head: [
-        { tag: 'meta', attrs: { name: 'theme-color', content: '#38bdf8' } },
+        { tag: 'meta', attrs: { name: 'theme-color', content: '#1fd2c4' } },
         { tag: 'meta', attrs: { property: 'og:image', content: '/social-card.svg' } },
         { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
         { tag: 'meta', attrs: { name: 'twitter:image', content: '/social-card.svg' } },
