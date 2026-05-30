@@ -46,21 +46,30 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
 )}
 
 {/* —— 全局：所有指向外站的 <a> 自动改为新标签页 —— */}
+{/* 另外：右上角 social 三个图标（催更/博客/RSS）即便指向站内也强制开新标签，
+   这是产品决策——读者点这些是"顺手存一下/订阅一下"，不该把当前阅读位置冲掉。 */}
 <script is:inline>
   (() => {
     const host = location.host;
+    const openInNewTab = (a) => {
+      if (a.target) return;
+      a.target = '_blank';
+      const rel = (a.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+      if (!rel.includes('noopener')) rel.push('noopener');
+      if (!rel.includes('noreferrer')) rel.push('noreferrer');
+      a.setAttribute('rel', rel.join(' '));
+    };
+
+    // 1) 任何指向外站的绝对链接
     document.querySelectorAll('a[href^="http://"], a[href^="https://"]').forEach((a) => {
       try {
         const u = new URL(a.getAttribute('href'));
-        if (u.host && u.host !== host && !a.target) {
-          a.target = '_blank';
-          const rel = (a.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
-          if (!rel.includes('noopener')) rel.push('noopener');
-          if (!rel.includes('noreferrer')) rel.push('noreferrer');
-          a.setAttribute('rel', rel.join(' '));
-        }
+        if (u.host && u.host !== host) openInNewTab(a);
       } catch {}
     });
+
+    // 2) 右上角 social 区（Starlight 渲染为 .social-icons），不论站内站外都开新标签
+    document.querySelectorAll('.social-icons a[href]').forEach((a) => openInNewTab(a));
   })();
 </script>
 
