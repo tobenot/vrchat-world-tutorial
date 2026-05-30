@@ -1,0 +1,457 @@
+---
+title: 附录 A · 术语表
+description: 全书出现过的英文术语、平台名词、API 名。每条 1–2 句定义 + 首次出现的章节回链。
+sidebar:
+  order: 1
+pagefind: true
+---
+
+正文按教学顺序展开，所以同一个术语可能直到下一章才被命名。这一份按主题分类，方便读到一半回来查。
+
+每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖的是第 1 部和第 2 部。
+
+未覆盖的术语，[`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 里逐章登记了"等哪一章写完就该补什么"。
+
+---
+
+## 平台与生态
+
+**`VRChat`**  
+社交 VR 平台，用户上传虚拟世界和化身后供他人加入。客户端跑在 PC、Meta Quest、iOS 上。  
+首次出现：[第 1.5 章 · VRChat 这家公司和这个引擎](/getting-started/about-vrchat/)。
+
+**`VRChat Inc.`**  
+平台开发公司，2014 年由 Graham Gaylor 和 Jesse Joudrey 创立，2017 年 Steam Early Access 上线。  
+首次出现：[第 1.5 章 · 一家美国公司，一个 Unity 项目](/getting-started/about-vrchat/#一家美国公司一个-unity-项目)。
+
+**`Worlds`**（世界）  
+能站进去的虚拟空间。Unity 项目通过 Worlds SDK 打包成 `.vrcw` 文件后上传。本书全程讲 Worlds。  
+首次出现：[第 1.5 章 · Worlds 和 Avatars 是两件不同的事](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
+
+**`Avatars`**（化身）  
+玩家套在身上的形象。通过 Avatars SDK 打包成 `.vrca`。本书不讲 Avatars。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
+
+**`Worlds SDK`** / **`Avatars SDK`**  
+两套独立 SDK，对应两类项目。一个 Unity 项目里二选一。  
+首次出现：[第 1.5 章 · SDK 三件套和它的两代前身](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
+
+**`com.vrchat.base`** / **`com.vrchat.worlds`** / **`com.vrchat.clientsim`**  
+Worlds 项目里 `Packages/` 下面的三个 VRChat 包。`base` 是共用工具，`worlds` 是 Scene Descriptor / Pickup / Station / Udon 等，`clientsim` 是本地模拟器。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
+
+**`SDK1`** / **`SDK2`** / **`SDK3`**  
+SDK 的三代。SDK1（2017–2019）依赖 Animator 状态机；SDK2（2018–2020）用 `VRC_Trigger` 可视化触发器；SDK3（2020 至今）引入 Udon。新世界只能用 SDK3，老教程出现 `VRC_Trigger` 字样基本是 SDK2 的。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
+
+**`Booth`** / **`Gumroad`**  
+两大第三方资产销售平台。Booth 是日本同人圈主场，Gumroad 是欧美创作者主场。  
+首次出现：[第 1.5 章 · 围绕在外面的生态](/getting-started/about-vrchat/#围绕在外面的生态)。适用 SDK3.x。
+
+---
+
+## Udon 与脚本运行时
+
+**`Udon`**  
+VRChat 自研的虚拟机和字节码格式。客户端只执行 Udon 字节码，不直接执行用户写的 C#。  
+首次出现：[第 1.5 章 · 写的是 C#，跑的是 Udon](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**`UdonSharp`**  
+把 C# 翻译成 Udon Assembly 的编译器，是写 VRChat 世界逻辑的主流方式。本书全程用它。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**`Udon Graph`**  
+Udon 的可视化连线编辑器，编译产物和 UdonSharp 相同。本书不用。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**`Udon Assembly`**  
+Udon 字节码格式。脚本最终被编译成它，由 VRChat 的虚拟机执行。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**`Class Exposure Tree`**  
+Udon 允许调用的 .NET / Unity API 白名单。不在白名单上的 API（`System.IO.File.Delete`、`async/await`、自定义泛型类、反射、LINQ 等）调用会被编译器拦下。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见 ⏳ 附录 D。
+
+**`UdonSharpBehaviour`**  
+VRChat 脚本必须继承的基类，对应普通 Unity 的 `MonoBehaviour`。把 AI 给的代码贴进 Unity 后，前两行如果出现 `: MonoBehaviour` 而不是 `: UdonSharpBehaviour`，要立刻替换。  
+首次出现：[第 2 章 · 它会什么，不会什么](/getting-started/ai-partner/#它会什么不会什么)。
+
+**`MonoBehaviour`**  
+Unity 通用脚本基类。VRChat 世界脚本不用它，用 `UdonSharpBehaviour`。出现在搜到的 Unity 教程里很正常，但贴进 VRChat 项目要换。  
+首次出现：[第 2 章](/getting-started/ai-partner/#它会什么不会什么)。
+
+---
+
+## 工具链与项目
+
+**`VCC`**（VRChat Creator Companion）  
+官方项目管家。建项目、装 SDK 包、提醒 SDK 与 Unity 版本更新。VRChat 世界开发的事实入口。  
+首次出现：[第 3 章 · 装好工具，准备出发](/getting-started/tools/)。
+
+**`Unity Hub`**  
+Unity 自家的版本管理器，管理本机已安装的多个 Unity 编辑器版本。配合 VCC 使用。  
+首次出现：[第 3 章 · 即将装的几样东西](/getting-started/tools/#即将装的几样东西)。
+
+**`Unity Editor`**  
+真正搭世界的工作台。VRChat 钉死了它的版本号。  
+首次出现：[第 3 章](/getting-started/tools/#即将装的几样东西)。
+
+**Unity 钉死版本（写本书时是 `2022.3.22f1`）**  
+VRChat 客户端和创作者必须用同一个 Unity 版本，连末尾的 `f1` 都不能差。版本不对的项目打不出有效 `.vrcw`。  
+首次出现：[第 3 章 · 第二步：装官方指定版本的 Unity](/getting-started/tools/#第二步装官方指定版本的-unity)。理由见 [理解章 A · 那 Unity 编辑器版本为什么要钉死](/getting-started/world-pipeline/#那-unity-编辑器版本为什么要钉死)。
+
+**`ClientSim`**  
+VRChat SDK 自带的本地模拟器（`com.vrchat.clientsim`），不上传也能在 Unity 里测玩家行为。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。详细用法待 ⏳ 第 40 章。
+
+**`Library/PackageCache`**  
+Unity 项目下的本地缓存目录，Unity 编译时会高频读写。**不要进 git**，**不要被网盘同步**。  
+首次出现：[第 3 章 · 踩坑预警 · 项目路径](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+
+**`MAX_PATH` 限制**  
+Win32 API 传统路径长度上限 260 字符。Unity 项目里的深层资源很容易撑到 200 字符以上，再叠"中文项目名 + OneDrive 同步目录"就溢出。表现是「文件存在但读不到」「.meta 找不到对应资源」。  
+首次出现：[第 3 章](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+
+---
+
+## 构建与发布管线
+
+**`BuildPipeline`**  
+Unity 的构建系统。VRChat SDK 调用它把场景及依赖打成 AssetBundle。  
+首次出现：[理解章 A · 打包：Unity AssetBundle](/getting-started/world-pipeline/#打包unity-assetbundle)。
+
+**`AssetBundle`**  
+Unity 自有的二进制资源打包格式。VRChat 世界文件 `.vrcw` 内层就是它，外层套 VRChat 元信息。  
+首次出现：[理解章 A](/getting-started/world-pipeline/#打包unity-assetbundle)。
+
+**`IL2CPP`**  
+Unity 的中间语言转 C++ 编译流程。Unity 大版本之间会改它，是钉死 Unity 版本的原因之一。  
+首次出现：[理解章 A · 那 Unity 编辑器版本为什么要钉死](/getting-started/world-pipeline/#那-unity-编辑器版本为什么要钉死)。
+
+**`.vrcw`**  
+World 包文件后缀。AssetBundle + VRChat 元信息（世界名、容量、PC/Quest 标记）。下载到玩家本地后被 Unity Runtime 解包加载。  
+首次出现：[理解章 A](/getting-started/world-pipeline/#打包unity-assetbundle)。
+
+**`.vrca`**  
+Avatar 包文件后缀。本书不深入。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
+
+**`Build & Test`**  
+SDK 控制面板按钮：本地打包 + 唤起本机 VRChat 客户端读取本地文件，整条路不出本机。日常迭代主流程。  
+首次出现：[第 4 章 · 第五步：Build & Test](/getting-started/first-world/#第五步build--test)。
+
+**`Build & Publish`**  
+SDK 控制面板按钮：打包后通过 token 把 `.vrcw` `PUT` 到 VRChat CDN，并把元信息写进数据库，得到 `wrld_xxx` ID。  
+首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+
+**`Build Target`**  
+Unity 当前编译的目标平台（Windows / Android / iOS 等）。同一个世界要给不同平台分别切换 Build Target 各打一次包。  
+首次出现：[理解章 A · 跨平台：PC、Quest、iOS 各一份](/getting-started/world-pipeline/#跨平台pcquestios-各一份)。
+
+**世界 ID（`wrld_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）**  
+VRChat 后端给每个发布过的世界分配的全局唯一 ID。`Build & Publish` 后第一次产生。  
+首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+
+**`Cloudflare R2`**  
+VRChat 当前使用的对象存储 CDN。`.vrcw` 文件躺在它上面。  
+首次出现：[理解章 A](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+
+**`Instance`**（实例）  
+一群人此刻一起跑某个世界的一次具体聚会。同一世界可以同时存在很多个实例，互相隔离。  
+首次出现：[理解章 A · 实例（Instance）才是真正在跑的东西](/getting-started/world-pipeline/#实例instance才是真正在跑的东西)。
+
+**`Master`**（实例主）  
+进入实例的第一个玩家。某些权威性的网络操作默认归他。Master 离开时会迁移给下一位。  
+首次出现：[理解章 A](/getting-started/world-pipeline/#实例instance才是真正在跑的东西)。
+
+**`Late Joiner`**  
+在实例已经跑了一段之后才加入的玩家。同步状态需要专门处理才能让他看到「之前发生过什么」。  
+首次出现：[理解章 A · 一张可以反复回看的全景图](/getting-started/world-pipeline/#一张可以反复回看的全景图)。详细见 ⏳ 第 28 章。
+
+**`VRC Scene Descriptor`**  
+告诉 SDK「这个 Unity 场景是 VRChat 世界」的描述组件，登记出生点、参考摄像机等。世界必装。  
+首次出现：[第 4 章 · 第四步：给场景一张身份证](/getting-started/first-world/#第四步给场景一张身份证)。组件字段见附录 C。
+
+**`Spawn`**（出生点）  
+玩家进世界时落点和朝向的标记。`VRC Scene Descriptor` 的 `Spawns` 数组里登记一个或多个空物体，按策略选其中之一。  
+首次出现：[第 4 章 · 第三步：标记出生位置](/getting-started/first-world/#第三步标记出生位置)。
+
+---
+
+## Unity 编辑器与场景
+
+**`Scene`**（场景）  
+后缀 `.unity` 的文件，存这个空间里的所有物体、灯光、引用关系。  
+首次出现：[第 4 章 · 第一步：新建并保存场景](/getting-started/first-world/#第一步新建并保存场景)、[第 5 章](/workbench/gameobjects/#三块面板的分工)。
+
+**`GameObject`**（游戏物体）  
+Unity 中所有场景物体的容器。本身没有任何能力，能力来自挂在它身上的 Component。  
+首次出现：[第 5 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)。
+
+**`Empty GameObject`**（空物体）  
+不挂渲染组件，画面里看不见。常用作组的父级容器、旋转轴心、纯逻辑挂载点。`Spawn` 就是空物体。  
+首次出现：[第 5 章 · 空物体：看不见但很有用](/workbench/gameobjects/#空物体看不见但很有用)。
+
+**`Hierarchy`**（层级面板）  
+当前场景里所有 GameObject 的目录清单。父子关系在这里调整。  
+首次出现：[第 5 章 · 三块面板的分工](/workbench/gameobjects/#三块面板的分工)。
+
+**`Inspector`**（检视面板）  
+选中某物体后展示它身上所有组件和参数的面板。  
+首次出现：[第 5 章](/workbench/gameobjects/#三块面板的分工)。
+
+**`Project` 面板**  
+项目的所有文件夹与资源。材质、模型、脚本、声音、Prefab 都在这里。  
+首次出现：[第 3 章 · 第一次面对 Unity](/getting-started/tools/#第一次面对-unity)。
+
+**`Scene` 视图** / **`Game` 视图**  
+Scene 视图是搭世界的画布，Game 视图是模拟玩家视角。  
+首次出现：[第 3 章](/getting-started/tools/#第一次面对-unity)。
+
+**`Console`（面板）**  
+显示报错、警告、Log。多数初学问题先看这里。  
+首次出现：[第 3 章](/getting-started/tools/#第一次面对-unity)。
+
+**`Transform`**  
+每个 GameObject 自带、删不掉的组件。管 Position、Rotation、Scale 三件事。  
+首次出现：[第 5 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
+
+**`Position` / `Rotation` / `Scale`**  
+Transform 的三个字段：在哪、朝哪、多大。  
+首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#transform每个物体的标配)。
+
+**父子层级**  
+在 Hierarchy 里把一个 GameObject 拖到另一个下面，子物体的 Transform 变为相对父物体。父物体一移动，子物体跟着走。  
+首次出现：[第 5 章 · 父子层级：让一组物体一起动](/workbench/gameobjects/#父子层级让一组物体一起动)。
+
+**`Component`**（组件）  
+挂在 GameObject 上的能力单元。每个组件只管一件事，按需组合。  
+首次出现：[第 5 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)、[第 6 章](/workbench/components/)。
+
+**`Add Component`**  
+Inspector 底部按钮，给当前物体加新组件。  
+首次出现：[第 6 章 · Add Component：按需加能力](/workbench/components/#add-component按需加能力)。
+
+**`Play Mode`**  
+Unity 顶部三角形按钮启动的运行时预览模式。在里面调的所有参数，退出后**全部还原**。  
+首次出现：[第 6 章 · Play Mode 调参的陷阱](/workbench/components/#play-mode-调参的陷阱)。
+
+**`Playmode tint`**  
+`Edit → Preferences → Colors` 里的设置，给 Play Mode 下的编辑器界面染色，避免误以为还在编辑模式而白调一通参数。  
+首次出现：[第 6 章 · 踩坑预警 · 把 Play Mode 染上颜色](/workbench/components/#play-mode-调参的陷阱)。
+
+**引用槽（`None (Object)`）**  
+组件参数中可以把其他物体或资产拖进来的字段。新手最常见的「莫名其妙不工作」就是引用槽空着。  
+首次出现：[第 6 章 · 引用槽：新手最容易卡的一关](/workbench/components/#引用槽新手最容易卡的一关)。
+
+---
+
+## 几何与碰撞
+
+**`Mesh`**（网格）  
+模型的几何数据，由顶点和三角形组成。形状由它定义。  
+首次出现：[第 8 章 · 材质：物体的外衣](/workbench/materials-light/#材质物体的外衣)。
+
+**`Mesh Filter`**  
+存 Mesh 数据的组件，给 Mesh Renderer 提供形状。  
+首次出现：[第 5 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)。
+
+**`Mesh Renderer`**  
+负责把 Mesh 画出来的组件。关掉它，物体隐形，但 Collider 还在。  
+首次出现：[第 5 章 · 一个小实验：让地板消失](/workbench/gameobjects/#一个小实验让地板消失)。
+
+**`Cube` / `Plane`**  
+Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地板首选 Cube 拍扁，原因是 Plane 单面渲染会从底面消失，且 Mesh Collider 没厚度容易被擦边漏检。  
+首次出现：[第 4 章 · 第二步：解决踩地（创建地板）](/getting-started/first-world/#第二步解决踩地创建地板)。
+
+**`Box Collider` / `Sphere Collider` / `Mesh Collider`**  
+三种最常见的碰撞体。Box 是盒子（默认 Cube 自带），Sphere 是球，Mesh 按网格逐三角形碰撞（默认 Plane 自带）。能用 Box 不用 Mesh，便宜得多。  
+首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+
+**`Backface Culling`**（背面剔除）  
+渲染优化：默认情况下从背面看一个三角形会直接消失。Plane 单面 + 背面剔除导致从底面看不见。  
+首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)。
+
+**`Rigidbody`**（刚体）  
+让物体获得重力、能被物理引擎模拟。VRChat 中谨慎用，物理交互成本高。  
+首次出现：[第 6 章 · Add Component：按需加能力](/workbench/components/#add-component按需加能力)。
+
+---
+
+## VRChat SDK 组件（首批）
+
+**`VRC Scene Descriptor`** ：见上方"构建与发布管线"。
+
+**`VRC Pickup`**  
+让玩家能把物体拿起来。默认本地行为；要让别人也看见拿起，需要配 `VRC Object Sync`。  
+首次出现：[第 6 章 · VRChat SDK 自带的那批组件](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 14 章。
+
+**`VRC Object Sync`**  
+多人之间同步物体位置 / 旋转 / 速度。Pickup 类物体的同步标配。  
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 14 章。
+
+**`VRC Spatial Audio Source`**  
+3D 空间音效组件，离远了变小。比 Unity 原生 `Audio Source` 多一些 VRChat 端的限制（最大距离上限等）。  
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 32 章。
+
+**`VRC Mirror Reflection`**  
+生成镜子。镜子是 VRChat 性能最重的几样东西之一，做休闲世界时谨慎用。  
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
+
+**`VRC Station`**  
+让物体能被坐下（椅子、沙发、驾驶座）。会接管玩家移动控制。  
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
+
+**`Udon Behaviour`**  
+挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。  
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第三、四部。
+
+---
+
+## Unity 内置组件（首批）
+
+**`Light`**  
+通用光源组件。`Type` 字段决定它是什么光（Directional / Point / Spot / Area）。  
+首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)、[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+
+**`Directional Light`**（方向光）  
+模拟太阳/月亮，光线平行，位置无关，只看 Rotation。每个场景默认一盏。  
+首次出现：[第 8 章 · Directional Light：全局日光](/workbench/materials-light/#directional-light全局日光)。
+
+**`Point Light`**（点光源）  
+从一个点向四周发光，超过 Range 不再照亮。常做暖色局部光源。  
+首次出现：[第 7 章](/workbench/prefabs/#先动手做一个-glowball)、[第 8 章 · Point Light：局部暖光](/workbench/materials-light/#point-light局部暖光)。
+
+**`Spot Light`**（聚光灯）  
+朝一个方向打锥形光束，像手电筒或舞台灯。  
+首次出现：[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+
+**`Area Light`**（面光源）  
+柔和的大面积光，通常需烘焙进 lightmap。本书前期不用。  
+首次出现：[第 8 章](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 35 章。
+
+**`Audio Source`**  
+Unity 原生音频组件。VRChat 世界里通常优先用 `VRC Spatial Audio Source` 替代。  
+首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)。
+
+**`Animator`**  
+状态机驱动的动画组件，用于平滑运动（开关门、电梯、风扇）。  
+首次出现：[第 6 章](/workbench/components/#add-component按需加能力)。详细见 ⏳ 第 16 章。
+
+---
+
+## 资产复用：Prefab 一族
+
+**`Prefab`**（预制体）  
+可以理解为一个 GameObject 的"模具"。配好一组组件和参数后存成磁盘上的 `.prefab` 文件，所有从它压出的 Instance 共享同一份配置。  
+首次出现：[第 7 章 · 制作模具](/workbench/prefabs/#制作模具)。
+
+**`Prefab Instance`**（预制体实例）  
+场景里从 Prefab 拖出来的具体物体，名字在 Hierarchy 里显示成蓝色。  
+首次出现：[第 7 章](/workbench/prefabs/#制作模具)。
+
+**`Override`**（覆盖）  
+某个 Prefab Instance 上某个字段相对模具被改过。Inspector 里那个字段旁边有一条蓝色小标记。  
+首次出现：[第 7 章 · Override：允许个别实例不一样](/workbench/prefabs/#override允许个别实例不一样)。
+
+**`Apply` / `Revert`**  
+Override 的两种处理：Apply 把 Override 写回 Prefab 模具，Revert 把这个字段拉回模具值。  
+首次出现：[第 7 章](/workbench/prefabs/#override允许个别实例不一样)。
+
+**`Prefab Variant`**（预制体变体）  
+基于一个已有 Prefab 派生出的"子模具"。母模具改了，所有 Variant 跟着变；Variant 自己改的部分是它独立的。Override 太多时升级成 Variant 比堆 Override 干净。  
+首次出现：[第 7 章 · 踩坑预警 · Override 多了会乱](/workbench/prefabs/#override允许个别实例不一样)。
+
+**`Unpack Prefab`**  
+把一个 Instance 与模具断开。之后改模具不再影响它。引入第三方 Prefab 想拆开研究时常用，自家项目里慎用。  
+首次出现：[第 7 章 · Unpack：把实例和模具断开](/workbench/prefabs/#unpack把实例和模具断开)。
+
+---
+
+## 渲染：材质与 Shader
+
+**`Material`**（材质）  
+模型的"外衣"。一份具体配置（颜色、贴图、金属度、光滑度），决定这块表面被画成什么样。  
+首次出现：[第 8 章 · 材质：物体的外衣](/workbench/materials-light/#材质物体的外衣)。
+
+**`Shader`**（着色器）  
+一套渲染规则，告诉 GPU"这种表面怎么被画"。Material 是 Shader 的一份具体参数。  
+首次出现：[第 8 章 · Material、Shader、Texture 三层关系](/workbench/materials-light/#materialshadertexture-三层关系)。
+
+**`Texture`**（贴图）  
+图片资源（木纹、砖缝、划痕、发光图案），被 Material 引用，最终铺到模型表面。  
+首次出现：[第 8 章](/workbench/materials-light/#materialshadertexture-三层关系)。
+
+**`Albedo` / `Base Color` / `Base Map`**  
+材质的底色字段，不同 Shader 名字略有差异，作用接近。  
+首次出现：[第 8 章 · 颜色是物体、光、角度三者的结果](/workbench/materials-light/#颜色是物体光角度三者的结果)。
+
+**`Metallic`**  
+金属感字段。`0` 是非金属（木头、布料、墙面），`1` 接近纯金属。  
+首次出现：[第 8 章 · 材质面板先盯四个参数](/workbench/materials-light/#材质面板先盯四个参数)。
+
+**`Smoothness`**  
+光滑度字段。低值像水泥，高值像抛光金属或塑料。  
+首次出现：[第 8 章](/workbench/materials-light/#材质面板先盯四个参数)。
+
+**`Emission`**  
+自发光字段。霓虹、屏幕、发光符号常用。**注意：自发光只是看起来亮，不真的照亮周围物体**，照亮要靠 Light 组件。  
+首次出现：[第 8 章 · 给发光球做颜色](/workbench/materials-light/#给发光球做颜色)。
+
+**`PBR`**（Physically Based Rendering，基于物理的渲染）  
+一套基于物理参数（金属度、光滑度等）描述表面的渲染范式。Unity Standard Shader 走的就是 PBR。  
+首次出现：[第 8 章](/workbench/materials-light/#材质面板先盯四个参数)。
+
+**`Standard Shader`**  
+Unity 内置的 PBR 标准 Shader。本书前期默认用它。  
+首次出现：[第 8 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细见 ⏳ 第 36 章。
+
+**「材质突然变粉色」**  
+Shader 丢了 / 不兼容 / 渲染管线对不上的视觉表现。处理：先把 Material 的 Shader 切回稳定可用的标准 Shader。  
+首次出现：[第 8 章](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细排查见 ⏳ 附录 F。
+
+---
+
+## 渲染：光照（基础）
+
+**`Lightmap`**（烘焙光贴图）  
+事先把光照算好烤成贴图，运行时不再实时计算。代价是贴图占内存、不能动。  
+首次出现：[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 35 章。
+
+**`Light Probe`**  
+散布在场景里的探针，存间接光信息，让动态物体（玩家、Pickup）也能受静态烘焙光影响。  
+首次出现：[第 8 章 · VRChat 里要节制实时灯光](/workbench/materials-light/#vrchat-里要节制实时灯光)。详细见 ⏳ 第 35 章。
+
+**`Shadow Map`**  
+实时阴影的内部表示。Unity 每帧重算，灯多 + 投影开 = 帧率掉。  
+首次出现：[第 8 章 · 阴影让空间立起来](/workbench/materials-light/#阴影让空间立起来)。
+
+---
+
+## 平台与发行（首批）
+
+**`PC`** / **`Windows`**  
+VRChat 主力平台，SteamVR / Oculus 头显或纯 Desktop 模式都能玩。  
+首次出现：[第 1.5 章 · Unity 版本钉死，跨平台一份场景多份打包](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
+
+**`Meta Quest`**  
+独立 VR 头显，跑 Android。GPU 是 PC 中端的 1/10 量级，内容预算受严格限制。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见 ⏳ 第 38 章。
+
+**`iOS`**（VRChat 端）  
+2024 年上线。触屏、无 VR。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
+
+**`Steam Early Access`**  
+VRChat 2017 年 2 月在 Steam 上线时使用的发布模式。  
+首次出现：[第 1.5 章](/getting-started/about-vrchat/#一家美国公司一个-unity-项目)。
+
+---
+
+## 关于这份术语表
+
+以下三件事现在还没完成：
+
+1. **章节锚点（`#xxx`）**：上面所有引用章节中某节的链接，都基于 Starlight 自动从中文 h2 标题转出的 slug。如果将来有章节标题改了，这里链接需要同步更新。本文件里所有锚点都是按写本文件时的章节标题手工生成的。
+2. **未写章节的术语**：第三部之后所有词条都是 ⏳ 占位，等对应章节写出来再补。规划见 [`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 第 2 节。
+3. **版本注**：受 SDK 版本影响的词条统一加 `适用 SDK3.x / Unity 2022.3.22f1`。SDK 升级时按 `encyclopedia-plan.md` 第 5.2 节流程走。

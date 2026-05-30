@@ -1,0 +1,66 @@
+---
+title: 附录 E · 网络同步决策表
+description: VRChat 网络同步在不同场景下选哪种方案的决策树。第六部写完后填充。
+sidebar:
+  order: 5
+draft: true
+pagefind: false
+---
+
+:::caution[占位中]
+这一份附录的主数据源是第六部（⏳ 第 25–29 章）。等同步系列章节写完后会按以下骨架填充。
+:::
+
+---
+
+## 计划骨架
+
+### E.1 决策树骨架
+
+```text
+要同步什么？
+├─ 物体的位置 / 旋转 / 速度
+│   └─→ VRC Object Sync
+│         + 是否需要被拾起？──→ VRC Pickup
+│
+├─ 一个状态（开/关、计数、玩家选择）
+│   ├─ 状态变化频繁（每帧或多帧一次）：
+│   │   └─→ [UdonSynced] + Continuous Sync
+│   └─ 状态变化偶发（按一次按钮才变）：
+│       └─→ [UdonSynced] + Manual Sync + RequestSerialization()
+│
+├─ 一次性事件（按了按钮要广播给所有人）
+│   └─→ SendCustomNetworkEvent(NetworkEventTarget.All, "MethodName")
+│
+├─ 只想让某个特定玩家执行
+│   └─→ SendCustomNetworkEvent(NetworkEventTarget.Owner, ...)
+│       配合 Networking.SetOwner() 转移所有权
+│
+└─ 后加入的人也要看到当前状态
+    └─→ Late Joiner 处理 (OnDeserialization / OnPlayerJoined)
+```
+
+### E.2 Ownership 决策
+
+什么时候该 SetOwner？什么时候让 Owner 自然漂移？
+
+### E.3 Manual Sync vs Continuous Sync 选择
+
+- Continuous：每帧自动序列化变化的字段，省心，但带宽大。
+- Manual：手动 `RequestSerialization()`，带宽可控，但漏调一次状态就走样。
+
+判断标准：变化频率、对带宽的敏感度、是否需要严格保证最新值送达。
+
+---
+
+## 数据源章节
+
+- 第 25 章 你看到的别人不一定看到 → 网络可见性基础
+- 第 26 章 Ownership → 所有权机制
+- 第 27 章 同步变量和网络事件 → `[UdonSynced]` + `SendCustomNetworkEvent`
+- 第 28 章 后来的人怎么办 → Late Joiner
+- 第 29 章 多人小游戏 → 综合案例
+
+外部参考：
+- [VRChat Networking Docs](https://creators.vrchat.com/worlds/udon/networking/)
+- [Network Components](https://creators.vrchat.com/worlds/udon/networking/network-components/)

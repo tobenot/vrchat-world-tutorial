@@ -114,6 +114,11 @@ export default defineConfig({
           autogenerate: { directory: 'workbench' },
         },
         {
+          label: '附录 · 速查与参考',
+          collapsed: true,
+          autogenerate: { directory: 'appendix' },
+        },
+        {
           label: '关于',
           items: [{ slug: 'about' }],
         },

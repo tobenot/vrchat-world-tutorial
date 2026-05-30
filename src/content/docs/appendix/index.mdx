@@ -1,0 +1,83 @@
+---
+title: 附录 · 速查与参考
+description: 全书涉及的术语、组件、快捷键、报错、检查清单和资料导航。读到一半想查的时候来这里。
+template: splash
+hero:
+  tagline: 读到一半想查什么，就来这里翻。
+  actions:
+    - text: 术语表
+      link: ./glossary/
+      icon: right-arrow
+      variant: primary
+    - text: 资料导航
+      link: ./resources/
+      variant: minimal
+sidebar:
+  label: 附录 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+附录不是教程。它服务的场景是「读到第 27 章时想起 `RequestSerialization` 是什么，想直接查」。每条都尽量短，配回链跳到首次解释那一节的位置。
+
+附录跟着正文一起增长。当前的状态：
+
+<CardGrid>
+  <LinkCard
+    title="A · 术语表"
+    href="./glossary/"
+    description="全书出现过的英文术语、平台名词、API 名。每条 1–2 句定义 + 章节回链。"
+  />
+  <LinkCard
+    title="B · Unity 编辑器速查"
+    href="./unity-shortcuts/"
+    description="UI 区域、菜单路径、高频快捷键。第 1–8 章涉及的部分已收录。"
+  />
+  <LinkCard
+    title="C · SDK 与 Unity 组件速查"
+    href="./components-cheatsheet/"
+    description="组件 → 字段 → 典型用法 → 章节锚点。第 1–8 章涉及的组件已入库。"
+  />
+  <LinkCard
+    title="D · UdonSharp 限制（占位）"
+    href="./udonsharp-limits/"
+    description="第 11 章写完后正式填充。目前是数据源说明。"
+  />
+  <LinkCard
+    title="E · 网络同步决策表（占位）"
+    href="./networking-decision/"
+    description="第六部写完后填充。"
+  />
+  <LinkCard
+    title="F · 报错排查（占位）"
+    href="./errors/"
+    description="第三部 + 第八部写完后填充。"
+  />
+  <LinkCard
+    title="G · 性能检查清单（占位）"
+    href="./performance-checklist/"
+    description="第七部写完后填充。"
+  />
+  <LinkCard
+    title="H · 发布检查清单（占位）"
+    href="./release-checklist/"
+    description="第九部写完后填充。"
+  />
+  <LinkCard
+    title="I · AI 提示词参考"
+    href="./ai-prompts/"
+    description="第 2 章已经给出的协作模板，加一些跨章场景。会随正文成长。"
+  />
+  <LinkCard
+    title="J · 资料导航"
+    href="./resources/"
+    description="官方文档、UdonSharp、社区资料、中文翻译站的入口汇总。"
+  />
+</CardGrid>
+
+附录的填充节奏由 `design/encyclopedia-plan.md` 管理。每写完一章后，那份工作单会指向附录里要更新的具体小节。

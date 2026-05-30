@@ -1,0 +1,59 @@
+---
+title: 附录 B · Unity 编辑器速查
+description: Unity 编辑器在 VRChat 世界开发中常用的面板、菜单、快捷键。覆盖范围跟着正文成长。
+sidebar:
+  order: 2
+pagefind: true
+---
+
+只收正文真正用过、或者新手常用到的部分。完整快捷键参考 [Unity Manual: Shortcuts](https://docs.unity3d.com/Manual/UnityHotkeys.html)。
+
+---
+
+## 主面板分工
+
+| 面板 | 默认位置 | 干什么 |
+|---|---|---|
+| `Scene` 视图 | 中央上 | 三维搭建画布 |
+| `Game` 视图 | 中央上（标签切换） | 模拟玩家相机视角 |
+| `Hierarchy` | 左 | 当前场景所有 GameObject 的目录 |
+| `Inspector` | 右 | 选中物体的所有组件和参数 |
+| `Project` | 下方 | 项目所有资产文件夹 |
+| `Console` | 下方（标签切换） | 报错、警告、Log |
+
+详见 [第 3 章 · 第一次面对 Unity](/getting-started/tools/#第一次面对-unity)。
+
+---
+
+## 高频快捷键
+
+| 操作 | 快捷键 | 出处 |
+|---|---|---|
+| 保存场景 | `Ctrl + S` | [第 4 章](/getting-started/first-world/#第一步新建并保存场景) |
+| 复制选中物体 | `Ctrl + D` | [第 4 章](/getting-started/first-world/#自己改两个值看看) |
+| 删除选中物体 | `Delete` | — |
+| 撤销 / 重做 | `Ctrl + Z` / `Ctrl + Y` | — |
+| 在 Hierarchy 创建空物体 | 右键 `Create Empty` | [第 4 章](/getting-started/first-world/#第三步标记出生位置) |
+| 在 Hierarchy 创建 3D 物体 | 右键 `3D Object → Cube/Sphere/...` | [第 4 章](/getting-started/first-world/#第二步解决踩地创建地板) |
+| 切换工具：移动 / 旋转 / 缩放 | `W` / `E` / `R` | — |
+| Play 模式启停 | `Ctrl + P` | [第 6 章](/workbench/components/#play-mode-调参的陷阱) |
+
+---
+
+## 菜单路径
+
+| 菜单 | 路径 | 出处 |
+|---|---|---|
+| 打开 SDK 控制面板 | `VRChat SDK → Show Control Panel` | [第 4 章 · 第五步](/getting-started/first-world/#第五步build--test) |
+| 设置 Playmode tint | `Edit → Preferences → Colors → Playmode tint` | [第 6 章](/workbench/components/#play-mode-调参的陷阱) |
+| 新建场景 | `File → New Scene` | [第 4 章](/getting-started/first-world/#第一步新建并保存场景) |
+
+---
+
+## TODO（按章节进度补充）
+
+- ⏳ 第 11 章后：UdonSharp 脚本编译触发条件
+- ⏳ 第 16 章后：Animator 编辑器（Animator Controller / State / Transition）
+- ⏳ 第 35 章后：Lighting 窗口、Bake 流程
+- ⏳ 第 37 章后：Profiler、Stats 窗口、Frame Debugger
+- ⏳ 第 41 章后：Package Manager、`.meta` 文件处理

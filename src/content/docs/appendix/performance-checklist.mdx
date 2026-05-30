@@ -1,0 +1,50 @@
+---
+title: 附录 G · 性能检查清单
+description: 跑前 / 上传前的性能项勾选清单。第七部第 37 章写完后填充。
+sidebar:
+  order: 7
+draft: true
+pagefind: false
+---
+
+:::caution[占位中]
+主数据源是⏳ **第 37 章 · 性能，跑得动才是好** 和⏳ **第 38 章 · PC 和 Quest**。
+:::
+
+---
+
+## 计划骨架
+
+填充后大致结构：
+
+### G.1 通用性能（PC + Quest 都看）
+
+- [ ] Draw Call 数量（< X 个）
+- [ ] 实时灯光数量（< X 盏）
+- [ ] 实时投影灯光数量（< X 盏）
+- [ ] 镜子是否默认禁用 / 玩家手动启用
+- [ ] 静态物体是否标记 Static（让 Static Batching 生效）
+- [ ] 大场景是否做了 Occlusion Culling
+
+### G.2 Quest 专项
+
+- [ ] 实时灯光 ≤ X 盏
+- [ ] 不使用不在 Quest 白名单上的 Shader
+- [ ] 贴图最大尺寸 ≤ X
+- [ ] 单个材质贴图数量
+- [ ] 总体面数
+
+### G.3 VRChat Performance Rank
+
+把 SDK 控制面板里的 Performance Rank 解读拆出来。
+
+---
+
+## 数据源
+
+- [VRChat Performance Tips](https://creators.vrchat.com/worlds/performance-tips/)
+- [Quest Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
+- 第 35 章（光照烘焙）
+- 第 36 章（Shader 选型）
+- 第 37 章（性能主章）
+- 第 38 章（跨平台限制）

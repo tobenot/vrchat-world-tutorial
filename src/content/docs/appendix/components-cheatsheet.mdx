@@ -1,0 +1,185 @@
+---
+title: 附录 C · SDK 与 Unity 组件速查
+description: VRChat SDK 与 Unity 内置组件的字段、典型用法、章节锚点。覆盖范围跟着正文成长。
+sidebar:
+  order: 3
+pagefind: true
+---
+
+每个组件给出：是什么、关键字段、典型用法、官方文档链接。深度解释回各自章节。
+
+---
+
+## VRChat SDK 组件
+
+### `VRC Scene Descriptor`
+
+世界的"身份证"，告诉 SDK 这个 Unity 场景是 VRChat 世界。世界必装一个。
+
+| 关键字段 | 作用 |
+|---|---|
+| `Spawns` | 出生点数组。把空物体拖进 Element 0、1、2... |
+| `Spawn Order` | 出生点选择策略：`First` / `Sequential` / `Random` |
+| `Reference Camera` | 渲染参考相机，决定后处理基准 |
+| `Respawn Height Y` | 玩家掉到这个 Y 值以下时自动重生 |
+
+首次出现：[第 4 章 · 第四步：给场景一张身份证](/getting-started/first-world/#第四步给场景一张身份证)。  
+官方文档：[VRC Scene Descriptor](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)。
+
+---
+
+### `VRC Pickup`
+
+让物体可被玩家拿起。默认是本地行为，配 `VRC Object Sync` 才能让所有人看到。
+
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+⏳ 详细字段表 第 14 章 写完后补。  
+官方文档：[VRC Pickup](https://creators.vrchat.com/worlds/components/vrc_pickup/)。
+
+---
+
+### `VRC Object Sync`
+
+多人之间同步物体的位置 / 旋转 / 速度。Pickup 物体的同步标配。
+
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+⏳ 详细字段表 第 14 章 写完后补。  
+官方文档：[VRC Object Sync](https://creators.vrchat.com/worlds/components/vrc_objectsync/)。
+
+---
+
+### `VRC Spatial Audio Source`
+
+3D 空间音效。比 Unity 原生 `Audio Source` 多一些 VRChat 端的限制（远距离衰减默认更激进，Gain 上限）。
+
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+⏳ 详细字段表 第 32 章 写完后补。  
+官方文档：[VRC Spatial Audio Source](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)。
+
+---
+
+### `VRC Mirror Reflection`
+
+生成镜子。**性能很贵**，每多一面镜子相当于场景多渲染一遍。
+
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+⏳ 详细字段表 第 15 章 写完后补。  
+官方文档：[VRC Mirror Reflection](https://creators.vrchat.com/worlds/components/vrc_mirrorreflection/)。
+
+---
+
+### `VRC Station`
+
+让物体能被坐下（椅子、沙发、驾驶座）。会接管玩家移动控制。
+
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+⏳ 详细字段表 第 15 章 写完后补。  
+官方文档：[VRC Station](https://creators.vrchat.com/worlds/components/vrc_station/)。
+
+---
+
+### `Udon Behaviour`
+
+挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。
+
+首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+⏳ 详细字段、事件清单见 第三、四部。  
+官方文档：[Udon](https://creators.vrchat.com/worlds/udon/)。
+
+---
+
+## Unity 内置组件（与 VRChat 世界相关的部分）
+
+### `Transform`
+
+每个 GameObject 自带、删不掉。三个字段：`Position`、`Rotation`、`Scale`。
+
+首次出现：[第 5 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
+
+---
+
+### `Mesh Filter` + `Mesh Renderer`
+
+形状（Mesh Filter）和"画出来"（Mesh Renderer）的两件套。关掉 Mesh Renderer 物体隐形，但 Collider 还在。
+
+首次出现：[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。  
+关键字段：Mesh Renderer 的 `Materials` 槽（决定外观）、`Cast Shadows`（投不投影）。
+
+---
+
+### `Box Collider` / `Sphere Collider` / `Mesh Collider`
+
+| 类型 | 形状 | 性能 | 默认挂载 |
+|---|---|---|---|
+| `Box Collider` | 长方体 | 最便宜 | Cube |
+| `Sphere Collider` | 球 | 便宜 | Sphere |
+| `Capsule Collider` | 胶囊 | 便宜 | Capsule |
+| `Mesh Collider` | 任意 Mesh | 贵，可能漏检 | Plane |
+
+能用 Box/Sphere 就别用 Mesh。首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+
+---
+
+### `Light`
+
+| 关键字段 | 作用 |
+|---|---|
+| `Type` | `Directional` / `Point` / `Spot` / `Area` |
+| `Color` | 光色 |
+| `Intensity` | 亮度 |
+| `Range` | 照射半径（Point/Spot 用） |
+| `Shadows` | 是否投阴影：`None` / `Hard` / `Soft` |
+| `Mode` | `Realtime` / `Mixed` / `Baked` |
+
+`Directional Light` 位置无关，只看 Rotation。
+首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)、[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+
+---
+
+### `Audio Source`
+
+| 关键字段 | 作用 |
+|---|---|
+| `Audio Clip` | 放哪个音频 |
+| `Play On Awake` | 场景加载时是否自动播 |
+| `Loop` | 是否循环 |
+| `Spatial Blend` | `0` = 2D 全场等响，`1` = 3D |
+
+VRChat 世界中通常优先用 `VRC Spatial Audio Source`。  
+首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)。
+
+---
+
+### `Rigidbody`
+
+让物体获得重力 / 物理模拟。VRChat 中谨慎用，物理交互成本不低。
+
+首次出现：[第 6 章](/workbench/components/#add-component按需加能力)。
+
+---
+
+### `Animator`
+
+状态机驱动动画。开关门、电梯、风扇等平滑运动用它。
+
+首次出现：[第 6 章](/workbench/components/#add-component按需加能力)。  
+⏳ 详细 第 16 章 写完后补。
+
+---
+
+## TODO
+
+按 `design/encyclopedia-plan.md` 第 2 节，下面的章节会扩充本附录：
+
+- ⏳ 第 12 章：交互入口事件（Interact、OnInteract、SendCustomEvent）
+- ⏳ 第 13 章：Trigger Collider、Layer、Player 事件
+- ⏳ 第 14 章：VRC Pickup / VRC Object Sync 字段全
+- ⏳ 第 15 章：VRC Station / Mirror Reflection / Portal Marker
+- ⏳ 第 16 章：Animator State / Transition / Parameter
+- ⏳ 第 32 章：VRC Spatial Audio Source、Audio Listener
+- ⏳ 第 33 章：Canvas / World Space UI（VRChat 限制）
+- ⏳ 第 34 章：VRC Portal Marker、Avatar Pedestal
+- ⏳ 第 35 章：光照配套组件（Light Probe Group、Reflection Probe）
+- ⏳ 第 37 章：性能相关（Occlusion Culling Area、Static Batching）
+
+新增组件按 `encyclopedia-plan.md` 第 5.1 节工作流补。

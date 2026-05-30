@@ -1,0 +1,72 @@
+---
+title: 附录 F · 报错排查
+description: 常见 UdonSharp 编译错误、Unity Console 报错、运行时异常的排查指引。第 11、39 章写完后开始填充。
+sidebar:
+  order: 6
+draft: true
+pagefind: false
+---
+
+:::caution[占位中]
+这一份附录主要等⏳ 第 11 章（UdonSharp 限制）和⏳ 第 39 章（调试）写完后填充。其他章节出现报错时也会陆续追加。
+:::
+
+---
+
+## 计划骨架
+
+每条报错条目格式：
+
+```text
+**报错文本（关键字）**
+
+> 完整报错样例（如有）
+
+可能原因：
+1. ...
+2. ...
+
+排查步骤：
+1. ...
+
+相关章节：[X 章 · 节标题](slug)
+相关词条：[XXX](/appendix/glossary/#anchor)
+```
+
+### F.1 候选条目
+
+按已写章节预测可能要收的：
+
+- **「This world has no Quest version」**（玩家端报错）  
+  来源：[理解章 A · 跨平台](/getting-started/world-pipeline/#跨平台pcquestios-各一份)。处理：Build Target 切到 Android 重新 Build & Publish。
+
+- **SDK 控制面板缺少 Scene Descriptor**  
+  已经写在了 [第 4 章 · 踩坑预警 · Build & Test 不工作时的检查清单](/getting-started/first-world/#第五步build--test)。这一条直接锚回去就行。
+
+- **进世界后一直往下掉**  
+  同上，已经在第 4 章覆盖，本附录加锚点回链。
+
+- **「.cs 脚本在 UdonSharp 里报错说 `: MonoBehaviour` 不行」**  
+  来源：[第 2 章](/getting-started/ai-partner/#把答案当假设不当结论)。处理：换成 `: UdonSharpBehaviour`。
+
+- **材质突然变粉色**  
+  来源：[第 8 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。处理：把 Material 的 Shader 切回 Standard。
+
+- **VCC 提示找不到 Unity / Console 红字一片 / 卡在右下角**  
+  已经在 [第 3 章 · 启动卡点速查](/getting-started/tools/#启动卡点速查) 写过，本附录锚点回链。
+
+- **`MAX_PATH` / 中文路径相关：文件存在但读不到 / .meta 找不到对应资源**  
+  来源：[第 3 章 · 第三步：用 VCC 创建第一个世界项目](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+
+### F.2 数据源章节
+
+- 第 3 章（环境配置类）
+- 第 4 章（首次 Build & Test 类）
+- 第 8 章（材质 / Shader 类）
+- 第 11 章（UdonSharp 编译类）
+- 第 13 章（Trigger / Collider 类）
+- 第 27、28 章（同步类）
+- 第 37 章（性能 / 黑屏 / 帧率类）
+- 第 38 章（Quest / 跨平台类）
+- 第 41 章（版本管理 / 文件丢失类）
+- 第 43 章（发布失败类）

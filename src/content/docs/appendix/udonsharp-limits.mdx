@@ -1,0 +1,65 @@
+---
+title: 附录 D · UdonSharp 限制
+description: UdonSharp 不支持 / 行为差异 / 性能注意的清单。第 11 章写完后填充。
+sidebar:
+  order: 4
+draft: true
+pagefind: false
+---
+
+:::caution[占位中]
+这一份附录的主数据源是 ⏳ **第 11 章 · UdonSharp 长得像 C# 但它有脾气**。等正文写完后会按以下骨架填充。  
+临时参考可以看：
+
+- 项目内 `Docs/pitfalls/udonSharpPitfall.md`（已有的踩坑积累，待迁移）
+- [UdonSharp 官方 Docs](https://udonsharp.docs.vrchat.com/)
+- [UdonSharp GitHub Issues](https://github.com/MerlinVR/UdonSharp/issues)
+:::
+
+---
+
+## 计划骨架
+
+填充后会有三张清单：
+
+### D.1 不支持的 .NET / C# 特性
+
+候选条目（来自 [第 1.5 章 · 写的是 C#，跑的是 Udon](/getting-started/about-vrchat/#写的是-c跑的是-udon)）：
+
+- LINQ
+- 反射 / `System.Reflection`
+- `async/await`
+- 自定义泛型类
+- `yield return` / `IEnumerator`
+- `event` 关键字
+- `System.IO.*` / `System.Net.*` / `Process.Start`
+- `delegate` / `Action` / `Func` 直接用法
+
+每条会注明：行为（编译报错 / 静默失败 / 运行时报错）、替代方案、为什么被禁。
+
+### D.2 行为差异
+
+UdonSharp 跟标准 C# 看起来一样但行为不同的地方。例如：
+
+- 字段访问性 + `[UdonSynced]` 的组合规则
+- `OnEnable` / `OnDisable` 在 VRChat 里的语义差异
+- 跨脚本调用必须用 `SendCustomEvent`，不能直接 `script.Method()`
+- `null` 检查的特殊性
+
+### D.3 性能注意
+
+- `Update()` 里的循环成本
+- 字符串拼接 / `string.Format`
+- 数组分配
+- 深层 GameObject 查询
+
+---
+
+## 数据源章节
+
+正式填充时数据来自：
+
+- 第 11 章 主源
+- 第 39 章 报错与调试相关条目（双向链）
+- 项目内 `Docs/pitfalls/udonSharpPitfall.md` 迁移
+- 官方 [UdonSharp Docs](https://udonsharp.docs.vrchat.com/) 的 Limitations 章
