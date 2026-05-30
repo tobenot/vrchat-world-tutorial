@@ -40,10 +40,8 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
   <div class="vrc-feedback not-content">
     <span class="vrc-feedback__text">这一节有错或讲不清？</span>
     <a class="vrc-feedback__btn" href={issueUrl} target="_blank" rel="noopener">提个 Issue</a>
-    <span class="vrc-feedback__sep">·</span>
-    <a class="vrc-feedback__btn vrc-feedback__btn--ghost" href={editFullUrl} target="_blank" rel="noopener">直接改文档</a>
-    <span class="vrc-feedback__sep">·</span>
-    <a class="vrc-feedback__btn vrc-feedback__btn--ghost" href="/about/#sponsor">请作者催更</a>
+    <a class="vrc-feedback__btn" href={editFullUrl} target="_blank" rel="noopener">直接改文档</a>
+    <a class="vrc-feedback__btn" href="/about/#sponsor">请作者催更</a>
   </div>
 )}
 
@@ -191,25 +189,19 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
     align-items: center;
     padding: 0.35rem 0.85rem;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--vrc-cyan), var(--vrc-cyan-dim));
-    color: #050d0c !important;
-    font-weight: 700;
+    background: var(--vrc-surface-2);
+    border: 1px solid var(--vrc-border-strong);
+    color: var(--sl-color-gray-1);
+    font-weight: 600;
     font-size: 0.88rem;
     text-decoration: none !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
   }
   .vrc-feedback__btn:hover {
+    background: var(--vrc-surface-3);
+    border-color: var(--vrc-cyan-dim);
+    color: var(--vrc-cyan-dim);
     transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(31, 210, 196, 0.3);
-  }
-  .vrc-feedback__btn--ghost {
-    background: transparent;
-    color: var(--vrc-cyan) !important;
-    border: 1px solid var(--vrc-border-strong);
-  }
-  .vrc-feedback__btn--ghost:hover {
-    background: rgba(31, 210, 196, 0.08);
-    box-shadow: 0 2px 10px rgba(31, 210, 196, 0.12);
   }
   .vrc-feedback__sep {
     color: var(--sl-color-gray-4);
