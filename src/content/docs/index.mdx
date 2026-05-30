@@ -4,9 +4,11 @@ description: 面向新手的 VRChat 世界开发教程，从零讲起 Unity 基�
 template: splash
 hero:
   tagline: 带你从「这世界怎么做的」，走到「我做了一个世界快来玩」。
-  image:
-    alt: VRChat 世界开发教程封面
-    html: '<img src="/social-card.png" alt="VRChat 世界开发教程封面" loading="eager" decoding="async" />'
+  # 注意：这里故意不放 image 字段。
+  # social-card.png 是 OG 分享卡（由 scripts/build-og.mjs 生成），
+  # 上面已经画了同款书名+副标题。如果再当 hero 图用，会和站点标题、
+  # hero h1 三重重复，且原生 <img> 没尺寸约束会撑爆 splash 布局。
+  # 想加视觉时换一张纯插画/图标，不要复用 OG 卡。
   actions:
     - text: 从前言开始
       link: /preface/
