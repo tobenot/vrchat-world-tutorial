@@ -1,0 +1,143 @@
+---
+title: 理解章 A：一个世界是怎么从你的电脑到达别人面前的
+chapterType: concept
+difficulty: 新手
+description: 把 Build & Test、上传、CDN、实例、网络同步串起来，画一张从 Unity 场景到别人客户端的全景图。
+summary: Unity 场景被 SDK 打包成 AssetBundle，上传到 VRChat 后端 CDN；别人在客户端选中你的世界，会先从 CDN 把文件下回去解包，再加入由 VRChat 网络层维护的某个实例。
+sidebar:
+  order: 5
+---
+
+第一部到这里，已经做出了一个能站进去的世界。但「Build & Test」按钮按下去之后到底发生了什么？把场景上传到 VRChat 之后，别人客户端里点一下 `Go`，又是怎么把这个空间复原回他眼前的？
+
+这一章是一张全景图，不教新操作。它把前面做过的事和后面要做的事接起来。读完之后，「网络」「上传」「同步」「Quest」这些后面几部反复出现的词就有了具体的位置。
+
+## Unity 场景，本质是一份引用清单
+
+Hierarchy 里那一串 GameObject 看起来像一堆「物体」，但保存到磁盘上的 `MyFirstWorld.unity` 文件，本质是一份 YAML：
+
+```text
+GameObject Floor
+  Transform: position 0,0,0  scale 10,0.2,10
+  Mesh Renderer → 引用 → Cube.mesh + Default-Material.mat
+  Box Collider:  size 1,1,1
+GameObject Spawn
+  Transform: position 0,1,0
+GameObject WorldDescriptor
+  VRC_SceneDescriptor:  Spawns[0] → Spawn
+```
+
+注意全是「引用」。`Cube.mesh`、`Default-Material.mat`、那张默认天空盒贴图，都不在场景文件里，它们躺在 `Library/PackageCache/` 或 Unity 内置资源里。场景文件只记录「我用到了它们」。
+
+这件事之所以重要，是因为接下来要打包，必须把所有被引用到的东西都拽进同一个文件里：别人电脑上没有这套 `Library/`。
+
+## 打包：Unity AssetBundle
+
+按下 `Build & Test` 时，VRChat SDK 调用 Unity 的 BuildPipeline，做了三件事：
+
+1. **依赖收集**。从 `MyFirstWorld.unity` 出发，沿着引用图把所有用到的 mesh、texture、material、shader、audio、动画、UdonSharp 编译产物全找出来。没有被引用的资源不会进包，所以 `Assets/` 里那些试做了一半又删掉的废稿，不会偷偷被传上去。
+2. **平台编译**。Shader 会被编译成对应图形 API 的字节码（PC 是 D3D11/12 + Vulkan，Quest 是 OpenGL ES + Vulkan），UdonSharp 脚本被编译成 Udon 字节码。这一步很慢，是 Build 时间的大头。
+3. **打成 `.vrcw` 文件**。底层是 Unity 的 AssetBundle 格式，外层套一层 VRChat 的元信息（世界名、容量、推荐 PC/Quest）。这就是别人将来要下载的那个文件。
+
+:::tip[为什么是这样？]
+Unity 之所以不直接传源工程，是因为源工程里 `.cs` 脚本要现场编译、`.shader` 要按目标显卡重新编译、`.psd` 要被 Unity 重新切。把这些事在创作者电脑上做完一次，下游所有玩家就只需要消费一份编译好的二进制。一次编译，几万次播放，这就是「构建」这个词在游戏开发里的意义。
+:::
+
+## Build & Test：本地的捷径
+
+`Build & Test` 和正式发布走的不是同一条路。
+
+`Build & Test` 打完包之后，文件直接落在本地一个临时目录（Windows 默认 `%USERPROFILE%\AppData\LocalLow\VRChat\VRChat\Worlds\`），然后通过命令行参数把本机 VRChat 客户端拉起来，让它直接读这个本地文件。整条路都不出这台电脑。所以：
+
+- 别人加不进来。他没本机硬盘上那个文件。
+- 不消耗世界配额，也不会被 VRChat 后端审核。
+- 速度快，是日常迭代用的循环：改一行 → Build & Test → 进世界看 → 改一行。
+
+这条本地捷径是开发时主要的工作模式。它解释了一件事：场景从来没传到任何地方，但已经能在一个能跑的世界里走来走去。
+
+## 正式上传：到 VRChat 云
+
+点 SDK 控制面板里的 **Build & Publish** 时，多了一段「往外走」的路：
+
+1. 同样先打成 `.vrcw`。
+2. SDK 用登录账号时拿到的 token，把这个文件 `PUT` 到 VRChat 后端的对象存储（CDN，目前主要是 Cloudflare R2）。
+3. 同时把世界元信息（名字、描述、缩略图、容量、Tag、是 Public 还是 Private）写进 VRChat 的数据库，得到一个全局唯一的 `wrld_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` ID。
+4. 后端把这个 ID 和 CDN URL 返回给客户端。
+
+到这一步为止，「世界」其实就是 CDN 上的一个文件加数据库里一行记录。
+
+## 别人加入：从 CDN 拉，再装进 Unity Runtime
+
+朋友点开他的 VRChat 客户端，搜到这个世界，按 `Go`：
+
+1. 客户端向 VRChat 后端要这个 `wrld_xxxx` 的当前版本 URL。
+2. 客户端去 CDN 把 `.vrcw` 拖回本地。世界越大，别人加载越慢；这也是为什么后面 Quest 章节会反复要求压贴图，加载方可能在用 4G 网下载这些图片。
+3. 文件落地后，客户端内嵌的 Unity Runtime 解包 AssetBundle，把 mesh、material、shader 装进显存，把场景结构在内存里重建出来。这一步做的事和编辑器里按 Play 时做的事**几乎一样**。
+4. 实例化 GameObject，VRC Scene Descriptor 决定把人放到 `Spawn` 物体的位置。
+
+第一次加入会有一段「Downloading」「Loading」转圈，就是步骤 2 和 3。第二次再来就快得多，因为 `.vrcw` 已经在他客户端的本地缓存里了，除非有新版本上传（那 ID 不变但版本号变了）。
+
+## 实例（Instance）才是真正在跑的东西
+
+到目前为止说的「世界」，其实只是一份**静态地图**：一份 `.vrcw` 文件加一行数据库记录。它躺在 CDN 上不会动。
+
+真正能多人玩的东西叫**实例 (Instance)**。
+
+```text
+World      = 一个可被加载的空间（一个 .vrcw 文件）
+Instance   = 一群人此刻一起跑这个世界的一次具体聚会
+```
+
+第一个进入这个世界的人会在 VRChat 的网络服务器上「开一个房间」，他成为这个实例的 **Master**（实例主）；后来的人加入的是这个具体的实例。同一个世界可以同时存在几百个实例，互相完全隔离。想和朋友在同一个世界里见面，必须确保进的是同一个实例（这就是为什么 VRChat 客户端里有 `Public / Friends+ / Friends / Invite+ / Invite` 这些访问级别和长串的 Instance ID）。
+
+实例本身不在 CDN 上，它活在 VRChat 自研的网络层里。所有玩家位置、按了哪个按钮、抓起了什么东西，都是通过这一层广播给同一实例里的其他人。这条线在第六部会展开。
+
+:::caution[踩坑预警]
+新手在「世界」和「实例」上反复栽跟头，常见两种现场：
+
+- 「我和朋友进了同一个世界但他看不到我开的灯」：大概率两人没在同一个 instance。
+- 「我刚才把房间布置好了，怎么再进一次又是空的」：上一个实例已经销毁（最后一个人离开实例就销毁），现在这个是新实例。
+
+世界是文件，实例是这次聚会。这两个词分清楚之后，后面遇到同步类问题会容易得多。
+:::
+
+## 跨平台：PC、Quest、iOS 各一份
+
+VRChat 现在跑在 PC、Meta Quest、iOS 三个平台上。它们的 GPU、CPU、可用内存差几个数量级，没法共用一个 AssetBundle。
+
+所以**同一个世界**在 CDN 上其实存的是**多份文件**：PC 版、Android 版（Quest 用）、iOS 版。每一份都要在 Unity 里切到对应 Build Target 重新打一次包再上传。Quest 版还会强制砍 shader、砍实时光数量、砍贴图大小（第七部第 38 章会专门展开）。
+
+服务器在玩家加入时按他客户端的平台返回对应那一份。这解释了一件事：PC 上 Build & Publish 完，只发了 PC 版；Quest 玩家点开这个世界，看到的是「This world has no Quest version」。
+
+## 那 Unity 编辑器版本为什么要钉死
+
+`.vrcw` 是用某个 Unity 版本编译出来的二进制资源。Unity 大版本之间会改 AssetBundle 格式、改 IL2CPP 中间表示、改 shader 编译流程。如果允许大家用任意 Unity 版本上传，VRChat 客户端就得同时兼容十几种 AssetBundle 格式，工程上撑不住。
+
+VRChat 的解法是钉死一个 Unity 版本（写作此书时是 `2022.3.22f1`），客户端和所有创作者都用这同一个版本。版本不对的项目根本打不出有效 `.vrcw`。这是为什么 VCC 第一件事就是检查这个特定版本的 Unity 装没装，它在保护这条管道的兼容性。
+
+## 一张可以反复回看的全景图
+
+```text
+创作者电脑                                         玩家电脑
+─────────                                         ──────────
+Unity Scene  ─[SDK BuildPipeline]→  .vrcw  ──→  VRChat CDN  ──→  下载 .vrcw
+   │                                                                │
+   │  Build & Test                                                  ▼
+   └─→ 本地临时目录 ─→ 本机 VRChat 客户端                     Unity Runtime 解包
+                                                                    │
+                                                                    ▼
+                                                    加入某个 Instance（VRChat 网络层）
+                                                                    │
+                                                                    ▼
+                                            位置 / 按钮 / 拾取 / 语音 全部走网络层广播
+```
+
+第一部到这里收尾。后面几部的位置可以这样找：
+
+- **第二部 工作台**：放大图最左上角那个 `Unity Scene` 的内部结构，包括 GameObject、Component、Prefab、Material、Light。
+- **第三、四部 编程和交互**：往 Scene 里塞 Udon Behaviour，让按钮、Trigger、门有反应，但都还在「单机」尺度。
+- **第六部 和别人一起**：图最右下角那条「网络层广播」展开。按了灯但其他人看不到的成因，从这里讲起。
+- **第七部 让世界变成一个地方**：在每个环节里抠体验和性能：Mesh 多大、贴图多重、Light 怎么烘、加载多久。
+- **第九部 发出去**：把 `Build & Publish` 那条路走完，包括元信息、Tag、Community Labs。
+
+读完不用全记住。后面章节里凡是冒出「这事在管线哪一段」的疑问，回来对一下这张图就能定位。
