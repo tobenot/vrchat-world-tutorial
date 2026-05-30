@@ -148,7 +148,10 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
   }
   .vrc-meta__chip--time {
     border-color: var(--vrc-border-strong);
-    color: var(--vrc-cyan);
+    /* 用 --sl-color-accent 而不是 --vrc-cyan：
+       前者随主题切换（dark = 霓虹青 #1fd2c4，light = 深墨绿 #0a8f83），
+       后者在两种主题下都是 #1fd2c4，亮色主题白底上会过于扎眼。 */
+    color: var(--sl-color-accent);
   }
   .vrc-meta__chip--diff-新手 {
     background: rgba(31, 210, 196, 0.08);
