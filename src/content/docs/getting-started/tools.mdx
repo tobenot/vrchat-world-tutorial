@@ -64,7 +64,12 @@ Unity 的版本号长得像 `2022.3.22f1`，最后的 `f1` 也是版本号的一
 ::::caution[踩坑预警]
 不要把项目放在中文路径下（如 `D:\我的项目\`），不要放在桌面，不要放在网盘同步目录里（OneDrive、Google Drive、坚果云）。
 
-中文路径和过深目录会触发 Windows 的 256 字符路径长度限制；网盘的实时同步会和 Unity 的文件监视互相打架，项目可能会损坏。这些问题排查起来都很贵，提前避开就行。
+原因有两条，都很硬：
+
+1. **Windows 的 `MAX_PATH` 限制**。Win32 API 的传统上限是 **260 个字符**（结构是「盘符 + `:\` + 256 字符路径 + 末尾 `\0` 终止符」），Unity 项目里随便一个 `Library/PackageCache/com.vrchat.worlds@xxxxxxxx/Samples~/.../Materials/xxx.mat` 就能轻松撑到 200 字符以上，再叠一层"中文项目名 + OneDrive 同步目录"就溢出了。Windows 10 1607 之后系统层面可以通过组策略 + 应用 manifest 解锁长路径，但 Unity、Visual Studio、各种 Asset 打包工具默认仍走旧 API，一旦超限就会出现「文件存在但读不到」「编译报 `IOException`」「.meta 找不到对应资源」等怪现象，且报错信息往往不指向真正原因。
+2. **网盘的实时同步会和 Unity 的文件监视互相打架**。Unity 编译时会高频读写 `Library/`、`Temp/`、`Logs/` 这些缓存目录，OneDrive / Google Drive / 坚果云会把这些频繁变动的中间文件也当成"用户文件"上传，结果是：上传途中文件被锁，Unity 读不到；多设备协同时一边同步一边 Unity 还在写，`.asset` 直接损坏；冲突文件名（`xxx (1).asset`）混进 Project，编辑器一加载就崩。
+
+把项目放在 `D:\VRChatProjects\` 这种短英文路径下，关掉所在目录的所有同步客户端，是最省事的预防。这些问题真出了，排查起来都很贵。
 ::::
 
 ## 第四步：第一次打开项目

@@ -5,9 +5,20 @@ sidebar:
   order: 3
 ---
 
+## 先动手做一个 GlowBall
+
+下面通篇会拿同一个「发光球」当例子，所以这一章一开始，先花两分钟把它做出来。这一步本身没什么新概念，纯粹是给后面的讨论准备一个对象。
+
+1. Hierarchy 空白处右键 → `3D Object` → `Sphere`，新物体命名 `GlowBall`，Position 随便放在房间里能看见的位置（比如 `0, 1.5, 0`）。
+2. 选中 `GlowBall`，Inspector 底部 `Add Component` → 搜 `Light` → 加上 Light 组件。
+3. Light 组件里：`Type` 保持默认 `Point`（点光源，向四周发光）；`Range` 改成 `5`；`Intensity` 改成 `2`；`Color` 调一个偏暖的橙黄。
+4. （可选）顺手给 `Sphere` 的 Material 颜色也调成接近的暖色，让球本身看着像在发光，而不是一颗被照亮的白球。下一章会专门讲材质，这里先随手调。
+
+现在场景里有一颗能照亮周围的小球。下面所有的讨论都围绕它展开。
+
 ## 没有 Prefab 是什么样
 
-做了一个发光球。颜色调好了，Light 的 Range 设成 5，Intensity 设成 2，看着不错。
+`GlowBall` 调好了：颜色不错，Range 5，Intensity 2，看着满意。
 
 然后在房间另外三个角落各放一个，`Ctrl+D` 复制三份拖到位。四个球了。
 
