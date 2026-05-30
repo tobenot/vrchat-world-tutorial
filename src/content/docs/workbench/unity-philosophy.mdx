@@ -7,7 +7,7 @@ sidebar:
   order: 5
 ---
 
-你刚学完第二部：GameObject、Component、Prefab、Material、Light。看着像五个零散的概念，其实它们在讲同一件事，Unity 喜欢把复杂东西拆成小零件，再让你自己组合。
+第二部到此为止：GameObject、Component、Prefab、Material、Light。看着像五个零散的概念，其实它们在讲同一件事：Unity 把复杂东西拆成小零件，再让创作者自己组合。
 
 这是这套工具能撑起大型项目的原因。
 
@@ -26,7 +26,7 @@ GameObject = 一个带名字和 Transform 的容器
 Component  = 这个容器获得的具体能力
 ```
 
-这一组关系后面会反复救你。
+这一组关系后面会反复用到。
 
 ## 组合，比写死类型自由
 
@@ -36,12 +36,12 @@ Component  = 这个容器获得的具体能力
 
 每种东西都写死成一个类型，世界稍微复杂一点，类型树就会乱成一团。
 
-Unity 选了另一条路：先给你一个空壳，然后把能力拆成组件。要看得见就加 Mesh Renderer，要挡住玩家就加 Collider，要发光就加 Light，要播声音就加 Audio Source，要让玩家拿起来就加 VRC Pickup，要写自己的逻辑就加 Udon Behaviour。
+Unity 选了另一条路：先给一个空壳，然后把能力拆成组件。要看得见就加 Mesh Renderer，要挡住玩家就加 Collider，要发光就加 Light，要播声音就加 Audio Source，要让玩家拿起来就加 VRC Pickup，要写自己的逻辑就加 Udon Behaviour。
 
-一个物体的身份，来自你给它装上的能力。
+一个物体的身份，来自它装上的能力。
 
 :::tip[为什么是这样？]
-组合式设计的好处是自由。Unity 不用提前猜世界里会出现多少种物品，你也不用等官方做一个「会发光、能坐、会播放音乐的椅子」类型。把 Chair 模型、Collider、Light、Audio Source、VRC Station、脚本组合起来，它就成了这个物件。
+组合式设计的好处是自由。Unity 不用提前猜世界里会出现多少种物品，作者也不用等官方做一个「会发光、能坐、会播放音乐的椅子」类型。把 Chair 模型、Collider、Light、Audio Source、VRC Station、脚本组合起来，它就成了这个物件。
 
 如果没有组件系统，每多一种组合就要写一种新类型，项目很快会失控。
 :::
@@ -50,7 +50,7 @@ Unity 选了另一条路：先给你一个空壳，然后把能力拆成组件�
 
 Prefab 也可以放进这套思路里看。
 
-你配好一个 `GlowBall`：球体 Mesh、材质、Point Light、Collider、名字、Transform 层级，它已经是一组零件的组合结果。
+配好一个 `GlowBall`：球体 Mesh、材质、Point Light、Collider、名字、Transform 层级，它已经是一组零件的组合结果。
 
 Prefab 做的事就是把这组组合保存下来。以后需要第二个、第三个发光球，不用重新装一遍组件，从 Prefab 拖出来就行。修改 Prefab，相当于修改这套组合的源头。场景里的实例如果没有单独 Override，就一起更新。
 
@@ -62,7 +62,7 @@ Material 看起来像美术资源，Light 看起来像场景灯具，但它们�
 
 一个 Cube 的形状由 Mesh 决定，表面由 Material 决定，是否发光由 Light 组件决定，是否能被踩由 Collider 决定。每个部分只管自己那一摊。
 
-这让你能精确排查问题：看得见但踩不住，查 Collider；踩得住但看不见，查 Mesh Renderer；球本身亮但照不亮墙，查 Light；材质颜色不对，查 Material 和 Shader；复制了很多份想统一改，查 Prefab。
+这让排查问题精确起来：看得见但踩不住，查 Collider；踩得住但看不见，查 Mesh Renderer；球本身亮但照不亮墙，查 Light；材质颜色不对，查 Material 和 Shader；复制了很多份想统一改，查 Prefab。
 
 拆开看，问题会小很多。
 
@@ -70,7 +70,7 @@ Material 看起来像美术资源，Light 看起来像场景灯具，但它们�
 
 VRChat 世界开发最常见的挫败感，是「我明明照着做了，为什么它不动」。
 
-组件思路能给你一个稳定的排查顺序：
+组件思路给出一个稳定的排查顺序：
 
 1. 这个物体在哪？看 Transform。
 2. 它该不该被看见？看 Mesh Renderer 和 Material。
@@ -91,7 +91,7 @@ VRChat 世界开发最常见的挫败感，是「我明明照着做了，为什�
 
 ## 一张可以反复用的心智地图
 
-第二部真正想让你带走的是这张图，按钮位置只是临时记忆：
+第二部真正想留下的是这张图，按钮位置只是临时记忆：
 
 ```text
 Scene
