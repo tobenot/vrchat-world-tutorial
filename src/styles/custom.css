@@ -5,6 +5,10 @@
    Dual-theme: Deep Cyber (dark) / Clear Glass (light)
    ========================================================================== */
 
+/* —— 等宽字体：Maple Mono（自托管，仅 latin 子集，适合代码块） —— */
+@import '@fontsource/maple-mono/latin-400.css';
+@import '@fontsource/maple-mono/latin-700.css';
+
 /* ═══════════════ 1. Design Tokens (CSS Variables) ═══════════════ */
 
 :root {
@@ -12,7 +16,7 @@
 
   /* Typography */
   --sl-font: "Inter", "Noto Sans SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
-  --sl-font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  --sl-font-mono: "Maple Mono", "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
   --sl-content-width: 52rem;
   --sl-text-5xl: clamp(2.5rem, 5vw, 4rem);
   --sl-text-4xl: clamp(2rem, 3.5vw, 3rem);
