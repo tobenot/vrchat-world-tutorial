@@ -107,7 +107,7 @@ Instance   = 一群人此刻一起跑这个世界的一次具体聚会
 
 VRChat 现在跑在 PC、Meta Quest、iOS 三个平台上。它们的 GPU、CPU、可用内存差几个数量级，没法共用一个 AssetBundle。
 
-所以**同一个世界**在 CDN 上其实存的是**多份文件**：PC 版、Android 版（Quest 用）、iOS 版。每一份都要在 Unity 里切到对应 Build Target 重新打一次包再上传。Quest 版还会强制砍 shader、砍实时光数量、砍贴图大小（第七部第 38 章会专门展开）。
+所以**同一个世界**在 CDN 上其实存的是**多份文件**：PC 版、Android 版（Quest 用）、iOS 版。每一份都要在 Unity 里切到对应 Build Target 重新打一次包再上传。Quest 版还会强制砍 shader、砍实时光数量、砍贴图大小（第七部第 39 章会专门展开）。
 
 服务器在玩家加入时按他客户端的平台返回对应那一份。这解释了一件事：PC 上 Build & Publish 完，只发了 PC 版；Quest 玩家点开这个世界，看到的是「This world has no Quest version」。
 
