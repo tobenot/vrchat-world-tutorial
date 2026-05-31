@@ -11,6 +11,9 @@
     "build:strict": "cross-env CHECK_LINKS=1 npm run prebuild && astro build",
     "preview": "astro preview",
     "check:links": "cross-env CHECK_LINKS=1 astro build",
+    "check:chapters": "node scripts/check-chapter-refs.mjs",
+    "check:chapters:strict": "node scripts/check-chapter-refs.mjs --strict",
+    "fix:chapters": "node scripts/check-chapter-refs.mjs --write",
     "build:og": "node scripts/build-og.mjs",
     "astro": "astro"
   },

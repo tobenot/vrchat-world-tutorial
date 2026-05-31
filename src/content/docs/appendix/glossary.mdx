@@ -18,35 +18,35 @@ pagefind: true
 
 **`VRChat`**  
 社交 VR 平台，用户上传虚拟世界和化身后供他人加入。客户端跑在 PC、Meta Quest、iOS 上。  
-首次出现：[第 1.5 章 · VRChat 这家公司和这个引擎](/getting-started/about-vrchat/)。
+首次出现：[第 2 章 · VRChat 这家公司和这个引擎](/getting-started/about-vrchat/)。
 
 **`VRChat Inc.`**  
 平台开发公司，2014 年由 Graham Gaylor 和 Jesse Joudrey 创立，2017 年 Steam Early Access 上线。  
-首次出现：[第 1.5 章 · 一家美国公司，一个 Unity 项目](/getting-started/about-vrchat/#一家美国公司一个-unity-项目)。
+首次出现：[第 2 章 · 一家美国公司，一个 Unity 项目](/getting-started/about-vrchat/#一家美国公司一个-unity-项目)。
 
 **`Worlds`**（世界）  
 能站进去的虚拟空间。Unity 项目通过 Worlds SDK 打包成 `.vrcw` 文件后上传。本书全程讲 Worlds。  
-首次出现：[第 1.5 章 · Worlds 和 Avatars 是两件不同的事](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
+首次出现：[第 2 章 · Worlds 和 Avatars 是两件不同的事](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
 
 **`Avatars`**（化身）  
 玩家套在身上的形象。通过 Avatars SDK 打包成 `.vrca`。本书不讲 Avatars。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
 
 **`Worlds SDK`** / **`Avatars SDK`**  
 两套独立 SDK，对应两类项目。一个 Unity 项目里二选一。  
-首次出现：[第 1.5 章 · SDK 三件套和它的两代前身](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
+首次出现：[第 2 章 · SDK 三件套和它的两代前身](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
 
 **`com.vrchat.base`** / **`com.vrchat.worlds`** / **`com.vrchat.clientsim`**  
 Worlds 项目里 `Packages/` 下面的三个 VRChat 包。`base` 是共用工具，`worlds` 是 Scene Descriptor / Pickup / Station / Udon 等，`clientsim` 是本地模拟器。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
 
 **`SDK1`** / **`SDK2`** / **`SDK3`**  
 SDK 的三代。SDK1（2017–2019）依赖 Animator 状态机；SDK2（2018–2020）用 `VRC_Trigger` 可视化触发器；SDK3（2020 至今）引入 Udon。新世界只能用 SDK3，老教程出现 `VRC_Trigger` 字样基本是 SDK2 的。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。
 
 **`Booth`** / **`Gumroad`**  
 两大第三方资产销售平台。Booth 是日本同人圈主场，Gumroad 是欧美创作者主场。  
-首次出现：[第 1.5 章 · 围绕在外面的生态](/getting-started/about-vrchat/#围绕在外面的生态)。适用 SDK3.x。
+首次出现：[第 2 章 · 围绕在外面的生态](/getting-started/about-vrchat/#围绕在外面的生态)。适用 SDK3.x。
 
 ---
 
@@ -54,31 +54,43 @@ SDK 的三代。SDK1（2017–2019）依赖 Animator 状态机；SDK2（2018–2
 
 **`Udon`**  
 VRChat 自研的虚拟机和字节码格式。客户端只执行 Udon 字节码，不直接执行用户写的 C#。  
-首次出现：[第 1.5 章 · 写的是 C#，跑的是 Udon](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+首次出现：[第 2 章 · 写的是 C#，跑的是 Udon](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
 
 **`UdonSharp`**  
 把 C# 翻译成 Udon Assembly 的编译器，是写 VRChat 世界逻辑的主流方式。本书全程用它。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
 
 **`Udon Graph`**  
 Udon 的可视化连线编辑器，编译产物和 UdonSharp 相同。本书不用。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
 
 **`Udon Assembly`**  
 Udon 字节码格式。脚本最终被编译成它，由 VRChat 的虚拟机执行。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**字节码**（Bytecode）  
+比源代码更紧凑、更接近机器的中间格式。源码先编译成字节码，运行时再由虚拟机解释执行；好处是跨平台、装载快、适合做沙箱。Udon Assembly 就是 VRChat 自定义的一种字节码。  
+首次出现：[第 2 章 · 写的是 C#，跑的是 Udon](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**虚拟机**（VM, Virtual Machine）  
+一段专门解释执行某种字节码的程序。VRChat 客户端里的 Udon 虚拟机负责跑 Udon Assembly，对应普通 Unity 项目里的 .NET 运行时。  
+首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。
+
+**沙箱**（Sandbox）  
+给陌生代码套的「笼子」：限制它能调用的 API、能访问的文件、能联通的网络。VRChat 的沙箱由 Udon 虚拟机和 Class Exposure Tree 共同实现，目的是阻止上传内容里的脚本伤害玩家电脑。  
+首次出现：[第 2 章 · VRChat 是 Unity 之上的一层「世界格式」](/getting-started/about-vrchat/#vrchat-是-unity-之上的一层世界格式)。
 
 **`Class Exposure Tree`**  
 Udon 允许调用的 .NET / Unity API 白名单。不在白名单上的 API（`System.IO.File.Delete`、`async/await`、自定义泛型类、反射、LINQ 等）调用会被编译器拦下。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见 ⏳ 附录 D。
+首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见 ⏳ 附录 D。
 
 **`UdonSharpBehaviour`**  
 VRChat 脚本必须继承的基类，对应普通 Unity 的 `MonoBehaviour`。把 AI 给的代码贴进 Unity 后，前两行如果出现 `: MonoBehaviour` 而不是 `: UdonSharpBehaviour`，要立刻替换。  
-首次出现：[第 2 章 · 它会什么，不会什么](/getting-started/ai-partner/#它会什么不会什么)。
+首次出现：[第 3 章 · 它会什么，不会什么](/getting-started/ai-partner/#它会什么不会什么)。
 
 **`MonoBehaviour`**  
 Unity 通用脚本基类。VRChat 世界脚本不用它，用 `UdonSharpBehaviour`。出现在搜到的 Unity 教程里很正常，但贴进 VRChat 项目要换。  
-首次出现：[第 2 章](/getting-started/ai-partner/#它会什么不会什么)。
+首次出现：[第 3 章](/getting-started/ai-partner/#它会什么不会什么)。
 
 ---
 
@@ -86,35 +98,43 @@ Unity 通用脚本基类。VRChat 世界脚本不用它，用 `UdonSharpBehaviou
 
 **`VCC`**（VRChat Creator Companion）  
 官方项目管家。建项目、装 SDK 包、提醒 SDK 与 Unity 版本更新。VRChat 世界开发的事实入口。  
-首次出现：[第 3 章 · 装好工具，准备出发](/getting-started/tools/)。
+首次出现：[第 4 章 · 装好工具，准备出发](/getting-started/tools/)。
 
 **`Unity Hub`**  
 Unity 自家的版本管理器，管理本机已安装的多个 Unity 编辑器版本。配合 VCC 使用。  
-首次出现：[第 3 章 · 即将装的几样东西](/getting-started/tools/#即将装的几样东西)。
+首次出现：[第 4 章 · 即将装的几样东西](/getting-started/tools/#即将装的几样东西)。
 
 **`Unity Editor`**  
 真正搭世界的工作台。VRChat 钉死了它的版本号。  
-首次出现：[第 3 章](/getting-started/tools/#即将装的几样东西)。
+首次出现：[第 4 章](/getting-started/tools/#即将装的几样东西)。
 
 **Unity 钉死版本（写本书时是 `2022.3.22f1`）**  
 VRChat 客户端和创作者必须用同一个 Unity 版本，连末尾的 `f1` 都不能差。版本不对的项目打不出有效 `.vrcw`。  
-首次出现：[第 3 章 · 第二步：装官方指定版本的 Unity](/getting-started/tools/#第二步装官方指定版本的-unity)。理由见 [理解章 A · 那 Unity 编辑器版本为什么要钉死](/getting-started/world-pipeline/#那-unity-编辑器版本为什么要钉死)。
+首次出现：[第 4 章 · 第二步：装官方指定版本的 Unity](/getting-started/tools/#第二步装官方指定版本的-unity)。理由见 [理解章 A · 那 Unity 编辑器版本为什么要钉死](/getting-started/world-pipeline/#那-unity-编辑器版本为什么要钉死)。
+
+**`LTS`**（Long Term Support，长期维护版本）  
+Unity 的版本类型之一。LTS 版只修 bug、不加新特性，维护周期约两年，是工程项目的稳定选择。VRChat 长期把创作者钉在某个 Unity LTS 版本上（写本书时是 Unity 2022 LTS）。  
+首次出现：[第 2 章 · Unity 版本钉死，跨平台一份场景多份打包](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
 
 **`ClientSim`**  
 VRChat SDK 自带的本地模拟器（`com.vrchat.clientsim`），不上传也能在 Unity 里测玩家行为。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。详细用法待 ⏳ 第 40 章。
+首次出现：[第 2 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。详细用法待 ⏳ 第 40 章。
 
 **`Library/PackageCache`**  
 Unity 项目下的本地缓存目录，Unity 编译时会高频读写。**不要进 git**，**不要被网盘同步**。  
-首次出现：[第 3 章 · 踩坑预警 · 项目路径](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+首次出现：[第 4 章 · 踩坑预警 · 项目路径](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
 
 **`MAX_PATH` 限制**  
 Win32 API 传统路径长度上限 260 字符。Unity 项目里的深层资源很容易撑到 200 字符以上，再叠"中文项目名 + OneDrive 同步目录"就溢出。表现是「文件存在但读不到」「.meta 找不到对应资源」。  
-首次出现：[第 3 章](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+首次出现：[第 4 章](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
 
 ---
 
 ## 构建与发布管线
+
+**`YAML`**  
+一种纯文本的结构化格式，主打人类可读，用缩进表示层级。Unity 的 `.unity` 场景文件、`.prefab` 文件、`.meta` 文件都是 YAML 写的，因此可以用文本编辑器打开看，也能在 git 里做有意义的 diff。  
+首次出现：[理解章 A · Unity 场景，本质是一份引用清单](/getting-started/world-pipeline/#unity-场景本质是一份引用清单)。
 
 **`BuildPipeline`**  
 Unity 的构建系统。VRChat SDK 调用它把场景及依赖打成 AssetBundle。  
@@ -128,20 +148,28 @@ Unity 自有的二进制资源打包格式。VRChat 世界文件 `.vrcw` 内层�
 Unity 的中间语言转 C++ 编译流程。Unity 大版本之间会改它，是钉死 Unity 版本的原因之一。  
 首次出现：[理解章 A · 那 Unity 编辑器版本为什么要钉死](/getting-started/world-pipeline/#那-unity-编辑器版本为什么要钉死)。
 
+**图形 API**（Graphics API）  
+GPU 听得懂的指令规范，由操作系统/硬件厂商定义，让上层引擎用同一套语义控制不同显卡。常见的有 Direct3D（D3D11 / D3D12，Windows）、Vulkan（跨平台）、OpenGL ES（移动端，Quest 用）、Metal（macOS / iOS）。Shader 在打包时会被编译成这些 API 各自的字节码。  
+首次出现：[理解章 A · 打包：Unity AssetBundle](/getting-started/world-pipeline/#打包unity-assetbundle)。
+
 **`.vrcw`**  
 World 包文件后缀。AssetBundle + VRChat 元信息（世界名、容量、PC/Quest 标记）。下载到玩家本地后被 Unity Runtime 解包加载。  
 首次出现：[理解章 A](/getting-started/world-pipeline/#打包unity-assetbundle)。
 
 **`.vrca`**  
 Avatar 包文件后缀。本书不深入。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#worlds-和-avatars-是两件不同的事)。
 
 **`Build & Test`**  
 SDK 控制面板按钮：本地打包 + 唤起本机 VRChat 客户端读取本地文件，整条路不出本机。日常迭代主流程。  
-首次出现：[第 4 章 · 第五步：Build & Test](/getting-started/first-world/#第五步build--test)。
+首次出现：[第 5 章 · 第五步：Build & Test](/getting-started/first-world/#第五步build--test)。
 
 **`Build & Publish`**  
 SDK 控制面板按钮：打包后通过 token 把 `.vrcw` `PUT` 到 VRChat CDN，并把元信息写进数据库，得到 `wrld_xxx` ID。  
+首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+
+**`Token`**  
+一段临时的登录凭证。SDK 在登录账号时拿到 token，之后调用 VRChat 后端接口（上传 `.vrcw`、写元信息）都凭这段 token 证明「这是这个账号在操作」。token 有有效期，过期后需要重新登录。  
 首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
 
 **`Build Target`**  
@@ -152,8 +180,16 @@ Unity 当前编译的目标平台（Windows / Android / iOS 等）。同一个�
 VRChat 后端给每个发布过的世界分配的全局唯一 ID。`Build & Publish` 后第一次产生。  
 首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
 
+**对象存储**  
+可以理解成云端文件仓库，负责存放 `.vrcw` 这种世界包文件。VRChat 当前主要使用 Cloudflare R2 存这些文件。  
+首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+
+**`CDN`**（Content Delivery Network，内容分发网络）  
+可以理解成分布在各地的下载仓库。玩家加入世界时，不是从作者电脑下载，而是从 CDN 拉取 `.vrcw`；世界越大，第一次加载越慢。  
+首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+
 **`Cloudflare R2`**  
-VRChat 当前使用的对象存储 CDN。`.vrcw` 文件躺在它上面。  
+Cloudflare 的对象存储服务。这里可以先把它理解成 VRChat 用来存放 `.vrcw` 文件的云端仓库之一。  
 首次出现：[理解章 A](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
 
 **`Instance`**（实例）  
@@ -170,11 +206,11 @@ VRChat 当前使用的对象存储 CDN。`.vrcw` 文件躺在它上面。
 
 **`VRC Scene Descriptor`**  
 告诉 SDK「这个 Unity 场景是 VRChat 世界」的描述组件，登记出生点、参考摄像机等。世界必装。  
-首次出现：[第 4 章 · 第四步：给场景一张身份证](/getting-started/first-world/#第四步给场景一张身份证)。组件字段见附录 C。
+首次出现：[第 5 章 · 第四步：给场景一张身份证](/getting-started/first-world/#第四步给场景一张身份证)。组件字段见附录 C。
 
 **`Spawn`**（出生点）  
 玩家进世界时落点和朝向的标记。`VRC Scene Descriptor` 的 `Spawns` 数组里登记一个或多个空物体，按策略选其中之一。  
-首次出现：[第 4 章 · 第三步：标记出生位置](/getting-started/first-world/#第三步标记出生位置)。
+首次出现：[第 5 章 · 第三步：标记出生位置](/getting-started/first-world/#第三步标记出生位置)。
 
 ---
 
@@ -182,7 +218,7 @@ VRChat 当前使用的对象存储 CDN。`.vrcw` 文件躺在它上面。
 
 **`Scene`**（场景）  
 后缀 `.unity` 的文件，存这个空间里的所有物体、灯光、引用关系。  
-首次出现：[第 4 章 · 第一步：新建并保存场景](/getting-started/first-world/#第一步新建并保存场景)、[第 5 章](/workbench/gameobjects/#三块面板的分工)。
+首次出现：[第 5 章 · 第一步：新建并保存场景](/getting-started/first-world/#第一步新建并保存场景)、[第 5 章](/workbench/gameobjects/#三块面板的分工)。
 
 **`GameObject`**（游戏物体）  
 Unity 中所有场景物体的容器。本身没有任何能力，能力来自挂在它身上的 Component。  
@@ -202,15 +238,15 @@ Unity 中所有场景物体的容器。本身没有任何能力，能力来自�
 
 **`Project` 面板**  
 项目的所有文件夹与资源。材质、模型、脚本、声音、Prefab 都在这里。  
-首次出现：[第 3 章 · 第一次面对 Unity](/getting-started/tools/#第一次面对-unity)。
+首次出现：[第 4 章 · 第一次面对 Unity](/getting-started/tools/#第一次面对-unity)。
 
 **`Scene` 视图** / **`Game` 视图**  
 Scene 视图是搭世界的画布，Game 视图是模拟玩家视角。  
-首次出现：[第 3 章](/getting-started/tools/#第一次面对-unity)。
+首次出现：[第 4 章](/getting-started/tools/#第一次面对-unity)。
 
 **`Console`（面板）**  
 显示报错、警告、Log。多数初学问题先看这里。  
-首次出现：[第 3 章](/getting-started/tools/#第一次面对-unity)。
+首次出现：[第 4 章](/getting-started/tools/#第一次面对-unity)。
 
 **`Transform`**  
 每个 GameObject 自带、删不掉的组件。管 Position、Rotation、Scale 三件事。  
@@ -218,7 +254,7 @@ Scene 视图是搭世界的画布，Game 视图是模拟玩家视角。
 
 **`Position` / `Rotation` / `Scale`**  
 Transform 的三个字段：在哪、朝哪、多大。  
-首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#transform每个物体的标配)。
+首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#transform每个物体的标配)。
 
 **父子层级**  
 在 Hierarchy 里把一个 GameObject 拖到另一个下面，子物体的 Transform 变为相对父物体。父物体一移动，子物体跟着走。  
@@ -246,6 +282,26 @@ Unity 顶部三角形按钮启动的运行时预览模式。在里面调的所�
 
 ---
 
+## 图形与物理基础
+
+**`GPU`**（Graphics Processing Unit，图形处理器）  
+显卡里负责画面渲染的芯片，擅长大量并行的浮点运算。Unity 把场景里的 mesh、material、shader 喂给 GPU，由它每帧画出一帧画面。Quest 的 GPU 大约只有 PC 中端的十分之一，是跨平台预算差异的主要原因。  
+首次出现：[第 2 章 · VRChat 是 Unity 之上的一层「世界格式」](/getting-started/about-vrchat/#vrchat-是-unity-之上的一层世界格式)。
+
+**显存**（VRAM, Video RAM）  
+GPU 自己使用的高速内存，专门给画面渲染用。`.vrcw` 加载时，mesh、material、shader、texture 会从硬盘读出后装进显存。显存吃满时会卡顿、闪退；Quest 显存比 PC 紧张得多，所以贴图必须压。  
+首次出现：[理解章 A · 别人加入：从 CDN 拉，再装进 Unity Runtime](/getting-started/world-pipeline/#别人加入从-cdn-拉再装进-unity-runtime)。
+
+**渲染管线**（Rendering Pipeline）  
+GPU 把场景画成一帧画面的流水线，依次做几何变换、光栅化、片元着色等步骤。Unity 提供多套渲染管线（Built-in / URP / HDRP），VRChat 当前主用 Built-in。Shader 必须按管线编写，跨管线一般需要重写。  
+首次出现：[第 2 章 · VRChat 是 Unity 之上的一层「世界格式」](/getting-started/about-vrchat/#vrchat-是-unity-之上的一层世界格式)。
+
+**物理引擎**（Physics Engine）  
+模拟物体下落、碰撞、反弹、摩擦等物理行为的子系统。Unity 用的是 PhysX。VRChat 不重做这一层，但 Udon 调用物理 API 受 Class Exposure Tree 限制；Pickup、Rigidbody 这些组件最终都依赖物理引擎运行。  
+首次出现：[第 2 章 · VRChat 是 Unity 之上的一层「世界格式」](/getting-started/about-vrchat/#vrchat-是-unity-之上的一层世界格式)。
+
+---
+
 ## 几何与碰撞
 
 **`Mesh`**（网格）  
@@ -262,15 +318,15 @@ Unity 顶部三角形按钮启动的运行时预览模式。在里面调的所�
 
 **`Cube` / `Plane`**  
 Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地板首选 Cube 拍扁，原因是 Plane 单面渲染会从底面消失，且 Mesh Collider 没厚度容易被擦边漏检。  
-首次出现：[第 4 章 · 第二步：解决踩地（创建地板）](/getting-started/first-world/#第二步解决踩地创建地板)。
+首次出现：[第 5 章 · 第二步：解决踩地（创建地板）](/getting-started/first-world/#第二步解决踩地创建地板)。
 
 **`Box Collider` / `Sphere Collider` / `Mesh Collider`**  
 三种最常见的碰撞体。Box 是盒子（默认 Cube 自带），Sphere 是球，Mesh 按网格逐三角形碰撞（默认 Plane 自带）。能用 Box 不用 Mesh，便宜得多。  
-首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
 
 **`Backface Culling`**（背面剔除）  
 渲染优化：默认情况下从背面看一个三角形会直接消失。Plane 单面 + 背面剔除导致从底面看不见。  
-首次出现：[第 4 章](/getting-started/first-world/#第二步解决踩地创建地板)。
+首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)。
 
 **`Rigidbody`**（刚体）  
 让物体获得重力、能被物理引擎模拟。VRChat 中谨慎用，物理交互成本高。  
@@ -432,19 +488,19 @@ Shader 丢了 / 不兼容 / 渲染管线对不上的视觉表现。处理：先�
 
 **`PC`** / **`Windows`**  
 VRChat 主力平台，SteamVR / Oculus 头显或纯 Desktop 模式都能玩。  
-首次出现：[第 1.5 章 · Unity 版本钉死，跨平台一份场景多份打包](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
+首次出现：[第 2 章 · Unity 版本钉死，跨平台一份场景多份打包](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
 
 **`Meta Quest`**  
 独立 VR 头显，跑 Android。GPU 是 PC 中端的 1/10 量级，内容预算受严格限制。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见 ⏳ 第 38 章。
+首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见 ⏳ 第 38 章。
 
 **`iOS`**（VRChat 端）  
 2024 年上线。触屏、无 VR。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
 
 **`Steam Early Access`**  
 VRChat 2017 年 2 月在 Steam 上线时使用的发布模式。  
-首次出现：[第 1.5 章](/getting-started/about-vrchat/#一家美国公司一个-unity-项目)。
+首次出现：[第 2 章](/getting-started/about-vrchat/#一家美国公司一个-unity-项目)。
 
 ---
 

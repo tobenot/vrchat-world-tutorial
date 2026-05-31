@@ -1,0 +1,60 @@
+---
+title: 第三部 · 学一点编程
+description: 第二部把世界搭起来了，但它现在是静止的。这一部学刚好够用的代码，让世界开始对玩家有反应。
+template: splash
+hero:
+  tagline: 不学一整门编程，只学让 VRChat 世界动起来的那一小块。
+  actions:
+    - text: 从第 9 章开始
+      link: ./basics-no-code/
+      icon: right-arrow
+      variant: primary
+    - text: 已经会 C#？跳到 UdonSharp 的脾气
+      link: ./udonsharp-personality/
+      variant: minimal
+sidebar:
+  label: 第三部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第二部结束时，世界看着已经像个地方，但里面什么都不会发生。门是死的，灯是死的，按钮按下去也没反应。
+
+第三部要做的事不是教完整的 C#，而是把「让 VRChat 世界活起来」需要的那一点点编程知识铺好。三章正文、一节理解章、一节创作者视角，按顺序读最稳。
+
+<CardGrid>
+  <LinkCard
+    title="9. 写给完全没编过程的你"
+    href="./basics-no-code/"
+    description="不写一行代码，先把「程序是怎么一回事」想清楚。"
+  />
+  <LinkCard
+    title="10. 刚好够用的 C#"
+    href="./csharp-just-enough/"
+    description="变量、判断、循环、方法、类。VRChat 世界用到的就这些。"
+  />
+  <LinkCard
+    title="11. UdonSharp，长得像 C# 但它有脾气"
+    href="./udonsharp-personality/"
+    description="哪些 C# 特性 UdonSharp 不支持，哪些坑会让脚本看着对但行为错。"
+  />
+  <LinkCard
+    title="理解章 C · 代码是怎么跑起来的"
+    href="./how-code-runs/"
+    description="从写下的字，到 Udon 字节码，到帧画面里灯亮起来。"
+  />
+  <LinkCard
+    title="创作者视角 · 编程让世界从静止变成活的"
+    href="./programming-makes-it-alive/"
+    description="会写一点代码之后，看 VRChat 世界的方式会发生什么变化。"
+  />
+</CardGrid>
+
+读完这五篇，能拿到的：看懂一段 UdonSharp 脚本、敢自己改一行试试看、撞上几类常见坑时知道大概在哪里找原因。
+
+读完之后，第四部会用这点编程能力去做按钮、Trigger、Pickup 这些真正的交互。

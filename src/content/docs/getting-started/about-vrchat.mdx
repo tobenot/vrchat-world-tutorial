@@ -45,10 +45,10 @@ VRChat Inc. 由 Graham Gaylor 和 Jesse Joudrey 在 2014 年成立，最初的�
 
 技术上看，VRChat 客户端是用 Unity 做的。它内嵌一个 Unity Runtime，能在玩家电脑上加载用 Unity 打包出来的资源。
 
-也就是说，渲染管线、物理引擎、动画系统都直接来自 Unity，VRChat 不重做这些。VRChat 在 Unity 之上加了三件事：
+也就是说，渲染管线（GPU 把场景画成一帧画面的流水线）、物理引擎（决定物体怎么下落、碰撞、反弹的那套规则）、动画系统都直接来自 Unity，VRChat 不重做这些。VRChat 在 Unity 之上加了三件事：
 
 1. **网络层**：让多个客户端能维护同一个实例的状态。
-2. **沙箱**：阻止上传的世界访问磁盘、网络、shell。否则随便一个发光球都能变成木马。
+2. **沙箱**（给陌生代码套的「笼子」）：阻止上传的世界访问玩家电脑的磁盘、网络、命令行。否则随便一个发光球都能变成木马。
 3. **平台抽象**：让同一份世界能跑在 PC、Quest、iOS 上，给每个平台单独打包和限流。
 
 剩下的事，按下按钮灯亮、地板有反射、镜子里照得到自己，全是 Unity 在做。SDK 的工作是让 Unity 知道「这个项目是给 VRChat 做的」：让场景里的 `VRC Scene Descriptor` 能被识别，让脚本能被编译进沙箱。
@@ -112,7 +112,7 @@ SDK1 和 SDK2 已经停止支持。SDK2 的 UnityPackage 在 2023 年初下架�
 
 到 Worlds SDK 这一层，写出来的 C# 走的是一条专属编译链。
 
-表面上跟普通 Unity 项目一样：在 Unity 里建 `.cs` 文件，能 `using UnityEngine`，能定义 class，能写 `Update()`。底层不一样的地方在编译产物：先用 **UdonSharp** 编译器把 C# 翻译成一种叫 **Udon Assembly** 的字节码，最后跑在客户端里的是 VRChat 自己写的虚拟机，取代了普通 Unity 项目里的 .NET 运行时。
+表面上跟普通 Unity 项目一样：在 Unity 里建 `.cs` 文件，能 `using UnityEngine`，能定义 class，能写 `Update()`。底层不一样的地方在编译产物：先用 **UdonSharp** 编译器把 C# 翻译成一种叫 **Udon Assembly** 的字节码（一种比源码更紧凑、更接近机器的中间格式），最后跑在客户端里的是 VRChat 自己写的虚拟机（一段专门解释执行这种字节码的程序），取代了普通 Unity 项目里的 .NET 运行时。
 
 绕这一圈是为了安全。VRChat 客户端要执行陌生人写的代码：点开一个 Public 世界，里面的脚本是某个不认识的人写的。如果这段脚本能调 `System.IO.File.Delete`、能调 `System.Net.WebClient`、能调 `Process.Start`，玩家电脑就会被任意操作。
 
@@ -132,7 +132,7 @@ UdonSharp 之外还有 **Udon Graph**，可视化连线版本，长得像 Unreal
 
 这两件事 [理解章 A](/getting-started/world-pipeline/) 也会再讲一次，这里只补一句不重复的。
 
-Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2CPP、改 Shader 编译器。客户端要能加载所有用户上传过的世界，工程上不可能同时兼容十几代格式。官方的策略是整个生态钉同一个 Unity 版本，每隔一两年统一升级一次。写本书时，VRChat 创作者项目仍在 Unity 2022 LTS 线上，常用推荐版本是 `2022.3.22f1`；实际安装前以官方当前 Unity 版本页面和 VCC 提示为准。
+Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2CPP、改 Shader 编译器。客户端要能加载所有用户上传过的世界，工程上不可能同时兼容十几代格式。官方的策略是整个生态钉同一个 Unity 版本，每隔一两年统一升级一次。写本书时，VRChat 创作者项目仍在 Unity 2022 LTS 线上（LTS 是 Long Term Support，长期维护版本），常用推荐版本是 `2022.3.22f1`；实际安装前以官方当前 Unity 版本页面和 VCC 提示为准。
 
 跨平台意味着同一份场景要分别打包才能让所有平台进得来。公开数据不提供精确的 PC / Quest / 移动端拆分；按 2026 年中公开实时数据粗略对照，Steam PC 只是一半上下，非 Steam 入口也占很大一块。后者包括 Quest、移动端和其他入口，不能直接等同于 Quest，但足以说明 Quest 和手机端不是可忽略的小众平台。目前支持的平台：
 

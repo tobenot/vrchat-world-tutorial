@@ -114,6 +114,11 @@ export default defineConfig({
           autogenerate: { directory: 'workbench' },
         },
         {
+          label: '第三部：学一点编程',
+          collapsed: false,
+          autogenerate: { directory: 'programming' },
+        },
+        {
           label: '附录 · 速查与参考',
           collapsed: true,
           autogenerate: { directory: 'appendix' },

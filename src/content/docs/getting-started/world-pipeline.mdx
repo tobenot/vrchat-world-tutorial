@@ -14,7 +14,7 @@ sidebar:
 
 ## Unity 场景，本质是一份引用清单
 
-Hierarchy 里那一串 GameObject 看起来像一堆「物体」，但保存到磁盘上的 `MyFirstWorld.unity` 文件，本质是一份 YAML：
+Hierarchy 里那一串 GameObject 看起来像一堆「物体」，但保存到磁盘上的 `MyFirstWorld.unity` 文件，本质是一份 YAML（一种纯文本的结构化格式，主打人类可读，缩进表示层级）：
 
 ```text
 GameObject Floor
@@ -36,7 +36,7 @@ GameObject WorldDescriptor
 按下 `Build & Test` 时，VRChat SDK 调用 Unity 的 BuildPipeline，做了三件事：
 
 1. **依赖收集**。从 `MyFirstWorld.unity` 出发，沿着引用图把所有用到的 mesh、texture、material、shader、audio、动画、UdonSharp 编译产物全找出来。没有被引用的资源不会进包，所以 `Assets/` 里那些试做了一半又删掉的废稿，不会偷偷被传上去。
-2. **平台编译**。Shader 会被编译成对应图形 API 的字节码（PC 是 D3D11/12 + Vulkan，Quest 是 OpenGL ES + Vulkan），UdonSharp 脚本被编译成 Udon 字节码。这一步很慢，是 Build 时间的大头。
+2. **平台编译**。Shader 会被编译成对应图形 API 的字节码（图形 API 是 GPU 听得懂的指令规范，PC 用 D3D11/12 + Vulkan，Quest 用 OpenGL ES + Vulkan），UdonSharp 脚本被编译成 Udon 字节码。这一步很慢，是 Build 时间的大头。
 3. **打成 `.vrcw` 文件**。底层是 Unity 的 AssetBundle 格式，外层套一层 VRChat 的元信息（世界名、容量、推荐 PC/Quest）。这就是别人将来要下载的那个文件。
 
 :::tip[为什么是这样？]
@@ -59,8 +59,10 @@ Unity 之所以不直接传源工程，是因为源工程里 `.cs` 脚本要现�
 
 点 SDK 控制面板里的 **Build & Publish** 时，多了一段「往外走」的路：
 
+这里先垫两个词：**对象存储**可以先理解成「云端文件仓库」，负责放 `.vrcw`；**CDN**（内容分发网络）可以先理解成「离玩家更近的下载仓库」，负责让不同地区的玩家更快把文件拉下来。
+
 1. 同样先打成 `.vrcw`。
-2. SDK 用登录账号时拿到的 token，把这个文件 `PUT` 到 VRChat 后端的对象存储（CDN，目前主要是 Cloudflare R2）。
+2. SDK 用登录账号时拿到的 token（一段临时的登录凭证），把这个文件上传（HTTP `PUT`）到 VRChat 后端的对象存储（目前主要是 Cloudflare R2），再通过 CDN 分发给玩家下载。
 3. 同时把世界元信息（名字、描述、缩略图、容量、Tag、是 Public 还是 Private）写进 VRChat 的数据库，得到一个全局唯一的 `wrld_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` ID。
 4. 后端把这个 ID 和 CDN URL 返回给客户端。
 
@@ -72,7 +74,7 @@ Unity 之所以不直接传源工程，是因为源工程里 `.cs` 脚本要现�
 
 1. 客户端向 VRChat 后端要这个 `wrld_xxxx` 的当前版本 URL。
 2. 客户端去 CDN 把 `.vrcw` 拖回本地。世界越大，别人加载越慢；这也是为什么后面 Quest 章节会反复要求压贴图，加载方可能在用 4G 网下载这些图片。
-3. 文件落地后，客户端内嵌的 Unity Runtime 解包 AssetBundle，把 mesh、material、shader 装进显存，把场景结构在内存里重建出来。这一步做的事和编辑器里按 Play 时做的事**几乎一样**。
+3. 文件落地后，客户端内嵌的 Unity Runtime 解包 AssetBundle，把 mesh、material、shader 装进显存（GPU 自己用的高速内存，专门给画面渲染用），把场景结构在内存里重建出来。这一步做的事和编辑器里按 Play 时做的事**几乎一样**。
 4. 实例化 GameObject，VRC Scene Descriptor 决定把人放到 `Spawn` 物体的位置。
 
 第一次加入会有一段「Downloading」「Loading」转圈，就是步骤 2 和 3。第二次再来就快得多，因为 `.vrcw` 已经在他客户端的本地缓存里了，除非有新版本上传（那 ID 不变但版本号变了）。
