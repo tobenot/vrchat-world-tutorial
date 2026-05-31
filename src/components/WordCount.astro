@@ -1,0 +1,132 @@
+---
+// 构建时扫描全部文档文件，统计正文字数（去除 frontmatter 和 Markdown 标记）。
+// 排除 index.mdx（章节入口）、about.mdx、dev 目录下的样例页。
+
+const EXCLUDE_SLUGS = new Set(['index', 'about', 'preface']);
+const EXCLUDE_DIR_PREFIX = 'dev/';
+
+const rawFiles = import.meta.glob<{ default: string }>(
+  '/src/content/docs/**/*.{md,mdx}',
+  { query: '?raw', import: 'default' }
+);
+
+function stripContent(raw: string): string {
+  // 去除 frontmatter
+  let text = raw.replace(/^---[\s\S]*?---/, '');
+  // 去除 import 语句
+  text = text.replace(/^import\s+.*$/gm, '');
+  // 去除 MDX / HTML 标签
+  text = text.replace(/<[^>]+>/g, '');
+  // 去除代码块（``` 和行内 `）
+  text = text.replace(/```[\s\S]*?```/g, '');
+  text = text.replace(/`[^`]*`/g, '');
+  // 去除 Markdown 标题 # 符号
+  text = text.replace(/^#{1,6}\s+/gm, '');
+  // 去除 Markdown 链接语法 [text](url) 只保留文字
+  text = text.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  // 去除图片 ![]()
+  text = text.replace(/!\[[^\]]*\]\([^)]*\)/g, '');
+  // 去除 HTML 实体、注释
+  text = text.replace(/<!--[\s\S]*?-->/g, '');
+  return text;
+}
+
+function countChars(text: string): number {
+  // 统计中文字符数量
+  return (text.match(/[\u4e00-\u9fa5]/g) ?? []).length;
+}
+
+function countWords(text: string): number {
+  // 统计英文单词数量（空格分隔的连续字母）
+  return (text.match(/[a-zA-Z]+/g) ?? []).length;
+}
+
+let totalChinese = 0;
+let totalEnglishWords = 0;
+let totalArticles = 0;
+
+const entries = await Promise.all(
+  Object.entries(rawFiles).map(async ([path, loader]) => {
+    // 从路径中提取 slug，形如 src/content/docs/getting-started/curiosity.mdx → getting-started/curiosity
+    const slugMatch = path.match(/src\/content\/docs\/(.+?)\.(md|mdx)$/);
+    if (!slugMatch) return null;
+    const slug = slugMatch[1];
+
+    // 排除目录入口、关于页、dev 样例
+    const lastSegment = slug.split('/').pop() ?? '';
+    if (EXCLUDE_SLUGS.has(lastSegment)) return null;
+    if (slug.startsWith(EXCLUDE_DIR_PREFIX)) return null;
+
+    const raw = await loader();
+    const text = stripContent(raw);
+    return { slug, chinese: countChars(text), words: countWords(text) };
+  })
+);
+
+for (const entry of entries) {
+  if (!entry) continue;
+  totalChinese += entry.chinese;
+  totalEnglishWords += entry.words;
+  totalArticles++;
+}
+
+// 按每分钟 300 汉字 + 150 英文词估算阅读时间
+const readMinutes = Math.round(totalChinese / 300 + totalEnglishWords / 150);
+
+function fmtNum(n: number) {
+  return n.toLocaleString('zh-CN');
+}
+---
+
+<div class="word-count-panel">
+  <div class="word-count-item">
+    <span class="word-count-value">{fmtNum(totalChinese + totalEnglishWords * 3)}</span>
+    <span class="word-count-label">全站字符（估算）</span>
+  </div>
+  <div class="word-count-item">
+    <span class="word-count-value">{fmtNum(totalChinese)}</span>
+    <span class="word-count-label">中文字</span>
+  </div>
+  <div class="word-count-item">
+    <span class="word-count-value">{fmtNum(readMinutes)} 分钟</span>
+    <span class="word-count-label">预计阅读时长</span>
+  </div>
+  <div class="word-count-item">
+    <span class="word-count-value">{totalArticles}</span>
+    <span class="word-count-label">篇文章</span>
+  </div>
+</div>
+
+<style>
+  .word-count-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    padding: 1.25rem 1.5rem;
+    background: var(--sl-color-bg-sidebar);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+  }
+
+  .word-count-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 8rem;
+    gap: 0.25rem;
+  }
+
+  .word-count-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--sl-color-accent);
+    line-height: 1.2;
+  }
+
+  .word-count-label {
+    font-size: 0.8rem;
+    color: var(--sl-color-gray-3);
+  }
+</style>
