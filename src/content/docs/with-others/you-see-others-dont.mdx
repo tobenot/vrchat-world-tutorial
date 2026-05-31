@@ -157,13 +157,15 @@ Player A 客户端                    Player B 客户端
 
 仔细回想之前的章节：第 15 章那个挂了 `VRC Object Sync` 的小球，A 抓起来时 B 那边也看到小球被抓走。怎么解释？
 
-`VRC Object Sync` 是 VRChat 内置的一个组件，专门把所在物体的 `Transform`（位置、旋转、缩放）和 `Rigidbody` 状态（速度、角速度）打包同步出去。它内部已经写好了同步逻辑：监听这台客户端上的 `Transform` 变化，按需广播给其他人。
+`VRC Object Sync` 是 VRChat 内置的一个组件，官方组件页明确说它会把所在物体 `Transform` 的**位置和旋转**同步给实例里的所有玩家。Network Components 文档还把它归入自动同步，并提供 Gravity / Kinematic / Respawn 等由组件管理的物理相关接口。
+
+但不要把它理解成「所有 Transform 字段和所有 Rigidbody 字段都会同步」。缩放、脚本字段、灯光强度、Animator 参数这些状态，仍然需要作者自己设计同步逻辑。
 
 类似地，VRChat 还内置了：
 
 - 玩家头像位置、动作、表情：自动同步，不用写一行代码。
 - 玩家加入 / 退出实例：自动通知所有客户端，触发 `OnPlayerJoined` / `OnPlayerLeft`。
-- VRC Pickup 拿起 / 放下：可以联同 `VRC Object Sync` 自动转移所有权和位置。
+- VRC Pickup 拿起 / 放下：常和 `VRC Object Sync` 配合，让拿起的人接管所有权，其他客户端看到物体位置 / 旋转跟着变化。
 
 这些是 VRChat 替作者准备好的「默认同步」。但只要不在这个清单里的状态（一个 bool 字段、一个 int 计数、一个 Animator 参数），都需要作者自己写同步逻辑。
 
@@ -211,7 +213,7 @@ Debug.Log($"[Door] {local.displayName} pressed. isOpen = {isOpen}");
 这三个问题答案都在「事件在哪台客户端触发、状态变量同不同步」两件事的组合里：
 
 - 区域音乐：`OnPlayerTriggerEnter` 在所有客户端触发（每台机器都收到「有人进入区域了」），所以即使没加同步，每台客户端都会自己播一遍音乐。但「音乐音量大小」这种状态字段不会同步。
-- 小球抓起来：`VRC Object Sync` 同步位置和持有状态。`PickupGlow.cs` 里 `targetLight.intensity` 的修改不在 `VRC Object Sync` 的范围，所以两边亮度不一致。
+- 小球抓起来：`VRC Pickup` / `VRC Object Sync` 让拿起的人接管所有权，并同步物体位置 / 旋转。`PickupGlow.cs` 里 `targetLight.intensity` 的修改不在 `VRC Object Sync` 的范围，所以两边亮度不一致。
 - 门：`Interact` 只在按按钮的人客户端触发，`isOpen` 字段没同步，门只在按按钮那位面前动。
 
 这三种行为差异背后是同一条规则：**事件在哪些客户端触发** × **哪些字段被声明为同步**，组合出最终现象。第 27、28 章会把这两个轴各自拆清楚。

@@ -41,7 +41,7 @@ ClientSim 是 VRChat 官方的客户端模拟器，作为 Worlds SDK 的一部�
 
 - **真实的网络同步**：ClientSim 模拟 Master / Guest 切换是简化版，时序跟真实 VRChat 网络对不上。所有权竞争（两个真实玩家同时按一个按钮）的细节，ClientSim 看不出。
 - **真实的 Late Joiner 行为**：ClientSim 加入的「Remote Player」是脚本造的，跟一个真人客户端从零开始接入世界、拉同步数据的过程不一样。
-- **Quest / Android 平台限制**：所有内容都跑在 PC 编辑器里，Shader 白名单、纹理 1K 上限、面数预算这些 Android 限制全部不生效。
+- **Quest / Android 平台限制**：所有内容都跑在 PC 编辑器里，Shader 白名单（允许在 Quest / Android 上使用的 Shader 清单）、纹理 1K 上限、面数预算这些 Android 限制全部不生效。
 - **VR 舒适度**：晕动、走廊宽度、视高，ClientSim 是桌面视角，体感为零。
 - **真实多人混乱**：十个人在一个房间各按各的、各抓各的、各开各的镜子，性能怎么样、网络稳不稳，没法在编辑器里复现。
 
@@ -81,9 +81,9 @@ ClientSim 之后下一层是 `Build & Test`。这是 VRChat SDK 提供的一键�
 
 Build & Test 跟编辑器内的 ClientSim 比，区别核心是「跑的是真正的 VRChat 客户端」：
 
-- Shader 走真实 VRChat 渲染管线，纹理、光照、Skybox 显示效果跟发布后一致。
+- Shader 走真实 VRChat 渲染管线（从场景数据到屏幕画面的绘制流程），纹理、光照、Skybox 显示效果跟发布后一致。
 - 网络同步走本地局域网回环，但用的是真实的 VRChat 客户端和本地测试流程。Master / Guest 行为、同步变量、网络事件和所有权转移，比 ClientSim 更接近真实环境，但仍不能替代私密上传后的公网测试。
-- 性能数据是真实数据。FPS、Draw Call、显存占用都准（[第 38 章](/placeness/performance/) 里 Stats 提到「编辑器有 overhead」，Build & Test 没这层 overhead）。
+- 性能数据是真实数据。FPS、Draw Call、显存占用都准（[第 38 章](/placeness/performance/) 里 Stats 提到「编辑器有 overhead（额外开销）」，Build & Test 没这层 overhead）。
 
 它不能模拟的：跨平台（Android / Quest 必须切平台单独构建测）、外部 VRChat 网络的延迟和丢包（公网走的不止本地环回）、真实陌生玩家的乱按。
 
@@ -138,7 +138,7 @@ Build & Test 跑通之后，下一步是真的把世界传上去，但只对自�
 
 1. **真实公网延迟**：Build & Test 在本地回环上跑，往返几乎零延迟。公网平均往返几十到几百毫秒，丢包偶发。同步逻辑里假设「立刻收到」的代码，公网上会暴露成「按按钮三秒后灯才亮」。
 2. **真实账号分隔**：好友、关注、陌生人之间的权限边界，本地客户端走不全。
-3. **真实平台路径**：上传 → CDN → 玩家下载 → 进世界，这条链路里任何一步出错都只有真上传才发现（构建包过大被截断、特定资源 import settings 在线上炸、缩略图缺失等）。
+3. **真实平台路径**：上传 → CDN（分布在各地的下载节点）→ 玩家下载 → 进世界，这条链路里任何一步出错都只有真上传才发现（构建包过大被截断、特定资源 import settings 在线上炸、缩略图缺失等）。
 
 Friends 私密上传后的测试流程：
 
@@ -160,7 +160,7 @@ PC 平台测好之后，切到 Android：菜单 `File` → `Build Settings` → 
 
 - 如果有 Quest 头显，挑一台 Quest 直接进自己的私密世界，看能不能进、纹理有没有掉、帧率能不能上 72。
 - 没有 Quest 也可以用桌面端的 Android 客户端（VRChat 在 Android 平板 / 移动端有客户端）替代验。
-- 重点看 SDK Validation 上有没有红色错误。Quest 平台 Validation 比 PC 严格得多：超规格的 Shader 会被替换成 Standard Lite，纹理超过 1K 会强制压。这些行为用 Build & Test 能直接看到。
+- 重点看 SDK Validation（SDK 上传前的自动检查）上有没有红色错误。Quest 平台 Validation 比 PC 严格得多：超规格的 Shader 会被替换成 Standard Lite，纹理超过 1K 会强制压。这些行为用 Build & Test 能直接看到。
 
 PC 上最华丽的世界到 Quest 上经常需要砍一半内容（关掉实时光、合并镜子、换 Shader）。这种砍在私密发布前做完，比公开发布之后再修代价小得多。
 

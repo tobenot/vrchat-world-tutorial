@@ -76,7 +76,7 @@ GUID 是 Unity 内部用来在场景里互相引用的地址。`Hierarchy` 里�
 
 ## 第二节：写一份 Unity .gitignore
 
-`Asset Serialization` 改完之后，下一件事是告诉 Git 哪些目录**不要**进版本控制。Unity 项目根目录下有一些纯缓存目录，加起来动辄几个 GB，每次打开项目都重新生成。这些不能进仓库。
+`Asset Serialization` 改完之后，下一件事是告诉 Git 哪些目录**不要**进版本控制。`.gitignore`（Git 的忽略清单）就是做这件事的文件。Unity 项目根目录下有一些纯缓存目录，加起来动辄几个 GB，每次打开项目都重新生成。这些不能进仓库。
 
 GitHub 官方维护的 [Unity.gitignore](https://github.com/github/gitignore/blob/main/Unity.gitignore) 是社区共识基线。在项目根目录新建 `.gitignore`，复制这份模板进去，再补几条 VRChat 相关的：
 
@@ -194,7 +194,7 @@ GitHub 推荐单仓库保持在 1 GB 以下、超过 5 GB 后会更严格地限�
 
 Unity 项目即便排除了缓存，仍然有不少大文件：FBX 模型可能上百 MB、PSD 源文件、烘焙的 Lightmap、长音频、视频。这些文件 Git 处理起来效率很低（每改一次会保存整份），仓库会快速膨胀。
 
-Git LFS（Large File Storage）是 Git 的扩展，把大文件存到独立的对象存储里，仓库本身只保留一个指针。每次 clone 时按需下载实际文件。
+Git LFS（Large File Storage）是 Git 的扩展，把大文件存到独立的对象存储里，仓库本身只保留一个指针。每次 clone（把远端仓库完整拉到本地）时按需下载实际文件。
 
 VRChat 项目里典型要走 LFS 的文件类型：
 
@@ -242,7 +242,7 @@ GitHub 免费账号包含一定量 Git LFS 存储和带宽配额；截至 2026 �
 
 两个人合作时最怕的不是脚本冲突，是场景冲突。`MyWorld.unity` 是一份大文本文件，里面是 Unity 自己的 YAML 序列化，一个 GameObject 涉及十几行 fileID / GUID 引用。Git 默认的合并算法对这种文件没辙。
 
-Unity 自带一个 Smart Merge 工具：`UnityYAMLMerge`。它能理解 Unity YAML 的语义结构（GameObject、Component、Reference），按对象级别合并而不是按文本行。
+Unity 自带一个 Smart Merge（智能合并）工具：`UnityYAMLMerge`。它能理解 Unity YAML 的语义结构（GameObject、Component、Reference），按对象级别合并而不是按文本行。
 
 Unity 官方文档给的是 **Git mergetool** 配置。它不会在普通 `git merge` 时自动接管所有 `.unity` / `.prefab` 文件，而是在发生冲突后，你运行 `git mergetool` 时调用 UnityYAMLMerge。
 

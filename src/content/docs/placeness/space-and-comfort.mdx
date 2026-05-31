@@ -22,7 +22,7 @@ VRChat 玩家的「身高」由几件事决定：
 
 1. **Avatar 模型本身的身高**。模型骨架决定头顶在哪。
 2. **玩家自己设置的视高（Eye Height）**。VRChat 客户端里玩家可以校准自己 VR 头显的真实视高。
-3. **运行时缩放**。VRChat 的 Avatar Scaling 系统按「视高（米）」工作，不是缩放倍率：玩家自助菜单（Quick Menu → Avatar Scaling）默认能把视高调到 `0.2` 米到 `5.0` 米之间；Udon 通过 `SetAvatarEyeHeightMinimumByMeters` / `MaximumByMeters` 等 API 可以拓展到 `0.1` 米到 `100` 米；世界也可以单独把这个范围锁死。视高直接由头显在场景里的物理高度决定，不需要换算成倍率。
+3. **运行时缩放**。VRChat 的 Avatar Scaling 系统按「视高（米）」工作，不是缩放倍率：玩家自助菜单（Quick Menu → Avatar Scaling）默认能把视高调到 `0.2` 米到 `5.0` 米之间；Udon 通过 `SetAvatarEyeHeightMinimumByMeters` / `MaximumByMeters` 等 API 可以调整这个范围，但官方文档要求最小值不能低于 `0.2` 米、最大值不能高于 `5` 米。视高直接由头显在场景里的物理高度决定，不需要换算成倍率。
 
 世界搭建时常用的参考数：
 
@@ -178,9 +178,9 @@ VRChat Player Controller 默认能爬 `45°` 以下的斜面。超过 `45°` 玩
 VRChat 玩家默认的两个动作受 avatar 尺寸影响：
 
 - **重力下落**。Player Controller 重力是固定的，不随 avatar 尺寸变。1 米的小型 avatar 摔下楼跟 2 米的大型 avatar 摔下楼，下落速度感觉不一样。
-- **跳跃高度**。玩家跳跃冲量通过 Udon 的 `Networking.LocalPlayer.SetJumpImpulse(float)` 设置；编辑器侧的入口在第 5 章拖进场景的 `VRCWorld` Prefab 上的 `VRC Player Mods` 组件里，**不在 `VRC Scene Descriptor` 上**。VRCWorld Prefab 的出厂默认值是 `3`（对应大约能跳上 0.6 米的台阶）；VRChat 引擎本身的内部默认是 `0`（即"禁用跳跃"），所以一个不带 VRCWorld Prefab 的空白世界里玩家是跳不起来的。
+- **跳跃高度**。玩家跳跃冲量通过 Udon 的 `Networking.LocalPlayer.SetJumpImpulse(float)` 设置；编辑器侧的入口习惯做法是放在第 5 章拖进场景的 `VRCWorld` Prefab 自带的玩家修改器组件里。具体字段名和默认值以你当前 SDK 版本的 Inspector 为准（旧版常见值是 `3`，对应大约能跳上 0.6 米的台阶；VRChat 引擎本身在没有任何修改器时默认 JumpImpulse 为 `0`，玩家是跳不起来的）。
 
-如果世界里要玩家能跳上一个高度 0.6 米的平台，Jump Impulse 默认 `3` 大概够用；想跳更高就往上调，官方推荐工作范围是 `0`–`10`（VRChat 文档没有给这个值标注物理单位，把它当一个无量纲的"冲量值"对待即可）。具体值进 VR 测一次最稳。这两个数在第 5 章拖入 `VRCWorld` Prefab 时已经是默认值，要做平台跳跃类玩法时再回来调。
+如果世界里要玩家能跳上一个高度 0.6 米的平台，Jump Impulse 默认 `3` 大概够用；想跳更高就往上调，把它当一个无量纲的"冲量值"对待即可。具体值进 VR 测一次最稳。这两个数在第 5 章拖入 `VRCWorld` Prefab 时已经是默认值，要做平台跳跃类玩法时再回来调。
 
 ## 自己改一遍场景
 

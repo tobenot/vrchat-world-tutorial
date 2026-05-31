@@ -1,20 +1,22 @@
 ---
 title: 34. UI、提示和反馈
-description: VRChat 不支持 Screen Space Overlay，所有 UI 都得做在三维空间里。这一章用 World Space Canvas + TextMeshPro 把欢迎牌、按钮提示和状态反馈做扎实，再讲怎么在 VR 里把中文字体加进来。
+description: VRChat 世界里**可被指针交互的 Unity UI 必须用 World Space Canvas + VRC_UIShape**；Screen Space Overlay 只在桌面/移动端做纯展示性 HUD 时才考虑。这一章用 World Space Canvas + TextMeshPro 把欢迎牌、按钮提示和状态反馈做扎实，再讲怎么在 VR 里把中文字体加进来。
 difficulty: 新手
 estimatedMinutes: 45
 chapterType: hands-on
 requiresSDK: true
-summary: VRChat 世界的 UI 只能用 World Space Canvas，做在三维里。文字用 TextMeshPro，中文字体要自己生成 SDF Font Asset。这一章把欢迎牌、按钮提示、状态反馈三类 UI 各做一遍，给一份在 VR 里能看清的字号 / 距离参考。
+summary: VRChat 世界的可交互 UI 通常做成 World Space Canvas（VRC_UIShape 也只接 World Space Canvas）；移动端官方建议可以补一份 screen-space UI。文字用 TextMeshPro，中文字体要自己生成 SDF Font Asset。这一章把欢迎牌、按钮提示、状态反馈三类 UI 各做一遍，给一份在 VR 里能看清的字号 / 距离参考。
 sidebar:
   order: 4
 ---
 
 第 31 章给出生点放过一块欢迎牌。那时候只是占位，文字字号、字体、位置都没细调。这一章把 VRChat 世界 UI 的整套做法走一遍。
 
-VRChat 世界的 UI 跟一般 Unity 项目不同。一般 Unity 游戏里能用屏幕空间叠加（Screen Space Overlay）做 HUD，玩家看到的是平铺在屏幕上的二维元素。**VRChat 世界里不行**：屏幕空间 UI 跟玩家自己的 VR 菜单冲突，会被禁用。所有世界 UI 都得做成 World Space（三维空间里的物体），玩家的 VR 头显或桌面相机像看一块画板那样看它。
+VRChat 世界的 UI 跟一般 Unity 项目不同。一般 Unity 游戏里能用屏幕空间叠加（Screen Space Overlay）做 HUD，玩家看到的是平铺在屏幕上的二维元素。**VRChat 世界里不能用 Screen Space Overlay 做被 VR 指针点击的 Unity UI**：可被指针交互的 Unity UI 必须挂在 `World Space Canvas` 上，再配 `VRC_UIShape` 组件，否则 VRChat 不会把指针事件分发到这块 UI 上。
 
-这是一个限制，也是一个特点。它逼着作者把信息做成「场景里真的存在的牌子 / 屏幕 / 标签」，比一堆飘在屏幕角落的图标更有「地方」感。
+针对桌面端、特别是移动端的纯展示性 HUD（不需要被 VR 指针点击的那类），VRChat 官方近期在 Mobile Best Practices 里建议可以使用 screen-space UI；这种 UI 不能挂 VRC_UIShape，但适合做触屏体验。本章默认使用 World Space + VRC_UIShape，做世界里「场景中存在的牌子 / 屏幕」型 UI；移动端 HUD 只在确有需要时再单独考虑。
+
+把信息做成「场景里真的存在的牌子 / 屏幕 / 标签」，比一堆飘在屏幕角落的图标更有「地方」感，这也是 VRChat 世界 UI 的传统美学。
 
 ## 第一节：World Space Canvas 的搭法
 

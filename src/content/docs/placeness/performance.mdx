@@ -12,7 +12,7 @@ sidebar:
 
 第 36 章烘了一次光，第 37 章贴了一面砖墙。这时候打开 `Build & Test` 进世界，画面好看了，但帧率掉到 30 FPS。VR 用户会马上觉得晕。
 
-「跑得好」是一种独立的能力，跟「看着好」是两件事。多数 VRChat 世界塌的不是设计塌，是性能塌。Excellent 评级和 Poor 评级的世界，玩家进来会用不同方式对待：前者愿意逛半小时，后者十秒就退。
+「跑得好」是一种独立的能力，跟「看着好」是两件事。多数 VRChat 世界塌的不是设计塌，是性能塌。优化得好的世界和优化很差的世界，玩家进来会用不同方式对待：前者愿意逛半小时，后者十秒就退（VRChat 官方明确公布的「Performance Rank」目前只针对头像，世界端这里说的是体感意义上的「优化得好/坏」，而不是某种官方评级）。
 
 这一章把性能优化的几条主路一次走完。原则一句话：
 
@@ -65,6 +65,10 @@ Animation components : 5
 | Tris | 三角面数 | < 500k | < 250k |
 | Verts | 顶点数 | < 600k | < 300k |
 | Shadow casters | 投阴影物体数 | < 100 | < 30 |
+
+::::note[这些数字是经验预算]
+表里这些上限是社区里常见的「不太会塌」的工作预算，不是 VRChat 官方公布的硬性阈值。VRChat 官方给出的可参照硬限制目前主要在 Quest 包体（≤ 100 MB）和 Quest 内容优化建议（详见第 39 章）；其他几列偏高/偏低都还能跑，只是体验差异。把这张表当起点，最终以多人 + 真实头像下的实测为准。
+::::
 
 **FPS** 是最终结果，前面几个是它的成因。FPS 低的时候，看 Batches / SetPass / Tris 哪一项最高，就知道瓶颈在哪。
 
@@ -219,7 +223,7 @@ VRChat 世界里大多数实时灯都不需要投阴影。只有一两盏「核�
 
 ## 第八节：脚本性能
 
-UdonSharp 脚本本身效率比 Udon Graph 好得多，但仍然有几条要避免：
+UdonSharp 最终编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级，因此性能瓶颈仍然要按 Udon 的规则去处理。下面这些常见坑要避免：
 
 1. **Update 里做 GetComponent / FindObjectOfType**。这两个调用每次都遍历场景，每帧 60 次的话能直接拖卡。把引用用 `public` 字段在 Inspector 里指定。
 2. **Update 里做 string 拼接 / new Object**。会触发 GC，UdonSharp 的 GC 比标准 C# 慢。
@@ -290,6 +294,8 @@ VRCreators 那份优化清单反复强调一句：
 - [Unity Manual：Static / Dynamic Batching](https://docs.unity3d.com/Manual/DrawCallBatching.html)
 - [Unity Manual：GPU Instancing](https://docs.unity3d.com/Manual/GPUInstancing.html)
 - [Unity Manual：Occlusion Culling](https://docs.unity3d.com/Manual/OcclusionCulling.html)
-- [VRChat Creator Docs：Performance Tips for Worlds](https://creators.vrchat.com/worlds/performance-tips/)
+- [VRChat Creator Docs：UdonSharp Performance Tips](https://creators.vrchat.com/worlds/udon/udonsharp/performance-tips/)
+- [VRChat Creator Docs：Udon Networking Performance](https://creators.vrchat.com/worlds/udon/networking/performance/)
+- [VRChat Creator Docs：Quest Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
 - [VRCreators：World Optimization Guide（2026-05 修订）](https://vrcreators.net/docs/vrchat/optimization)
 - [VRCreators：World Optimization Checklist（2026-05 修订）](https://vrcreators.net/docs/vrchat/world-optimization-checklist)

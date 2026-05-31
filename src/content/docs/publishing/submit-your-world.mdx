@@ -12,7 +12,7 @@ sidebar:
 
 `Build & Test` 跑过很多次，地板平、出生点对、性能稳。Builder 面板上面那个按钮一直是熟悉的 `Build & Test`。它旁边还有一个按钮，叫 `Build & Publish for Windows`。
 
-这一下按下去，世界会被打包上传到 VRChat 服务器，拿到一个永久的 World ID，进入 Community Labs。任何打开了 Community Labs 选项的玩家都能在世界列表里搜到它。同一个 World ID 不会再变，下次更新就是覆盖。
+这一下按下去，世界会被打包上传到 VRChat 服务器，拿到一个永久的 World ID（世界唯一编号），进入 Community Labs。任何打开了 Community Labs 选项的玩家都能在世界列表里搜到它。同一个 World ID 不会再变，下次更新就是覆盖。
 
 「上传」这件事不是单向的：可以撤回、可以改可见性、可以更新版本。但 World ID 一旦发出来就回不去了，已经收藏了的玩家不会因为再上传一次就丢失收藏。所以**第一次上传等于把世界正式钉到 VRChat 网络上**。这一章把第一次钉之前要对齐的几件事过一遍。
 
@@ -26,7 +26,7 @@ VRChat 官方 Submission 页面和社区共识合在一起，是这样一份清�
 | `Build & Test` 跑过 | 单人本地能进、能走、出生点对 | 第 5 章、第 41 章 |
 | 多人 + 真实头像测过 | 邀请 3-5 个朋友进过一次 | 第 38 章、第 41 章 |
 | 性能预算达标 | PC 单人出生点 90 FPS、Quest 72 FPS | 第 38 章 |
-| 烘焙了 Occlusion Culling 和 Lightmap | Static 都打勾、Bake 都跑过 | 第 36 章、第 38 章 |
+| 烘焙了 Occlusion Culling（遮挡剔除）和 Lightmap（烘焙光贴图） | Static 都打勾、Bake 都跑过 | 第 36 章、第 38 章 |
 | 镜子默认关、玩家可开关 | 镜子开销在所有人头上，默认状态保守 | 第 16 章、第 38 章 |
 | 有 Backup | 项目目录已 commit / 备份 | 第 42 章 |
 | 素材授权清楚 | Booth / Asset Store 模型的商用 / 二次发行权限确认过 | 第 43 章 |
@@ -38,22 +38,25 @@ VRChat 官方 Submission 页面和社区共识合在一起，是这样一份清�
 
 世界根物体上挂的 `VRC Scene Descriptor` 是 SDK 识别这个 Unity 场景为「VRChat 世界」的核心组件。第 5 章第一次接触它的时候只填了 Spawns。这一章上传前把它的所有重要字段过一遍。
 
-打开 `VRC Scene Descriptor` 的 Inspector：
+打开 `VRC Scene Descriptor` 的 Inspector，照官方组件文档（`creators.vrchat.com/worlds/components/vrc_scenedescriptor/`）抓重点字段：
 
 ```text
 VRC Scene Descriptor
 ├─ Spawns                         (玩家入场时的出生 Transform 数组)
-├─ Spawn Order                    (Sequential / Random / Demo)
-├─ Spawn Orientation              (AlignPlayerWithSpawnPoint / AlignRoomWithSpawnPoint / Default)
+├─ Spawn Order                    (First / Sequential / Random / Demo)
+├─ Spawn Orientation              (Default / Align Player With Spawn Point /
+│                                  Align Room With Spawn Point)
 ├─ Reference Camera               (拍世界的相机，决定摄影模式默认参数)
-├─ Respawn Height Y               (玩家掉到此 Y 值之下，自动重生)
-├─ Object Behaviour At RespawnHeight  (Pickup 也跟着重生 / 销毁 / 留在原地)
-├─ Forbid User Portals            (是否禁止玩家在世界里开传送门)
-├─ Forbid Spawning Avatars        (是否禁止玩家用基座切换头像)
-├─ Layer Collision Matrix         (各 Layer 之间是否互相碰撞，多数时候用默认)
-├─ Dynamic Materials / Prefabs    (运行时 Instantiate 用得到的资源白名单)
-└─ Rendering Settings             (后处理、雾、Skybox 的指针)
+├─ Respawn Height -Y              (玩家掉到此 Y 值之下，自动重生)
+├─ Object Behaviour At Respawn    (Pickup 跟着重生 / 销毁)
+├─ Forbid Free Modification       (是否禁止非 Master 玩家拖动未同步的物体)
+├─ Forbid User Portals            (是否禁止玩家在世界里从菜单开传送门)
+├─ User Custom Voice Falloff …    (玩家语音衰减距离的自定义)
+├─ Interact Passthrough           (哪些 User Layer 上的交互可以穿透)
+└─ Dynamic Materials / Prefabs    (已废弃，SDK3 不再使用)
 ```
+
+字段名以当前官方文档对齐。SDK2 时代教程里看到的 `Layer Collision Matrix`、`Forbid Spawning Avatars`、`Rendering Settings` 这种字段在 SDK3 的 Scene Descriptor 上**不再以这种形式存在**——Layer 设置走全局 Project Settings，渲染设置走 Lighting / Camera。
 
 第 5 章只填过 `Spawns`。现在每一项都该看一眼。
 
@@ -61,17 +64,18 @@ VRC Scene Descriptor
 
 Spawns 是一个 Transform 数组。`Spawn Order` 决定多人进场时怎么分配：
 
+- `First`：所有玩家都从第 0 个 Spawn 进。开发期最稳。
 - `Sequential`：第一个玩家用第 0 个 Spawn，第二个用第 1 个，转一圈。适合「每个玩家有自己的位置」的世界（剧场、办公室）。
 - `Random`：随机。多数 Chill 世界用这个。
-- `Demo`：固定第 0 个。开发期常用。
+- `Demo`：Spawn 点代表 room-scale 的中心——离 room 中心一米的人，就在 spawn 一米外落地。VR 房型对齐场景偶尔用。
 
 `Spawn Orientation`：
 
-- `AlignPlayerWithSpawnPoint`：玩家朝向跟 Spawn Transform 的 Forward 一致。
-- `AlignRoomWithSpawnPoint`：把整个 VR 房间空间对齐 Spawn Transform。VR 玩家比较少撞这个。
-- `Default`：用玩家进世界时候的当前朝向。
+- `Align Player With Spawn Point`：玩家朝向跟 Spawn Transform 的 Forward 一致。
+- `Align Room With Spawn Point`：把整个 VR 房间空间对齐 Spawn Transform。
+- `Default`：当前等同于 `Align Player With Spawn Point`（官方文档当前如此说明，SDK 升级时可能改默认）。
 
-第 31 章讲过出生点朝向的影响：朝墙的出生点会让玩家三秒内就退。`AlignPlayerWithSpawnPoint` 是一个相对稳的默认。
+第 31 章讲过出生点朝向的影响：朝墙的出生点会让玩家三秒内就退。`Align Player With Spawn Point` 是一个相对稳的默认。
 
 ### Respawn Height Y
 
@@ -95,28 +99,37 @@ VRChat 玩家可以在任何世界里开传送门到另一个世界。Chill 世�
 
 ### Capacity（容量）
 
-`VRC Scene Descriptor` 上没有 `Capacity` 字段。容量在**上传时**填，跟世界元数据一起存到服务器。
+`VRC Scene Descriptor` 上没有 `Capacity` 字段。容量在**上传时**填，跟世界元数据一起存到服务器。当前 SDK 上传面板把它拆成两个字段：
 
-合理范围：
-
-| 世界类型 | 推荐 Capacity |
+| 字段 | 含义 |
 | :--- | :--- |
-| Chill / 小屋 | 16 - 24 |
-| Social Hub | 32 - 64 |
-| Game World（小型） | 8 - 16 |
-| Event World（演出） | 60 - 80 |
-| Tool World（个人用） | 4 - 8 |
+| `Maximum Capacity` | 实例硬上限。达到这个数后新玩家加不进来；instance creator / world creator / group owner 等少数角色仍可进入。 |
+| `Recommended Capacity` | 推荐人数。公开实例达到这个数后，VRChat 会从公共实例列表里把它隐去；持有直接邀请链接的玩家在某些情况下仍能进。 |
 
-VRChat 实际单实例硬上限是 80 人左右（具体随版本变）。`Capacity` 只是「软上限」：超过这个数一般玩家不能再加入这一个实例，但通过邀请仍能挤进去。
+合理范围（先填 Recommended，再填 Maximum，Maximum 一般 ≥ Recommended 一些）：
 
-定 Capacity 的原则：第 38 章测试过的「同时多少人进来还能跑」就是 Capacity 的真正上限。Capacity 写 32 但性能撑不住 32 人，等于给玩家挖坑。
+| 世界类型 | Recommended | Maximum |
+| :--- | :--- | :--- |
+| Chill / 小屋 | 8 - 16 | 16 - 24 |
+| Social Hub | 24 - 40 | 32 - 64 |
+| Game World（小型） | 4 - 8 | 8 - 16 |
+| Event World（演出） | 40 - 60 | 60 - 80 |
+| Tool World（个人用） | 2 - 4 | 4 - 8 |
+
+定容量的原则：第 38 章测试过的「同时多少人进来还能跑」就是 Recommended 的真正上限。Recommended 写 32 但性能撑不住 32 人，等于把人引到一个会卡的实例里。Maximum 是「最多容忍多少人挤进来」，超出 Recommended 不至于直接把人挡门外，但官方会停止把这个实例继续推荐给新人。
 
 ::::tip[为什么不能在 SDK 里就把 Capacity 锁死]
 设计逻辑是：世界是技术资产、Capacity 是社群配置。同一个世界文件，不同社群可能想要不同人数（私人聚会 8 人，公开活动 80 人）。
 
-VRChat 把 Capacity 放到上传元数据这一层（在网页 / SDK 上传面板里改），改 Capacity 不需要重新打包。后续要扩容/缩容只需在 VRChat 网站改一下。
+VRChat 把容量放到上传元数据这一层（在网页 / SDK 上传面板里改），改容量不需要重新打包。后续要扩容/缩容只需在 VRChat 网站改一下。
 
-代价是：Capacity 不会被项目源码追踪。Git 里看不到这个值的变化历史。世界元数据是另一份「上线后才存在的状态」，跟 Unity 工程独立。
+代价是：容量不会被项目源码追踪。Git 里看不到这个值的变化历史。世界元数据是另一份「上线后才存在的状态」，跟 Unity 工程独立。
+::::
+
+::::caution[老教程里只有一个 Capacity]
+旧版 SDK 只有单一 `Player Capacity` 字段。官方为了兼容老世界做了一条规则：如果你用旧 SDK 上传过、没设 Recommended，那么旧的 `Player Capacity` 会被当作 Recommended，**Maximum 会被自动设为它的 2 倍**。这就是为什么社区老资料里有时把单字段 Capacity 叫「软上限」——它在新模型里其实是 Recommended，背后还有一个隐式的 Maximum = 2× 软上限。
+
+新世界直接按双字段填，避免被这条兼容规则坑。
 ::::
 
 ## 第三节：SDK Builder 的发布流程
@@ -144,33 +157,37 @@ Builder 面板会先扫一遍场景，把问题列在上方。常见问题：
 
 把所有阻塞性（红色）的修完，剩下的黄字警告自己判断要不要管。
 
-确认无阻塞错误后，下方会出现 `Build & Publish for Windows` 按钮。这一步开始：
+确认无阻塞错误后，下方会出现 `Build & Publish Your World Online` 按钮（早期 SDK 版本叫 `Build & Publish for Windows`）。这一步开始：
 
-1. 点 `Build & Publish for Windows`。
-2. SDK 把场景打包成 VRChat 世界资源（一个 `.vrcw` 文件，本地缓存到 `Temp/` 目录）。
-3. 打包完成后弹出 VRChat 登录窗口（如果没登过）。
-4. 登录后弹出**世界元数据填报面板**。
+1. 在 Builder 面板的 **World** 区先把元数据填好（Name、Description、Capacity、Tags、Thumbnail、Visibility 等，第四节展开）。
+2. 点 `Build & Publish Your World Online`。
+3. SDK 把场景打包成 VRChat 世界资源（一个 `.vrcw` 文件，本地缓存到 `Temp/` 目录）。
+4. 打包完成后会要求登录 VRChat（如果还没登过），登录后直接上传。
 
 第一次上传可能要等几分钟（首次构建加上传都是冷启动）。后续更新版本就快得多。
 
+::::note[老教程里有「上传后弹出元数据面板」]
+旧版 SDK 的流程是：先点 Build & Publish，打包完之后再弹一个独立的元数据填报面板填名称/描述/缩略图。当前 SDK 改成了「在 Builder 里直接填好元数据，再按按钮上传」。如果你看到的教程里有那个独立面板，多半是 2023 之前写的，对着改字段名就行。
+::::
+
 ## 第四节：填元数据
 
-弹出来的填报面板大致长这样（按 SDK 版本略有差异）：
+SDK 当前版本里这些信息直接在 Builder 面板的 World 配置区填，跟 Build 按钮在同一页。字段大致是：
 
 ```text
-┌─ World Information ──────────────────────────────┐
-│  Name        : [                              ]  │
-│  Description : [                              ]  │
-│                [                              ]  │
-│  Image       : [选择一张缩略图]                  │
-│  Tags        : [作为多个分类标签]                │
-│  Capacity    : [16     ]                         │
-│  Visibility  : ( ) Private  ( ) Friends          │
-│                ( ) Group    ( ) Public           │
-│                                                  │
-│  [ ] I have read & agree to the Content Guide..  │
+┌─ World ──────────────────────────────────────────┐
+│  Name                : [                       ] │
+│  Description         : [                       ] │
+│  Maximum Capacity    : [32   ]                   │
+│  Recommended Capacity: [16   ]                   │
+│  Content Warnings    : [ ... ]   ← 见下文         │
+│  Tags                : [ ... ]                   │
+│  World Debugging     : [ ] 允许其他玩家调试 Udon  │
+│  Thumbnail           : [选择一张缩略图]           │
+│  Visibility          : ( ) Private  ( ) Friends  │
+│                        ( ) Group    ( ) Public   │
 └──────────────────────────────────────────────────┘
-                           [Upload]
+        [Build & Test]   [Build & Publish Your World Online]
 ```
 
 每一栏的注意事项：
@@ -189,15 +206,15 @@ Builder 面板会先扫一遍场景，把问题列在上方。常见问题：
 
 ### Image（缩略图）
 
-- VRChat 推荐 `1200×900` 像素，PNG 或 JPG。比例错了 SDK 会自动裁剪。
-- 用世界里能看到的真实画面。Photoshop 拼贴或外部素材容易被算法判定为「不真实」并降权。
-- 第一张图决定多数点击：80% 的玩家从世界列表里看图片决定要不要点进来。
+- 社区推荐 `1200×900` 像素（4:3）。比例错了 SDK 会自动裁剪。
+- 用世界里能看到的真实画面。Photoshop 拼贴或外部素材会让玩家进来发现「跟图不一样」，VRChat 公开提交规则里明确写**不能用误导性预览图**。
+- 第一张图决定多数点击：玩家在世界列表里大都先看图再读名字。
 
 ### Tags（标签）
 
 VRChat 标签系统按世界类型粗分：`game`、`avatar`、`chill`、`event`、`social`、`gallery` 等。在 SDK 上传面板里勾选与世界**实质相符**的几个。
 
-VRChat 的 Submission 文档里专门写了一条：**滥用标签骗曝光会被处罚**。一座 Chill 世界硬贴 `game` 标签，后台会直接移除标签或对账号做处罚。Tags 是 SEO 工具，不是流量作弊工具。
+VRChat 的 Submission 文档里专门写了一条：**滥用标签骗曝光会被处罚**。一座 Chill 世界硬贴 `game` 标签，后台会直接移除标签或对账号做处罚。Tags 是 SEO（搜索优化）工具，不是流量作弊工具。
 
 ### Visibility（可见性）
 
@@ -228,7 +245,7 @@ VRChat 的 Submission 文档里专门写了一条：**滥用标签骗曝光会�
 
 Community Labs 是 VRChat 设的一个预审池：
 
-- **Opt-in 机制**：只有在 VRChat 设置里主动勾选 `Show Community Labs` 的玩家，才能搜到 Labs 里的世界。多数老玩家会勾。
+- **Opt-in（主动开启）机制**：只有在 VRChat 设置里主动勾选 `Show Community Labs` 的玩家，才能搜到 Labs 里的世界。多数老玩家会勾。
 - **预审性质**：Labs 里的世界进入时会有一行黄字警告「这个世界尚未审核，可能性能不佳或包含不当内容」。
 - **每周一次**：每个账号每 7 天只能往 Community Labs 投放一座**新**世界。已经在 Labs 里的世界更新版本不受这个限制。
 
@@ -257,28 +274,31 @@ VRChat 官方 Submission 页面列了几条硬线，违反会被从 Public 或 L
 
 头像世界（Avatar World）里展示的头像必须跟用户最终下载到的是同一个。社区里的常见骗术是上传时摆「干净头像」让世界先公开，公开之后再换成违规头像。
 
-VRChat 抓到这种行为的处罚：**1 个月内禁止该账号往 Community Labs 提交新世界**，并可能升级为应用内处罚。
+VRChat 抓到这种行为的处罚（按官方公开提交页）：**该账号往 Community Labs 提交新世界的能力会被暂停一段时间，重复违规会升级为应用内处罚（in-app moderation action）**。具体时长官方没公开数字。
 
 ### 文件过大
 
-世界包大小有软建议：**200 MB 以下**。超过这个值不会被自动拒绝，但会被标记，运营有权要求缩减。Quest 版的硬上限是 100 MB（第 39 章讲过）。
+世界包大小有官方原话的软建议：**`Try to keep your worlds under 200MB`**。超过这个值不会被自动拒绝，但运营可能要求你缩减并临时把世界从 Public 移除。Quest 版的硬上限是 100 MB（第 39 章讲过）。
 
 文件大的常见原因：未压缩纹理、未清理的导入素材、Lightmap 分辨率过高。第 38 章和第 43 章讲过怎么压。
 
 ### 性能严重不达标
 
-Submission 页面的硬要求：**VR 单人在出生点必须达到 45 FPS**。低于这个数的世界会被标为 Performance 严重不达标，后续可能从 Public 移除。
+VRChat 官方提交页没有给出明确的 FPS 硬数字，但反复强调「不可让世界严重影响玩家性能」、「Avatar Pedestal 上的头像必须 reasonably optimized」。社区长期共识是 **VR 单人出生点至少 45 FPS** 算底线，长期低于这个数的世界容易被运营关注、被要求缩减。
 
-实际上达到 45 FPS 只是底线。第 38 章讲的 90 FPS（PC）/ 72 FPS（Quest）是体验稳的目标。
+实际上 45 FPS 只是底线。第 38 章讲的 90 FPS（PC）/ 72 FPS（Quest）才是体验稳的目标。
 
-### TOS / 社区准则违规
+### TOS（服务条款）/ 社区准则违规
 
 世界里的视频、音频、模型不能违反 VRChat 服务条款（具体见 `hello.vrchat.com/legal`）。常见违规类型：
 
 - 受版权保护内容未授权使用（电影片段、未授权音乐）。
-- 含露骨成人内容但未在世界标签或 Description 里标注。
-- 仇恨言论、骚扰内容。
-- 误导性宣传（标题描述跟实际世界完全不符）。
+- 含露骨或违规内容（成人 / 仇恨 / 骚扰），无论是否「标注过」都不可上传。
+- 误导性宣传（标题、描述、缩略图跟实际世界完全不符）。
+
+::::caution[Content Warnings 已废弃]
+2026 年的官方公开提交页明确写：**Content Warnings are deprecated and not used at this time.** 即使勾了 warning，违反 Community Guidelines / ToS 的内容仍会被处理。它**不是**「打了标就可以上」的免责机制。
+::::
 
 ### 镜子和视频播放器没默认关
 
@@ -362,14 +382,14 @@ AI 给的标签建议要交叉核实：VRChat 官方支持的标签列表会变�
 - [ ] Console 没有红色错误
 - [ ] `Build & Test` 单人通过
 - [ ] 多人 + 真实头像测过
-- [ ] PC 出生点 90 FPS / Quest 72 FPS（最低 45 FPS）
+- [ ] PC 出生点 90 FPS / Quest 72 FPS（社区底线建议 ≥ 45 FPS）
 - [ ] Occlusion Culling 已烘
 - [ ] Lightmap 已烘
 - [ ] 镜子和视频播放器默认关、有开关
 - [ ] `VRC Scene Descriptor` 的 Spawns / Respawn Height / Reference Camera 都填
 - [ ] 第一次上传 Visibility 设 `Private` 或 `Friends`
 - [ ] World Name / Description / Image / Tags 都准备好
-- [ ] Capacity 跟实测多人帧率一致
+- [ ] Maximum Capacity / Recommended Capacity 跟实测多人帧率一致
 - [ ] Quest 版（如果做了）的 Shader / 包大小 / 纹理符合 Android 限制
 - [ ] 项目已 commit / 备份
 

@@ -31,7 +31,7 @@ sidebar:
 
 | 漏的件 | 失败现象 |
 | :--- | :--- |
-| `[UdonBehaviourSyncMode]` | 默认 `Any`，UdonSharp 编译警告，行为不确定 |
+| `[UdonBehaviourSyncMode]` | 同步模式没有被脚本固定，Inspector 里的设置可能和教程预期不一致 |
 | `[UdonSynced]` | 字段不进同步打包，跟没标一样 |
 | `RequestSerialization()` | Manual 模式下不调就不发，远端永远收不到 |
 | `OnDeserialization()` | 远端收到了字段但不知道要根据它做什么，灯仍然不变 |
@@ -171,16 +171,16 @@ T~150ms Beta 客户端：ApplyState（灯熄灭）
 
 Alpha 看到瞬间反应，Beta 看到延迟约 100ms 的反应。延迟的大小取决于网络情况，在 PC 局域网里可能更短，跨大陆 200ms 都正常。
 
-::::tip[为什么 Manual 模式比 Continuous 省事]
-`[UdonBehaviourSyncMode]` 还能填 `Continuous` 选项。Continuous 模式下 VRChat 自动检测同步字段的变化，每帧自动打包发送一次。
+::::tip[为什么按钮开关更适合 Manual]
+`[UdonBehaviourSyncMode]` 还能填 `Continuous` 选项。Continuous 模式会高频自动同步变量，但它受网络 tick、带宽和限速影响，不等于「每帧一定发送」，也不保证每个中间值都可靠到达。
 
-按按钮翻一次 bool 这种事，用 Continuous 是浪费：每秒 90 帧（VR 帧率），每一帧都查一次「这个字段变了吗」。99% 的帧都没变。
+按按钮翻一次 bool 这种事，用 Continuous 是浪费：绝大多数时间字段都没变，却仍然让这个 Behaviour 处在高频同步模式里。
 
-Manual 模式下作者明确说「现在打包」，VRChat 才发一次。带宽降到只在按按钮的瞬间花。
+Manual 模式下作者明确说「现在打包」，VRChat 才请求发送一次。带宽主要花在按按钮的瞬间。
 
-Continuous 真正的用武之地是高频变化的字段：物体位置（每帧都在动）、玩家速度。这些用 Continuous 写起来省事，但物体位置类的状态多数情况下用 `VRC Object Sync` 就够，不需要自己写 `[UdonSynced]`。
+Continuous 真正的用武之地是高频变化、且中间值丢几次也能接受的字段。物体位置类状态多数情况下用 `VRC Object Sync` 就够，不需要自己写 `[UdonSynced]`。
 
-实战里写自定义同步几乎全用 Manual 模式。这本书后面的章节也以 Manual 为主。
+实战里写自定义开关、门、计分板这类离散状态，几乎都优先用 Manual 模式。这本书后面的章节也以 Manual 为主。
 ::::
 
 ## 把门也接上同步
@@ -349,10 +349,12 @@ public class ExplosionButton : UdonSharpBehaviour
 「没有同步变量但要发网络事件」的脚本（像这个 `ExplosionButton`）必须用 `NoVariableSync`。挑成 `None` 的话脚本里写的 `SendCustomNetworkEvent` 会安静地什么都不发，调试半天找不到原因。
 ::::
 
-`NetworkEventTarget` 有两个值：
+这一章先用两个最常见的 `NetworkEventTarget`：
 
 - `NetworkEventTarget.All`：所有当前在实例里的客户端，包括发起者。
 - `NetworkEventTarget.Owner`：仅这个 UdonBehaviour 的 Owner。
+
+较新的 SDK 还提供 `Self` / `Others` 等目标。入门阶段先把 `All` 和 `Owner` 用熟，后面需要精细分发时再查当前 SDK 文档。
 
 ::::tip[为什么 Owner 模式有用]
 看起来「就发给 Owner」是个奇怪的需求。常见的用法是这样：
@@ -380,7 +382,7 @@ public void RegisterPlayer()
 
 这是「让 Owner 替我改全局状态」的标准模式。不写 Owner 模式时也能用 `All` 加 `IsOwner` 检查实现，但 Owner 模式更省一点带宽。
 
-不过 `RegisterPlayer` 里有一个新问题：B 的客户端跑的是 B 的代码，怎么知道是 A 申请加入的？老版本 SDK 这件事得靠预先同步 `requestingPlayer` 字段绕一圈。Worlds SDK 3.8.1+ 的 `SendCustomNetworkEvent` 直接支持参数：被调用的方法上加 `[NetworkCallable]` 属性，把发起者一并传过去。最多 8 个参数，类型大致跟同步变量一致；带 `[NetworkCallable]` 的方法不能用方法重载或默认参数。第 30 章做小游戏时会展开。
+不过 `RegisterPlayer` 里有一个新问题：B 的客户端跑的是 B 的代码，怎么知道是 A 申请加入的？老版本 SDK 这件事得靠预先同步 `requestingPlayer` 字段绕一圈。Worlds SDK 3.8.1+ 的 `SendCustomNetworkEvent` 支持带参数调用：被调用的方法需要加 `[NetworkCallable]`，最多 8 个参数，类型大致跟同步变量一致；带 `[NetworkCallable]` 的方法不能用方法重载或默认参数。发起者本身不是普通参数自动塞进方法签名里，较新 SDK 可通过 `VRC.SDK3.UdonNetworkCalling.NetworkCalling.CallingPlayer` 读取，或者自己把 `playerId` 当参数传过去。第 30 章做小游戏时会展开。
 ::::
 
 ## 哪个用同步变量、哪个用网络事件

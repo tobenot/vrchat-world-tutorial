@@ -437,51 +437,29 @@ public void OnButtonHit(int buttonIndex)
 
 让 Charlie 加入这个实例（开第三个客户端，或拉一位朋友）。
 
-Charlie 进来后应该立刻看到：
+Charlie 进来后应该在短暂同步后看到：
 
 - 当前发光的按钮（不需要等下一次切换）。
 - Alpha 和 Beta 的当前分数。
-- 自己的名字会在下一次按按钮（或下一次玩家加入）后出现在计分板上。
+- 自己的名字出现在计分板上。
 
-第三条值得说明。回顾 `OnPlayerJoined` 的逻辑：Charlie 加入时所有客户端的 `OnPlayerJoined` 都会被调用，但只有 Owner 那台会真的写 `playerIds[slot] = Charlie.playerId` 并广播。
+第三条值得说明。回顾 `OnPlayerJoined` 的逻辑：Charlie 加入时所有客户端的 `OnPlayerJoined` 都会被调用，但只有 Owner 那台会真的写 `playerIds[slot] = Charlie.playerId` 并调用 `RequestSerialization()`。
 
-如果 Charlie 自己**就是 Owner**（罕见，但 Alpha 和 Beta 都已经离开过、Charlie 是当前实例最早的玩家时会发生），她自己写一次。
+Charlie 加入瞬间，她自己的客户端会先收到已有同步状态的快照，UI 可能先显示已有玩家分数；随后 Owner 处理 `OnPlayerJoined`、把 Charlie 加进 `playerIds` 并序列化，Charlie 的名字再出现在计分板上。这个过程通常只晚一拍，不需要等下一次按按钮。
 
-她加入瞬间她那台客户端会触发一次 `OnDeserialization`（拿到当前 playerIds 和 scores），UI 立刻显示已有玩家分数。她自己的名字要等 Owner 那台客户端广播下一次 `RequestSerialization` 后才出现：按按钮、其他玩家加入、被人按了 ResetButton 等等任何引发 `RequestSerialization` 的操作都行。
+如果 Charlie 自己**就是 Owner**（例如 Alpha 和 Beta 都已经离开，Charlie 进入时成为当前 Owner），她自己的客户端会负责写入槽位并广播。
 
-::::tip[新玩家想立刻在计分板上看到自己]
-要做到这一点，在 Charlie 自己的客户端额外发一次「自己加入了」的请求给 Owner：
-
-```cs
-// 在 GameManager 里
-public override void OnPlayerJoined(VRCPlayerApi player)
-{
-    // ... Owner 处理逻辑同前
-
-    // 如果加入的是本机玩家，主动让 Owner 立刻广播一次
-    if (player == Networking.LocalPlayer && !Networking.IsOwner(gameObject))
-    {
-        SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(RequestImmediateSerialize));
-    }
-}
-
-public void RequestImmediateSerialize()
-{
-    if (!Networking.IsOwner(gameObject)) return;
-    RequestSerialization();
-}
-```
-
-第 28 章那个「让 Owner 替我做事」的模式又出现了。这种小细节决定的是体验：玩家进来 0.2 秒就看到自己 vs 玩家进来 30 秒还看不到自己。
+::::tip[如果新玩家一直没出现在计分板上]
+这时不要再额外发「立即序列化」请求，先查 Owner 那台客户端的日志：`OnPlayerJoined` 有没有收到 Charlie、有没有找到空槽、`RequestSerialization()` 有没有调用、`OnPostSerialization` 是否成功。这里的问题通常是 Owner 判断、数组槽位或引用没配对，而不是缺少一次网络事件。
 ::::
 
 ## 第八步：测 Owner 切换
 
 让 Alpha 离开实例。她原本是 Manager 的 Owner。
 
-VRChat 自动把所有权转给下一位玩家（按加入顺序）：Beta。Beta 客户端的 GameManager 上 `OnOwnershipTransferred` 会触发。这之后所有「只让 Owner 跑」的逻辑（`OnPlayerJoined`、`ResetGame`、`OnButtonHit` 里的 RequestSerialization）会在 Beta 客户端执行。
+VRChat 会自动把所有权改派给仍在实例中的玩家（常见是当前 Master / 最早加入者；不要把具体顺序写进玩法规则）。所有客户端的 GameManager 上都会触发 `OnOwnershipTransferred`。这之后所有「只让 Owner 跑」的逻辑（`OnPlayerJoined`、`ResetGame`、`OnButtonHit` 里的 RequestSerialization）会在新的 Owner 客户端执行。
 
-游戏不应该中断：Alpha 离开瞬间她的分数留在 `playerIds[slot]` 里几秒，直到 Beta 客户端的 `OnPlayerLeft(Alpha)` 跑完才被清掉。这件事多数情况下没问题。
+游戏不应该中断：Alpha 离开瞬间她的分数留在 `playerIds[slot]` 里几秒，直到新的 Owner 客户端的 `OnPlayerLeft(Alpha)` 跑完才被清掉。这件事多数情况下没问题。
 
 边界情况要小心：如果 Alpha 离开时她**手里**还有「等待广播」的状态变化（比如 RequestSerialization 调了但还没真的发出去），那个变化会丢。这是分布式系统的常态，不用过分追求完美一致。
 
@@ -522,7 +500,7 @@ VRChat 自动把所有权转给下一位玩家（按加入顺序）：Beta。Bet
        │                │
    ┌───┴────┐      ┌────┴────┐
    │ Button │      │ Reset   │
-   │ (None) │      │ (None)  │
+   │NoVarSync│     │NoVarSync│
    └────────┘      └─────────┘
    不存同步状态        不存同步状态
    只调 Manager         只调 Manager

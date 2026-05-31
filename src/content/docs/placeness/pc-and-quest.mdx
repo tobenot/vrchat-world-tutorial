@@ -1,6 +1,6 @@
 ---
 title: 39. PC 和 Quest
-description: VRChat 的 Quest 版是 Android 构建。Shader 必须用 VRChat Mobile 系列、纹理 1K 上限、世界包体 100 MB 上限、几乎不能用透明、烘焙光必须用 Subtractive 模式。在同一个工程里同时维护 PC 和 Quest 两份构建。
+description: VRChat 的 Quest 版属于 Android 构建。强烈建议 Shader 走 VRChat Mobile 系列、纹理 1K 上限、世界包体 100 MB 上限、几乎不用透明、烘焙光走 Subtractive。在同一个工程里同时维护 PC 和 Quest 两份构建。
 difficulty: 进阶
 estimatedMinutes: 50
 chapterType: hands-on
@@ -35,11 +35,11 @@ Qualcomm 官方从未公开 XR2 Gen 2 内置 Adreno GPU 的具体子型号。XR2
 Quest 设备运行的是定制版 Android。VRChat Quest 版本就是一个 Android 应用包（apk）。所有东西要按 Android 规则走：用 ASTC 纹理压缩、不能用 PC 专用 Shader、不能用 .NET 桌面专用 API。
 
 ::::tip[「Quest 版」实际上是「Android 版」]
-VRChat 官方文档里有时把这部分叫 Quest，有时叫 Android。两个词在 VRChat 语境里**完全是同一件事**：Quest 设备运行 Android 系统，VRChat 给 Android 平台编译的 apk 包就是 Quest 版。
+VRChat 官方文档里有时把这部分叫 Quest，有时叫 Android。两个词在 VRChat 语境里大体指同一件事：Quest 设备运行 Android 系统，VRChat 给 Android 平台编译的 apk 包就同时面向 Quest 和其他 Android 设备。
 
-未来 VRChat 也可能把这个 Android 构建用到其他 Android 设备（手机、其他 XR）。但目前实际上跑这个版本的只有 Meta Quest 系列。所以行业里说 Quest 版 = Android 版，没区别。
+近期 VRChat 已经把 Android 版扩展到了 Google Play 上的手机/平板（公开测试），所以严格来说「Android 版」是包含 Quest 的更大集合，不再等同于「只跑 Meta Quest」。但创作者在 SDK 里要做的事完全一致：选 `Android` 平台目标，按 Mobile/Quest 的限制约束自己。
 
-第 39 章的「Quest」一律指代 Android 平台构建。
+第 39 章的「Quest」一律指代 Android 平台构建，包含跑这套构建的所有 Android 设备。
 ::::
 
 ## 第一节：在 VRChat SDK 里切换平台
@@ -50,7 +50,7 @@ VRChat SDK Control Panel（菜单 `VRChat SDK` → `Show Control Panel`）的 `B
 Platform Target
 ├─ ● Windows           （PC 构建）
 ├─ ○ Android           （Quest 构建）
-└─ ○ iOS               （iOS 构建，2025 年 10 月正式上线，需要 SDK 3.7.6 或更高）
+└─ ○ iOS               （iOS 构建，需较新版本 SDK，详情参考官方 Release Note）
 ```
 
 切换平台时 Unity 会重新导入所有资源（贴图按目标平台压缩、Shader 按目标平台编译）。这一步在大型项目里能花十几分钟到一小时，第一次切换时尤其慢。第二次切换（已经导入过）会快得多，Unity 会缓存平台特定的资源。
@@ -65,9 +65,11 @@ Platform Target
 
 切回 Windows 平台时所有这些设置自动恢复成 PC 版。
 
-## 第二节：Quest 必须用 VRChat Mobile Shader
+## 第二节：Quest 强烈建议用 VRChat Mobile Shader
 
-VRChat 在 Quest 版本上**强制限制 Shader**。允许的范围：
+VRChat 在 Quest 版本上对 **Avatar** Shader 有一份硬性白名单（Avatar 用其他 Shader 会被 fallback）。**世界**这边规定相对宽松：自定义 Shader 技术上能跑，但移动 GPU 上的性能与兼容性风险全在作者，因此官方文档的建议也是默认走 Mobile 系列。本书一律按这个思路：世界在 Quest 上**优先使用** VRChat 自带的 Mobile Shader。
+
+允许 / 推荐使用的范围：
 
 - `VRChat/Mobile/Diffuse`：最简单，只有 Albedo + 烘焙光。
 - `VRChat/Mobile/Bumped Diffuse`：加 Normal Map 的 Diffuse。
@@ -166,8 +168,8 @@ Quest 上传给 VRChat 的世界包体硬上限 **100 MB**（压缩后）。这�
 
 | 规矩 | 必须 / 建议 |
 | :--- | :--- |
-| 贴图最大 1K | 必须（实际能跑但内存压力大） |
-| 单世界三角面 ≤ 50,000 | 建议（给玩家头像留预算） |
+| 贴图最大 1K | 强烈建议（实际能跑但内存压力大） |
+| 单世界三角面 ≤ 250,000 | 官方优化建议预算（再小则更稳） |
 | 世界总材质数尽量少 | 建议（合并材质 + 图集） |
 | 实时灯数量 = 0 | 强烈建议 |
 | Cloth 组件 = 0 | 必须 |
@@ -185,10 +187,12 @@ Quest 上传给 VRChat 的世界包体硬上限 **100 MB**（压缩后）。这�
 Quest 玩家打开 VRChat 主菜单浏览世界时，世界缩略图角落会显示一个标签：
 
 - 双兼容（PC + Android）：可以正常进。
-- 只 PC：旁边一个红色 X，进不去。
-- 只 Quest：可以进（PC 玩家也能进 Quest 版世界，反过来不行）。
+- 只 PC：Quest 玩家旁边一个红色 X，进不去。
+- 只 Quest：PC 玩家旁边同样会显示无法加入提示。
 
-发布世界时，VRChat 网站会显示这个世界已经构建过哪些平台。第一次发布是 PC 版，要再切到 Android 平台发一次 Quest 版（第 44 章会展开发布流程）。如果还要支持 iOS（VRChat iOS 客户端 2025 年 10 月正式上线），再切到 iOS 平台发一次。三次发布的是**同一个世界**（同一个 Room Id，绑定同一个 Blueprint），客户端按玩家所在平台自动选对应版本。
+跨平台规则的一句话总结：玩家只能进自己平台已经构建过的世界版本。如果某个世界没有针对当前平台构建，该平台玩家既不能在 UI 里加入，也不能通过 Portal 跳过去。所以发布时**最好同时构建 PC 和 Android 两个版本**，不要假设「PC 玩家也能进 Quest 版世界」之类。
+
+发布世界时，VRChat 网站会显示这个世界已经构建过哪些平台。第一次发布是 PC 版，要再切到 Android 平台发一次 Quest 版（第 44 章会展开发布流程）。如果还要支持 iOS，再切到 iOS 平台发一次。三次发布的是**同一个世界**（同一个 World ID，绑定同一个 Blueprint），客户端按玩家所在平台自动选对应版本。
 
 ## 第七节：维护一份工程做两个版本
 
@@ -215,7 +219,7 @@ Quest 玩家打开 VRChat 主菜单浏览世界时，世界缩略图角落会显
 
 - 美术风格选择上，避免依赖透明、PBR 强反射、复杂粒子的风格。卡通 / 极简 / 烘焙风格更容易跨平台。
 - 灯光设计上，从一开始就走「主光烘焙 + 局部 Emission」。少用甚至不用实时光，PC 版反而更稳。
-- 场景规模上，Quest 上一个 50,000 三角面的世界已经接近上限。所以世界范围别太大，单个房间面积控制在 30m × 30m 内，多个房间靠走廊或传送连。
+- 场景规模上，官方 Android 内容优化建议把世界三角面控制在 25 万以内；50k–100k 是更稳的保守目标，也给玩家头像留出预算。所以世界范围别太大，单个房间面积控制在 30m × 30m 内，多个房间靠走廊或传送连。
 - 交互系统上，Pickup、Station 这些 SDK 自带的组件 Quest 都支持。复杂粒子、Cloth 不支持。
 
 ::::caution[「先做 PC 版，发布后再做 Quest 版」是常见陷阱]

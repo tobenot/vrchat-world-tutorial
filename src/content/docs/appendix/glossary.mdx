@@ -8,7 +8,7 @@ pagefind: true
 
 正文按教学顺序展开，所以同一个术语可能直到下一章才被命名。这一份按主题分类，方便读到一半回来查。
 
-每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖第 1–2 部基础词，以及第 5–7 部新增门槛词。
+每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖第 1–2 部基础词，以及第 5–9 部新增门槛词。
 
 未覆盖的术语，[`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 里逐章登记了"等哪一章写完就该补什么"。
 
@@ -681,6 +681,130 @@ Unity 的布料模拟组件，让布按物理规则飘动或下垂。移动 GPU 
 **`ASTC`**  
 Android / Quest 常用的现代纹理压缩格式。Unity 在 Android 标签下常用 `ASTC 6x6` 作为贴图压缩起点。  
 首次出现：[第 39 章](/placeness/pc-and-quest/)。
+
+---
+
+## 调试与测试（第 8 部）
+
+**`NullReferenceException` / `NRE`**（空引用异常）  
+脚本试图使用一个值为 `null` 的引用时抛出的异常。VRChat / UdonSharp 世界里常见原因是 Inspector 字段没拖引用，或 `GetComponent<T>()` 没找到组件。  
+首次出现：[第 40 章 · 坏了怎么办，调试的思路](/surviving/debugging-mindset/)。
+
+**调用栈**（Call Stack）  
+错误发生时的一串调用记录，显示代码从哪个方法一路调用到出错位置。Console 里的 `(at Assets/xxx.cs:18)` 就是定位入口。  
+首次出现：[第 40 章](/surviving/debugging-mindset/)。
+
+**`Debug.Log`**  
+Unity 的日志输出方法，用来把脚本执行到哪、变量当前是什么写进 Console 或客户端日志。发布前要清掉高频日志，避免额外开销。  
+首次出现：[第 40 章](/surviving/debugging-mindset/)。
+
+**`halted`**  
+UdonBehaviour 未捕获异常后被 Udon 虚拟机停掉的状态。出现 `this UdonBehaviour will be halted` 后，这个对象上的事件通常不会继续触发，直到玩家重新进入世界。  
+首次出现：[第 40 章](/surviving/debugging-mindset/)。
+
+**`EXTERN`**  
+Udon 字节码里调用外部 API 的指令名。错误日志里看到 EXTERN 时，通常要结合上下文找到是哪一行 C# 调用了对应 API。  
+首次出现：[第 40 章](/surviving/debugging-mindset/)。
+
+**`SDK Validation`**  
+VRChat SDK 在构建或上传前做的自动检查，会提示缺少组件、平台不兼容 Shader、纹理规格超限等问题。Quest / Android 平台的检查通常比 PC 更严格。  
+首次出现：[第 41 章 · 测试你的世界](/surviving/testing-your-world/)。
+
+---
+
+## 版本管理与许可（第 8 部）
+
+**`.gitignore`**  
+Git 的忽略清单，告诉 Git 哪些文件和目录不要进入版本控制。Unity 项目里常用它排除 `Library/`、`Temp/`、`Builds/` 等自动生成目录。  
+首次出现：[第 42 章 · 版本管理和备份](/surviving/version-control/)。
+
+**`Git LFS`**（Large File Storage）  
+Git 的大文件扩展。仓库里只保留指针，实际的大模型、PSD、HDR、视频等文件放到 LFS 存储里，避免普通 Git 历史迅速膨胀。  
+首次出现：[第 42 章](/surviving/version-control/)。
+
+**`Smart Merge` / `UnityYAMLMerge`**  
+Unity 自带的智能合并工具，能按 GameObject / Component 等对象结构合并 `.unity`、`.prefab` 这类 YAML 文件。它比普通文本行合并更适合 Unity 场景冲突。  
+首次出现：[第 42 章](/surviving/version-control/)。
+
+**`EULA`**（End User License Agreement，最终用户许可协议）  
+规定用户买到或下载到一份素材后能做什么、不能做什么。Unity Asset Store 素材统一受 Asset Store EULA 约束。  
+首次出现：[第 43 章 · 素材、插件和版权](/surviving/assets-and-licenses/)。
+
+**`Creative Commons` / `CC`**（知识共享）  
+一组常见内容许可证家族，用 BY、NC、ND、SA 等条件组合说明署名、商用、修改和相同方式共享要求。Sketchfab、Polyhaven、Freesound 等素材站经常使用。  
+首次出现：[第 43 章](/surviving/assets-and-licenses/)。
+
+**`DMCA`**  
+美国版权投诉与下架流程。版权方投诉后，平台可以按 DMCA 流程下架世界、头像或其他用户上传内容。  
+首次出现：[第 43 章](/surviving/assets-and-licenses/)。
+
+**`IP`**（Intellectual Property，知识产权）  
+版权、商标、角色形象、品牌标识等权利的统称。VRChat 世界里使用动漫角色、游戏音乐、品牌 logo 等内容时，通常都涉及 IP 授权问题。  
+首次出现：[第 43 章](/surviving/assets-and-licenses/)。
+
+---
+
+## 发布、商业化与运营（第 9 部）
+
+**`Community Labs`**  
+VRChat 新公开世界的预审池。世界先给主动开启 Labs 的玩家看到，经过一段时间和数据观察后再自动晋升为 Public。  
+首次出现：[第 44 章 · 发布你的世界](/publishing/submit-your-world/)。
+
+**`Opt-in`**  
+主动开启某个功能或入口。Community Labs 的 opt-in 用户指在 VRChat 设置里主动勾选 `Show Community Labs` 的玩家。  
+首次出现：[第九部总览](/publishing/)。
+
+**元数据**（Metadata）  
+描述内容本身的数据。VRChat 世界的元数据包括名称、描述、缩略图、标签、容量、可见性等，不等同于 Unity 场景内容。  
+首次出现：[第 44 章](/publishing/submit-your-world/)。
+
+**`SEO`**（Search Engine Optimization，搜索优化）  
+让内容更容易被搜索和推荐系统识别的写法或配置。VRChat 标签能帮助分类和搜索，但滥用标签会被处罚。  
+首次出现：[第 44 章](/publishing/submit-your-world/)。
+
+**`TOS`**（Terms of Service，服务条款）  
+平台对用户行为、上传内容和账号责任的规则。世界发布后，内容不仅要符合素材许可证，也要符合 VRChat TOS 和社区准则。  
+首次出现：[第 44 章](/publishing/submit-your-world/)。
+
+**`Creator Economy`**  
+VRChat 官方创作者经济系统。玩家用 VRChat Credits 购买世界内商品或订阅，创作者通过 Tilia 提现。  
+首次出现：[第 45 章 · 赞助、商品和创作者经济](/publishing/creator-economy/)。
+
+**`VRChat Credits`**  
+VRChat 平台内的商品交易代币。玩家购买 Credits，再用它购买 Listing 或 Subscription；创作者达到门槛后按规则提现。  
+首次出现：[第 45 章](/publishing/creator-economy/)。
+
+**`Tilia`**  
+VRChat 用于 Creator Economy 的第三方支付服务商，负责身份验证、资金流转和提现流程。  
+首次出现：[第 45 章](/publishing/creator-economy/)。
+
+**`Authorized Seller`**（授权卖家）  
+通过 VRChat 审核、允许在 Creator Economy 里创建和销售商品的创作者账号状态。申请时会审核账号、世界质量、社群活跃度和支付资料。  
+首次出现：[第 45 章](/publishing/creator-economy/)。
+
+**`Products` / `Listings` / `Subscriptions` / `Stores`**  
+Creator Economy 的四件套：Products 是买家最终拥有的内容，Listings 是一次性商品，Subscriptions 是周期性订阅，Stores 是购买入口。  
+首次出现：[第 45 章](/publishing/creator-economy/)。
+
+**`Dark Patterns`**（暗黑模式）  
+诱导用户做出不利选择的界面或流程设计，如隐藏取消按钮、虚假倒计时、强制订阅等。VRChat Creator Economy 明确禁止这类做法。  
+首次出现：[第 45 章](/publishing/creator-economy/)。
+
+**`backlog`**  
+待处理清单。维护世界时常用它收集反馈和想法，再按必修、应修、看情况等优先级排队。  
+首次出现：[第 46 章 · 维护一个世界](/publishing/maintaining-a-world/)。
+
+**`Feature Creep`**（功能膨胀）  
+产品或世界在持续迭代中不断加功能，最终偏离核心定位、维护成本变高的状态。VRChat 世界维护时，常见于过度接受常驻玩家的加功能建议。  
+首次出现：[第 46 章](/publishing/maintaining-a-world/)。
+
+**`IntelliSense`**  
+IDE 的自动补全和类型提示功能。检查 AI 给出的 UdonSharp API 名是否存在时，它是比记忆更可靠的第一道验证。  
+首次出现：[第 47 章 · 继续学习](/publishing/keep-learning/)。
+
+**`Mod`**  
+非官方客户端改件。本书只在解释「本地篡改不能作为可信来源」时提到它；VRChat 平台规则通常不允许修改客户端。  
+首次出现：[第 45 章](/publishing/creator-economy/)。
 
 ---
 

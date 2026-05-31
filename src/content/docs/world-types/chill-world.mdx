@@ -80,9 +80,9 @@ Chill 世界几乎都有镜子。但镜子默认开着会带来两个问题：�
 通用做法：镜子默认 inactive，旁边放一个开关让玩家需要时点开。第 16 章那个 `VRCMirrorReflection` 加 Interact 切 SetActive 的组合就是干这件事的。
 
 :::caution[镜子的「Reflect Layers」是性能大头]
-默认 `VRCMirrorReflection` 的 Reflect Layers 包含 `Default`、`Player`、`Water`、`PlayerLocal`、`MirrorReflection` 等。镜子每帧重渲染整个反射场景，开销跟反射层里物体数量成正比。
+`VRCMirrorReflection` 的 Reflect Layers 决定哪些层会出现在镜子里。镜子每帧重渲染整个反射场景，开销跟反射层里物体数量成正比。
 
-Chill 世界里如果镜子是常开的，至少把 `Water`、`PlayerLocal` 等用不到的层关掉。把房间里那些纯背景的雕塑丢到 `EnvironmentDoNotRender` 或自定义层，再把镜子的反射层排除该层。
+Chill 世界里如果镜子是常开的，思路是「能少照就少照」：把不需要在镜子里出现的环境物（远景雕塑、特效、纯背景物）丢到 `EnvironmentDoNotRender` 或自定义层，再把镜子的反射层排除掉它们。需要注意 `Water` 层 VRChat 镜子永远不会渲染（即使被勾选也不会出现在镜子里），所以不必再「关掉 Water」省性能；真正要看的开关是 Reflect Layers 里那些**会**被镜子渲染的层。
 
 不这样做的话，开镜子那一刻帧率有可能直接掉一半。第七部讲性能时会展开。
 :::

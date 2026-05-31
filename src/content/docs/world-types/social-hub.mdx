@@ -90,9 +90,9 @@ Social Hub 的人数容量由世界创作者通过 `VRCSceneDescriptor` 自行�
 
 这些需求事先没设计的话，现场没办法处理。常见的做法是做一个「管理员控制面板」：
 
-- 一个挂在某面墙上的 UI，只有特定 Player 能用（用 VRChat Player 的显示名 / Group Role 判断）。
+- 一个挂在某面墙上的 UI，只有特定 Player 能用（用 VRChat Player 的显示名 / 群组成员状态等做白名单判断）。
 - 控制面板里有：一键 Mute 全场 BGM、一键切换房间灯光预设、传送某玩家到「冷静角」、显示当前在场玩家列表。
-- 用 VRChat Group 集成的 API 判断身份。Group 里的 owner / moderator 自动有权限。
+- 用 VRChat Group 集成判断身份：哪个群组的 owner / moderator 进来时自动获得权限；具体可读的 Group 信息以当前 SDK 暴露的 API 为准（Class Exposure Tree / 官方文档）。
 
 这一类工具是 Social Hub 的隐形骨干，单纯的 Chill 世界不需要，但 Social Hub 几乎逃不掉。
 
@@ -103,7 +103,7 @@ VRChat 自带的 Groups（VRChat 群组）功能可以做到：群组成员才�
 Social Hub 不用这套就只是「一个公共大厅」。用上了能拿到：
 
 - **常驻群体在他们想要的隐私级别下使用空间**：今晚搞内部活动？开 Group Only 实例。今晚对外开放？开 Group Public。
-- **管理员身份自动传到世界里**：UdonSharp 可以读到玩家的 Group Role，门禁、控制面板天然有了权限基础。
+- **管理员身份自动传到世界里**：如果 SDK 当前版本暴露了相应的群组成员/角色查询能力，门禁、控制面板就有了权限基础；否则可以用显示名白名单 + 群组实例类型组合兜底。
 - **订阅功能跟世界绑定**：Group Subscription（订阅角色）配合 Udon Products，能给订阅者特权（特殊房间、专属椅子、显示名标记）。这一块第 25 章会讲。
 
 如果心里那个 Social Hub 是为某个具体社群服务的，VRChat Groups 集成几乎是默认选项。
@@ -123,7 +123,7 @@ Social Hub 介于 Chill 和 Game 之间，技术骨干是两边的杂交：
 - **氛围（继承自 Chill）**：光、声音、空间尺度、动线。第七部 31、32、33、36、37 章。
 - **同步（继承自 Game，但需求弱）**：管理员的操作要让所有人看到（关 BGM、切灯、传走玩家），常驻玩家收藏的设置要能保留。第 27、28 章。
 - **PlayerData（持久化）**：常驻玩家的偏好设置（坐哪、灯光预设、是否显示名签）跨实例保存。VRChat 的 PlayerData API（VRC.SDK3.Persistence）。第 28 章末尾或第 46 章。
-- **Group 集成**：读 Group Role 做权限。VRChat API：`Networking.LocalPlayer.IsUserInGroup()`、Group Role 查询。
+- **Group 集成**：基于群组实例类型（Group / Group+ / Group Public）+ SDK 当前暴露的群组成员/角色查询 API 做权限。具体可用 API 以 Class Exposure Tree 和当前 SDK 版本为准；不可用时用显示名白名单、Instance Owner 等方式兜底。
 - **UI**：管理面板、玩家列表、活动公告。第 34 章。
 - **性能（最大人数情况下）**：第 38、39 章。
 

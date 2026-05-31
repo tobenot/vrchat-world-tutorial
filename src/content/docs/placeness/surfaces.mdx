@@ -169,9 +169,9 @@ Unity 自带几种 Shader：`Standard`、`Standard (Specular setup)`、`Unlit`�
 
 这些都属于社区 Shader，不在官方支持范围内，但 VRChat 世界默认允许使用（PC 版本）。
 
-### VRChat Mobile Shader（Quest 必须）
+### VRChat Mobile Shader（Quest 强烈建议）
 
-Quest 平台的 Shader 受严格限制：**只能使用 VRChat SDK 自带的 Mobile 系列**。在 Inspector 里 Shader 下拉菜单选 `VRChat/Mobile/...`：
+Quest 平台对 Avatar Shader 有严格白名单；对**世界**而言自定义 Shader 在技术上仍然可用，但移动 GPU 上性能/兼容性风险很大，官方文档也建议默认走 VRChat 自带的 Mobile 系列。在 Inspector 里 Shader 下拉菜单选 `VRChat/Mobile/...`：
 
 - `VRChat/Mobile/Diffuse`：最简单，Albedo + 烘焙光。
 - `VRChat/Mobile/Bumped Diffuse`：加 Normal Map。

@@ -1,11 +1,11 @@
 ---
 title: 35. 传送门和世界之间的连接
-description: VRC Portal Marker 把世界 A 接到世界 B：填入目标世界的 Room Id、或者按 Search Term 让传送门自动指向某类世界。一个 Hub 由几个传送门串起来。
+description: VRC Portal Marker 把世界 A 接到世界 B：填入目标世界的 World ID，或者选 Home / Hub 等内置位置。一个 Hub 由几个传送门串起来。
 difficulty: 新手
 estimatedMinutes: 35
 chapterType: hands-on
 requiresSDK: true
-summary: VRChat 里的「跨世界传送门」是 VRC Portal Marker 组件。两种用法：直接填目标世界的 Room Id，或者按搜索关键字让传送门指向「某分类下排名第 N 的世界」。把一个简单的 Hub 世界做出来：四个传送门通向四个常去的世界。
+summary: VRChat 里的「跨世界传送门」是 VRC Portal Marker 组件，最常见的用法是填目标世界的 World ID，让传送门指向一个固定的世界。把一个简单的 Hub 世界做出来：四个传送门通向四个常去的世界。
 sidebar:
   order: 5
 ---
@@ -25,17 +25,17 @@ sidebar:
 
 Hub 的核心组件就是 VRC Portal Marker。一个 Hub 通常 4–8 个传送门，配几张说明牌、一段背景音乐、一组沙发就成立了。这一章把这件事做完。
 
-## 找到一个世界的 Room Id
+## 找到一个世界的 World ID
 
-VRC Portal Marker 接受一个目标世界的 Room Id。Room Id 的格式：
+VRC Portal Marker 接受一个目标世界的 World ID。World ID 的格式：
 
 ```text
 wrld_f995a2eb-7ddc-4558-aef1-815c3b23df6c
 ```
 
-`wrld_` 前缀 + 一个 UUID。这个 ID 是世界发布时 VRChat 生成的，每个世界唯一。
+`wrld_` 前缀 + 一个 UUID。这个 ID 是世界发布时 VRChat 生成的，每个世界唯一（社区里也常被叫作 Room Id，本质是同一串 ID）。
 
-获取一个世界的 Room Id 有几种方式：
+获取一个世界的 World ID 有几种方式：
 
 1. **从世界详情页**。VRChat 网页版（vrchat.com）登录后搜索世界，进入详情页，URL 里就带这个 ID：
 
@@ -45,7 +45,7 @@ wrld_f995a2eb-7ddc-4558-aef1-815c3b23df6c
 
 2. **从客户端**。VRChat 客户端里打开世界菜单，找到世界详情，复制世界 ID。
 
-3. **自己上传过的世界**：第 44 章会讲怎么发布世界，发布完成的页面会显示自己世界的 Room Id。
+3. **自己上传过的世界**：第 44 章会讲怎么发布世界，发布完成的页面会显示自己世界的 World ID。
 
 把这个 ID 完整复制下来，待会儿要填进 Portal Marker。
 
@@ -59,7 +59,7 @@ wrld_f995a2eb-7ddc-4558-aef1-815c3b23df6c
 这跟 Web 上做友情链接同理：技术上链谁都行，但出于对创作者的尊重，先打个招呼。
 :::
 
-## 第一节：用 Room Id 做一个传送门
+## 第一节：用 World ID 做一个传送门
 
 打开第二部那间小屋，挑一面墙作为「出门口」位置。
 
@@ -69,23 +69,17 @@ wrld_f995a2eb-7ddc-4558-aef1-815c3b23df6c
 
 这个空 GameObject 摆到墙边，Position 大约 `0, 1, 4`、Rotation 让它面向房间内（玩家从房间这边能看到正面）。
 
-`Add Component` → 搜 `VRC Portal Marker`。Inspector 里它的字段：
+`Add Component` → 搜 `VRC Portal Marker`。当前 SDK 里这个组件的 Inspector 字段非常简单：
 
 ```text
 VRC Portal Marker
-├─ World                    None                     # 选 VRChat 内置位置（Hub / Home）时用
-├─ Room Id                  wrld_xxxxxxxx-xxxx-...   # 直接填目标世界 ID
+├─ World ID                 wrld_xxxxxxxx-xxxx-...   # 目标世界的 ID
 ├─ Custom Portal Name       (留空)                   # 覆盖传送门顶部显示的名称
-├─ Sort Heading             Featured / Trending /     # Search Term 模式的字段
-│                           Updated / Created /        # （Room Id 模式不用填）
-│                           Active / None
-├─ Sort Order               Ascending / Descending
-├─ Offset                   0
-├─ Search Term              (留空)
-└─ Tag                      (留空，逗号分隔)
+└─ World                    None / Home / Hub        # 直连 VRChat 内置位置时使用
+                                                     # 选了内置位置就不用填 World ID
 ```
 
-把目标世界的 Room Id 完整粘贴到 `Room Id` 字段。其他字段留空。`Custom Portal Name` 想自定义就填一段文字，不填的话传送门会显示目标世界的真实名称。
+把目标世界的 World ID 完整粘贴到 `World ID` 字段，`World` 保持 `None`，`Custom Portal Name` 想自定义就填一段文字，不填的话传送门会显示目标世界的真实名称。
 
 ### 一个空 GameObject 怎么变成可见的传送门
 
@@ -97,47 +91,27 @@ VRC Portal Marker
 
 ### 三件踩坑常事
 
-1. **Room Id 填错一个字符**。Portal 仍然能在场景里渲染，但走过去会报「找不到世界」。粘贴时记得不要带前后空格、不要丢前缀 `wrld_`。
+1. **World ID 填错一个字符**。Portal 仍然能在场景里渲染，但走过去会报「找不到世界」。粘贴时记得不要带前后空格、不要丢前缀 `wrld_`。
 2. **目标世界是私密 / 朋友限定**。访问者权限不够时无法进入，会回到原世界并提示。Hub 用的传送门要确保目标世界是 Public 或 Community Labs。
 3. **传送门挂太低或挂在地下**。Portal 默认椭圆门高度约 2 米，如果 Portal Marker 的 Y 设到 `0`，门有一半在地下，玩家从外面看半截门觉得不对劲。`Y = 1` 是常用起点（门底距地面 1 米左右）。
 
-## 第二节：搜索式传送门
+## 第二节：直连内置位置（Home / Hub）
 
-`VRC Portal Marker` 还有一种用法：不指定具体世界，而是按搜索条件让 VRChat 自动选一个世界过去。
+`VRC Portal Marker` 的 `World` 字段可以选 `None` / `Home` / `Hub`：
 
-实务用法不多，但有几种值得知道：
+- `None`：使用上面填的 `World ID`，是最常用的模式。
+- `Home`：把当前玩家送回他们自己设置的 Home 世界（每个玩家不同）。
+- `Hub`：送到 VRChat 官方 Hub 世界。
 
-- 「这一周热度排名前 5 的休闲世界」做 5 个 Portal，让 Hub 自动反映 VRChat 当下热门。
-- 给某个 Tag（比如 `cozy`）做一个 Portal，每次玩家进来都通向不同的相关世界。
+这两个内置选项做「回家按钮」之类的入口很方便：玩家进 Hub 之前忘了自己 Home 在哪，门口放一个 `World = Home` 的 Portal，标牌写「回家」就够了。
 
-做法：
-
-1. 把 `Room Id` **完全留空**（这一步关键，文档明确说明：填了 Room Id 就走 Room Id 模式，搜索字段失效）。
-2. `Sort Heading` 选 `Trending`（按热度）。
-3. `Sort Order` 选 `Descending`（高到低）。
-4. `Search Term` 填一个关键词，比如 `cozy`。
-5. `Offset` 填 `0`（取搜索结果第 1 个；填 `1` 取第 2 个，以此类推）。
-
-`Sort Heading` 的几个选项：
-
-| 值 | 排序依据 |
-| :--- | :--- |
-| `Featured` | VRChat 官方精选 |
-| `Trending` | 当前热度（最近的访问 / 收藏增长） |
-| `Updated` | 最近更新 |
-| `Created` | 最近创建 |
-| `Active` | 当前在线人数最多 |
-| `None` | 不排序，按内部顺序（这种模式下 `Tag` 字段才生效） |
-
-`Tag` 字段只在 `Sort Heading = None` 时生效：可以填多个用逗号分隔的 tag，传送门会从带这些 tag 的世界里随机选。
-
-### 搜索式传送门的注意事项
-
-它带一个不可控因素：传送门指向的世界**会变**。今天是世界 A，明天可能变世界 B。如果做的是稳定的展厅 Hub，建议一律用 Room Id 模式。如果做的是「探索类」Hub，让玩家每次来都能撞见新世界，搜索式才合适。
+:::caution[过去版本里的搜索式传送门字段]
+旧版 SDK 的 `VRC Portal Marker` 曾带过 `Sort Heading` / `Sort Order` / `Search Term` / `Offset` / `Tag` 等字段，可以让 Portal 按热度、关键字自动选一个世界。当前公开的官方文档里已经不再列出这些字段；如果你在自己项目里看到它们，仍可按 Inspector 里的提示使用，但不再保证未来 SDK 一定保留。新做的 Hub 推荐一律用 `World ID` 直连，行为可控、长期稳定。
+:::
 
 ## 第三节：把一面墙做成 Hub
 
-把上面两节的内容合到一起，做一个最小 Hub：四个传送门排成一面墙，上方各有一块说明牌。
+把前两节里学到的 Portal 用法合到一起，做一个最小 Hub：四个传送门排成一面墙，上方各有一块说明牌。
 
 ### Hierarchy 整理
 
@@ -146,10 +120,10 @@ Hub
 ├─ HubFloor              （地板）
 ├─ HubWall_Back          （后墙）
 ├─ Portals
-│  ├─ Portal_World1      （Room Id A）
-│  ├─ Portal_World2      （Room Id B）
-│  ├─ Portal_World3      （Room Id C）
-│  └─ Portal_World4      （Room Id D）
+│  ├─ Portal_World1      （World ID A）
+│  ├─ Portal_World2      （World ID B）
+│  ├─ Portal_World3      （World ID C）
+│  └─ Portal_World4      （World ID D）
 └─ Signs
    ├─ Sign_World1        （World Space Canvas + TMP，标题 + 简介）
    ├─ Sign_World2
@@ -200,7 +174,7 @@ VRChat 玩家用过 Portal 离开当前世界，再回来时会重新加载这�
 
 ## 第四节：Portal Marker 是 SDK Prefab，可以直接用
 
-VRChat SDK 自带一个现成的 `VRCWorld_PortalMarker` Prefab。在 Project 面板搜索 `VRC Portal Marker`，能找到一个 Prefab 文件。把它拖到场景里，自带的 GameObject 已经摆好了 Portal Marker 组件，只需要填 Room Id。
+VRChat SDK 自带一个现成的 `VRCWorld_PortalMarker` Prefab。在 Project 面板搜索 `VRC Portal Marker`，能找到一个 Prefab 文件。把它拖到场景里，自带的 GameObject 已经摆好了 Portal Marker 组件，只需要填 World ID。
 
 实际项目里推荐用这个 Prefab 起步。第 8 章讲过 Prefab 的好处：以后 SDK 升级时官方更新这个 Prefab，自己的项目能跟着拿到新版本（如果用 Prefab Instance 而不是 Unpack）。
 
@@ -208,7 +182,7 @@ VRChat SDK 自带一个现成的 `VRCWorld_PortalMarker` Prefab。在 Project �
 
 挑一个或几个改：
 
-- 做一个三个 Portal 的小 Hub：一个 Portal 用 Room Id 链到具体世界，一个用 `Trending` 搜索式链到 `cozy` 关键词，一个用 `Active` 链到当下人最多的世界。对比三种 Portal 的体验。
+- 做一个三个 Portal 的小 Hub：分别链到三个常去的世界，注意每个 Portal 的 `World ID` 要从 vrchat.com 详情页 URL 复制粘贴。
 - 给 Hub 加一段背景音乐（第 33 章），加一个开关（第 16 章那个镜子开关结构改一下）。
 - 把 `Custom Portal Name` 字段填上自定义文字，覆盖默认显示的世界名。试试用「夜晚的咖啡店」覆盖一个原本叫 "Late Cafe" 的世界。
 
@@ -241,7 +215,7 @@ portalGO.SetActive(true);    // Portal 重新显示
 
 发布 Hub 之前自己走一遍：
 
-- [ ] 每个 Portal 的 Room Id 都正确（从 vrchat.com 复制粘贴，不要手敲）
+- [ ] 每个 Portal 的 World ID 都正确（从 vrchat.com 复制粘贴，不要手敲）
 - [ ] Portal 朝向：玩家从面前走向 Portal 时是正面
 - [ ] Portal Y 高度合理（门底距地面 0.5–1 米）
 - [ ] Portal 之间至少 2.5 米间距

@@ -22,9 +22,9 @@ VRChat 给的答案是：每个网络对象同一时刻**只有一个 Owner**，
 
 Owner 是一名玩家。具体规则：
 
-- 一个网络物体一开始的 Owner 是**实例的第一个进来的玩家**（业内常叫 Master）。
-- Owner 离开实例时，所有权会自动转给当前实例里的下一位玩家——通常是当前在场的最早加入者，本质是 VRChat 内部把 Master 角色重选给了下一位。这件事由 SDK 自动处理，不需要作者管。
-- 任何在场玩家都可以通过 `Networking.SetOwner(player, gameObject)` 主动接管所有权（前提是脚本不拒绝，下面 `OnOwnershipRequest` 会讲）。
+- 场景一开始就存在的网络物体，初始 Owner 通常是**实例的第一个进来的玩家**（也就是常说的 Master）。
+- Owner 离开实例时，VRChat 会自动把对象所有权改派给仍在实例中的其他玩家（常见是当前 Master / 最早加入者）。不要把具体顺序写进玩法规则里；把它当成 SDK 会自动接管的兜底机制。
+- 任何在场玩家都可以通过 `Networking.SetOwner(player, gameObject)` 主动请求接管所有权（前提是脚本不拒绝，下面 `OnOwnershipRequest` 会讲）。
 - 同一时刻，Owner 只有一位。
 
 Owner 不能做的事：
@@ -135,7 +135,7 @@ VRC Object Sync 检测变化（她是 Owner，发得出去）
     ↓
 广播给其他客户端
     ↓
-其他客户端的 OnDeserialization 把球摆到对应位置
+VRC Object Sync 的内部同步把球摆到对应位置 / 旋转
 ```
 
 每一步都是一条已经存在的机制，VRChat 把它们打包成「抓起 Pickup 自动同步」这件让作者觉得理所当然的事。
@@ -161,7 +161,7 @@ A 实例的 Owner 是 Alpha。Beta 抓起小球的瞬间，Beta 的客户端会�
 [Pickup] picked up. owner is now Beta
 ```
 
-Alpha 那边也会接到 `OnPickup`（同步事件触发），打的也是相同内容。所有权已经在球抓起的瞬间转给了 Beta。
+要在两边确认所有权变化，更可靠的观察点是 `OnOwnershipTransferred` 或稍后打印 `Networking.GetOwner(gameObject)` 的结果。不要只依赖远端是否也打出 `OnPickup` 日志来判断；Pickup 交互事件和 Object Sync 的内部同步不是同一条机制。
 
 ::::tip[为什么 Pickup 要自动转移所有权]
 不转移会怎样？球会按抓的人的手运动，但因为她不是 Owner，这个运动不会被广播。其他客户端看到球还停在桌上。她伸出去的手在虚空里抓着空气。
@@ -236,7 +236,7 @@ Alpha 在自己客户端再按一下：
 ::::caution[SetOwner 之前的 IsOwner 检查为什么不能省]
 看起来 `Networking.SetOwner` 是幂等的：本来就是 Owner 时再调一次，应该没事吧？
 
-文档建议是：调之前先用 `IsOwner` 判断，已经是 Owner 就跳过。原因是 `SetOwner` 即使重复调用也会经过完整的所有权转移流程：触发一次 `OnOwnershipRequest`、一次 `OnOwnershipTransferred`，并触发所有同步字段的重新打包。这件事不便宜，对于像 Pickup 那种每帧都被检查的场景，少调一次就少一次完整流程。
+实战里更稳的写法是：调之前先用 `IsOwner` 判断，已经是 Owner 就跳过。所有权请求会牵涉网络状态、回调和同步节奏，没必要在每次交互里制造额外请求。尤其是会被频繁检查的逻辑，少调一次就少一次不确定性。
 
 习惯上写成「先 IsOwner 判断、再 SetOwner、再改字段」三步：
 
@@ -300,7 +300,7 @@ public override bool OnOwnershipRequest(VRCPlayerApi requestingPlayer, VRCPlayer
 
 ## 转完做什么：OnOwnershipTransferred
 
-所有权真的转完之后，VRChat 在新 Owner 和旧 Owner 两台客户端上都会触发 `OnOwnershipTransferred`：
+所有权真的转完之后，VRChat 会在实例中的所有客户端上触发 `OnOwnershipTransferred`：
 
 ```cs
 public override void OnOwnershipTransferred(VRCPlayerApi player)
@@ -345,7 +345,7 @@ public override void OnOwnershipTransferred(VRCPlayerApi player)
 
 - **`Networking.IsOwner(go)` / `GetOwner(go)`**：判断当前 Owner。
 - **`Networking.SetOwner(player, go)`**：抢占所有权，先 `IsOwner` 判一下、再调，少做一次完整的转移流程。
-- **`OnOwnershipRequest(req, target)` 返回 bool**：在当前 Owner 那一台决定批不批准。
+- **`OnOwnershipRequest(req, target)` 返回 bool**：在请求方和当前 Owner 两边评估，任一端拒绝都会中止。
 - **`OnOwnershipTransferred(player)`**：转移完成后所有客户端都触发，常用来更新 UI 或重置临时状态。
 
 「按按钮的人成为 Owner」这一步铺好之后，灯本身仍然两边各亮各的。所有权决定的是「谁改的字段才会被发出去」，但 VRChat 还需要知道**哪个字段要被发出去**。这件事要等同步变量上场才合拢。

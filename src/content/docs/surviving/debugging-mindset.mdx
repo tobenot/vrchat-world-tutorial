@@ -43,7 +43,7 @@ NullReferenceException: Object reference not set to an instance of an object
 DoorController.Interact () (at Assets/Scripts/DoorController.cs:18)
 ```
 
-第一行是异常类型和概要消息，第二行带 `(at ...)` 是行号定位。点击这条红字，Console 下半部分会展开调用栈；双击它，Unity 会把对应的 `.cs` 文件打开并跳到那一行。
+第一行是异常类型和概要消息，第二行带 `(at ...)` 是行号定位。点击这条红字，Console 下半部分会展开调用栈（一串从哪里调用到哪里的记录）；双击它，Unity 会把对应的 `.cs` 文件打开并跳到那一行。
 
 `NullReferenceException`（缩写 NRE，空引用异常）在 VRChat 世界脚本里出现的频率高得不像话。它的意思永远是同一句：「试图调用某个变量，但那个变量是 `null`，没指向任何对象」。看到 NRE 通常是两种情况之一：
 
@@ -116,7 +116,7 @@ VRC.Udon.VM.UdonVMException: An exception occurred during EXTERN to
 ---> System.NullReferenceException: Object reference not set to an instance of an object.
 ```
 
-这是 VRChat Udon 虚拟机抛出的异常。关键短语：**`this UdonBehaviour will be halted`**。意思是这一份 UdonBehaviour 出了一次没接住的异常，整个脚本被 Udon 直接停掉，从这一刻起这个对象上的所有事件都不会再触发，直到玩家重新进入世界。
+这是 VRChat Udon 虚拟机抛出的异常。关键短语：**`this UdonBehaviour will be halted`**。意思是这一份 UdonBehaviour 出了一次未捕获异常（没有被代码接住的错误），整个脚本被 Udon 直接停掉，从这一刻起这个对象上的所有事件都不会再触发，直到玩家重新进入世界。
 
 「按一次有反应、再按一次没反应」「门第一下能开、第二下不动」这类「时灵时不灵」的问题，多半都是中间发生过一次 halted。看上去像「脚本累了」，实际上是脚本被 Udon 强制熄火了。
 
