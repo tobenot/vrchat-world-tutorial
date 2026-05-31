@@ -1,24 +1,27 @@
 ---
-title: 1.5 VRChat 这家公司和这个引擎
+title: 2. VRChat 这家公司和这个引擎
 chapterType: concept
 difficulty: 新手
 description: 在打开 Unity 之前，花十分钟搞清楚 VRChat 是谁做的、跑在什么上面、SDK 为什么长这样，以及这本书覆盖的是哪一块。
 summary: VRChat 是 2014 年起步的把 Unity 当作「世界格式」的社交平台。它把场景、化身、网络、跨平台都包了，也因此对 Unity 版本、脚本语言、性能配额都有一套自己的强约束。理解这套约束的来历，能解释后面会撞上的几乎所有「为什么必须这样」。
 sidebar:
-  order: 1.5
+  order: 2
+  badge:
+    text: 可选
+    variant: tip
 ---
 
-第 1 章绕着「想做点什么」聊了一圈，没碰技术。第 3 章马上要装一堆工具，第 4 章就要打开 Unity 搭场景。
+第 1 章只聊了想做什么，没碰技术；后面几章要装工具、写脚本、在 Unity 里搭场景。
 
-中间这一节是一张插页。它不教操作，回答四个问题：VRChat 是谁做的？跑在什么上面？SDK 为什么长成现在这样？这本书覆盖的是哪一块？
+这一章夹在中间，提供一张背景图，回答四个问题：VRChat 是谁做的？跑在什么上面？SDK 为什么长成现在这样？这本书覆盖的是哪一块？
 
-后面每一章都会甩链接回这里，免得每讲到一个新组件都要重新铺半页背景。这一章可以跳过，跳过不影响下一章动手。
+后续章节如果出现「SDK 为什么不让我这么写」「为什么 Quest 上跑不了这个 shader」之类的疑问，会通过链接回到本章对应小节。想直接动手的话，跳过这一章不影响后面跟做，等撞上具体疑问再回来翻也来得及。
 
 ## 一家美国公司，一个 Unity 项目
 
 VRChat Inc. 由 Graham Gaylor 和 Jesse Joudrey 在 2014 年成立，最初的版本是 Oculus Rift DK1 上的小 demo：让两个戴头显的人能在同一个虚拟空间里看到对方、说话、挥手。
 
-那时候 VR 圈子很小，「这玩意能干嘛」还没人想清楚。VRChat 早期就是这股「先试试看」里冒出来的项目之一。它选的方向后来证明踩中了一个很长期的需求：人想跟人在虚拟空间里待着，不一定打游戏，不一定完成任务，就是待着。
+那时候 VR 圈子很小，「这套设备能用来做什么」还没人想清楚。VRChat 早期就是这股「先试试看」里冒出来的项目之一。它选的方向回应了一个很基础的需求：人想跟人在虚拟空间里待着，不一定打游戏，不一定完成任务，就是待着。
 
 2017 年 2 月在 Steam 上以免费 Early Access 上线。2018 年初的 Ugandan Knuckles meme 让它第一次出圈，用户量从那之后一直在涨。粗略的时间点：
 
@@ -38,7 +41,7 @@ VRChat Inc. 由 Graham Gaylor 和 Jesse Joudrey 在 2014 年成立，最初的�
 
 技术上看，VRChat 客户端是用 Unity 做的。它内嵌一个 Unity Runtime，能在玩家电脑上加载用 Unity 打包出来的资源。
 
-意思是 VRChat 不开发渲染管线、不写物理引擎、不维护动画系统，这些都来自 Unity。VRChat 在 Unity 之上加了三件事：
+也就是说，渲染管线、物理引擎、动画系统都直接来自 Unity，VRChat 不重做这些。VRChat 在 Unity 之上加了三件事：
 
 1. **网络层**：让多个客户端能维护同一个实例的状态。
 2. **沙箱**：阻止上传的世界访问磁盘、网络、shell。否则随便一个发光球都能变成木马。
@@ -74,7 +77,7 @@ Avatar 项目（含 Avatars SDK）    .vrca    →   CDN 的「头像」槽位
 两件新手会反复混淆的事：
 
 - Avatar 不能直接当成世界里的 NPC。Avatar 系统只服务于「玩家套在身上的形象」，世界里的 NPC 是普通 GameObject + 模型 + 脚本，跟 Avatar 那一套机制完全无关。想给世界里加个会动的角色，要走 World 这一侧的做法。
-- 从 Booth 下载的 Avatar 包不能直接拖进世界项目。Avatar 包里通常依赖 Avatars SDK 才认得的组件，搬到 Worlds 项目里会缺胳膊少腿。需要把骨骼、模型、贴图重新装进世界用的 Prefab。
+- 从 Booth 下载的 Avatar 包不能直接拖进世界项目。Avatar 包里通常依赖 Avatars SDK 才认得的组件，搬到 Worlds 项目里会出现一片缺失组件、材质变粉红的现象。需要把骨骼、模型、贴图重新装进世界用的 Prefab。
 :::
 
 ## SDK 三件套和它的两代前身
@@ -103,11 +106,11 @@ SDK1 和 SDK2 已经停止支持，新世界只有 SDK3 一条路。但现在搜
 
 ## 写的是 C\#，跑的是 Udon
 
-到 Worlds SDK 会撞上一个奇怪的事实：写出来的不是普通 C#。
+到 Worlds SDK 这一层，写出来的 C# 走的是一条专属编译链。
 
-看着是在 Unity 里写 `.cs` 文件，能 `using UnityEngine`，能定义 class，能写 `Update()`。但 VRChat 编译它的方式跟普通 Unity 不同：先用 **UdonSharp** 编译器把 C# 翻译成一种叫 **Udon Assembly** 的字节码。最后跑在客户端里的是 VRChat 自己写的虚拟机，不是 .NET 运行时。
+表面上跟普通 Unity 项目一样：在 Unity 里建 `.cs` 文件，能 `using UnityEngine`，能定义 class，能写 `Update()`。底层不一样的地方在编译产物：先用 **UdonSharp** 编译器把 C# 翻译成一种叫 **Udon Assembly** 的字节码，最后跑在客户端里的是 VRChat 自己写的虚拟机，取代了普通 Unity 项目里的 .NET 运行时。
 
-这一圈绕得有道理。VRChat 客户端要执行陌生人写的代码：点开一个 Public 世界，里面的脚本是某个不认识的人写的。如果这段脚本能调 `System.IO.File.Delete`、能调 `System.Net.WebClient`、能调 `Process.Start`，客户端就完了。
+绕这一圈是为了安全。VRChat 客户端要执行陌生人写的代码：点开一个 Public 世界，里面的脚本是某个不认识的人写的。如果这段脚本能调 `System.IO.File.Delete`、能调 `System.Net.WebClient`、能调 `Process.Start`，玩家电脑就会被任意操作。
 
 VRChat 的解法是只允许调用一个白名单上的 API。这个白名单写死在 Udon 里，叫 **Class Exposure Tree**。`UnityEngine.Transform.position` 在白名单上能用；`System.IO.File.Delete` 不在，调用会被编译器直接拦下。
 
@@ -115,13 +118,13 @@ VRChat 的解法是只允许调用一个白名单上的 API。这个白名单写
 
 - 写脚本会不时撞上「这个 API 在 UdonSharp 里不能用」。常见 Unity API 大部分能用，但 LINQ、反射、`async/await`、自定义泛型类、`yield return`、`event` 等都不能用或行为不同。第 11 章会专门铺一节。
 - 执行效率比纯 C# 慢一到两个数量级。脚本要写得保守，不要每帧 `Update()` 里跑大循环。
-- 沙箱保护的是客户端，不是世界本身。写得很烂的脚本仍然能把帧率搞到个位数。
+- 沙箱保护的是客户端不被陌生世界脚本攻击；它不保护世界本身的运行性能。写得很糙的脚本仍然能把帧率拖到个位数。
 
-UdonSharp 之外还有 **Udon Graph**，可视化连线版本，长得像 Unreal 的 Blueprint。两者编译产物相同，但 Graph 写复杂逻辑同样会变成意大利面。这本书全程用 UdonSharp。
+UdonSharp 之外还有 **Udon Graph**，可视化连线版本，长得像 Unreal 的 Blueprint。两者编译产物相同，但 Graph 写复杂逻辑时节点会乱成一团，可读性迅速下降。这本书全程用 UdonSharp。
 
 ## Unity 版本钉死，跨平台一份场景多份打包
 
-这两件事 [理解章 A](/getting-started/world-pipeline/) 已经讲过一次，这里只补一句不重复的。
+这两件事 [理解章 A](/getting-started/world-pipeline/) 也会再讲一次，这里只补一句不重复的。
 
 Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2CPP、改 Shader 编译器。客户端要能加载所有用户上传过的世界，工程上不可能同时兼容十几代格式。官方的策略是整个生态钉同一个 Unity 版本，每隔一两年统一升级一次。当前是 `2022.3.22f1`。
 
@@ -182,4 +185,4 @@ VRChat 官方做引擎、做客户端、做 SDK，不做内容，也不做大部
 
 这本书覆盖中间那一层：Worlds SDK 加 Udon，再加用 Unity 做 VRChat 世界需要的那部分 Unity 知识。下面那层（Unity 通用进阶）只挑用得上的讲；上面那层（VRChat 公司自己在做什么）今天读完就够用，后面只在第九部聊发布时再深入碰一次。
 
-读完不用全记住。这一章作为书里其他章节的底图存在，后面正文里凡是出现「SDK 为什么不让我这么写」「为什么 Quest 上不能用这个 shader」之类的话题，会甩链接回到这里相应的小节。
+读完不用全记住。这一章作为书里其他章节的底图存在，后面正文里凡是出现「SDK 为什么不让我这么写」「为什么 Quest 上不能用这个 shader」之类的话题，会通过链接回到这里相应的小节。
