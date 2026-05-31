@@ -218,36 +218,69 @@ async function main() {
         let am;
         while ((am = ATTR.exec(attrs)) !== null) map[am[1]] = am[2];
         if (!map.title || !map.href) return full;
-        if (!CHAPTER_SINGLE.test(map.title)) return full;
-        if (CHAPTER_MULTI.test(map.title)) {
-          multi++;
-          reports.push({ type: 'multi', text: map.title, url: map.href });
-          return full;
-        }
-        const claimed = map.title.match(CHAPTER_SINGLE)[1];
         const norm = normalizeUrl(map.href);
         if (!norm) return full;
-        const target = slugMap.get(norm);
-        if (!target) {
-          orphan++;
-          reports.push({ type: 'orphan', text: map.title, url: map.href });
+
+        // 路径 A：title 含「第 N 章」——把它当成"自称是章引用"，找不到 slug 就 orphan
+        if (CHAPTER_SINGLE.test(map.title)) {
+          if (CHAPTER_MULTI.test(map.title)) {
+            multi++;
+            reports.push({ type: 'multi', text: map.title, url: map.href });
+            return full;
+          }
+          const claimed = map.title.match(CHAPTER_SINGLE)[1];
+          const target = slugMap.get(norm);
+          if (!target) {
+            orphan++;
+            reports.push({ type: 'orphan', text: map.title, url: map.href });
+            return full;
+          }
+          if (claimed === target.num) return full;
+          stale++;
+          const newTitle = map.title.replace(CHAPTER_SINGLE, `第 ${target.num} 章`);
+          const after = full.replace(`title="${map.title}"`, `title="${newTitle}"`);
+          reports.push({
+            type: 'fix-linkcard',
+            before: full,
+            after,
+            claimed,
+            actual: target.num,
+          });
+          if (WRITE) {
+            changed = true;
+            return after;
+          }
           return full;
         }
-        if (claimed === target.num) return full;
-        stale++;
-        const newTitle = map.title.replace(CHAPTER_SINGLE, `第 ${target.num} 章`);
-        const after = full.replace(`title="${map.title}"`, `title="${newTitle}"`);
-        reports.push({
-          type: 'fix-linkcard',
-          before: full,
-          after,
-          claimed,
-          actual: target.num,
-        });
-        if (WRITE) {
-          changed = true;
-          return after;
+
+        // 路径 B：title 是「N. 章名」点号形式（入口页 CardGrid 常用）
+        // 不报 orphan：LinkCard 也常用作普通导航卡片，不一定每个都对应"章"
+        const dotMatch = map.title.match(/^\s*(\d+(?:\.\d+)?)\s*[.．、]\s+/);
+        if (dotMatch) {
+          const claimed = dotMatch[1];
+          const target = slugMap.get(norm);
+          if (!target) return full;
+          if (claimed === target.num) return full;
+          stale++;
+          const newTitle = map.title.replace(
+            /^(\s*)(\d+(?:\.\d+)?)(\s*[.．、]\s+)/,
+            (_, sp, _n, sep) => `${sp}${target.num}${sep}`,
+          );
+          const after = full.replace(`title="${map.title}"`, `title="${newTitle}"`);
+          reports.push({
+            type: 'fix-linkcard',
+            before: full,
+            after,
+            claimed,
+            actual: target.num,
+          });
+          if (WRITE) {
+            changed = true;
+            return after;
+          }
+          return full;
         }
+
         return full;
       });
 
