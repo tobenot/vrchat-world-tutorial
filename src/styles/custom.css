@@ -617,6 +617,32 @@ nav.sidebar-pane,
 
 /* ═══════════════ 10. About / Sponsor Page ═══════════════ */
 
+.vrc-author {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin: 0 0 1.5rem;
+}
+
+.vrc-author__avatar {
+  flex-shrink: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--vrc-surface-1);
+  border: 1px solid var(--vrc-border) !important;
+  box-shadow: none !important;
+}
+
+.vrc-author__body > :first-child {
+  margin-top: 0;
+}
+
+.vrc-author__body > :last-child {
+  margin-bottom: 0;
+}
+
 .vrc-qr-row {
   display: flex;
   flex-wrap: wrap;
