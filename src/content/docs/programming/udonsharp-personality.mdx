@@ -60,21 +60,23 @@ VRChat 暴露的 API 大致是：`UnityEngine.*` 的常用部分（不是全部�
 这些不是沙箱阻拦，是 UdonSharp 编译器自身能力的边界。常见的有：
 
 ```text
-不支持：自定义泛型类（class Foo<T> { ... }）
-不支持：自定义泛型方法（部分情况）
+不支持：自定义泛型类（class Foo<T> { ... }）和大部分自定义泛型方法
+不支持：interface（接口）
+不支持：try / catch / finally（异常处理）
 不支持：async / await
-不支持：yield return（即不能写迭代器）
+不支持：yield return（即不能写迭代器、协程）
 不支持：event 关键字
 不支持：自定义 indexer（this[int i]）
 不支持：自定义 operator overload（== + - 等）
-不支持：自定义 struct 中包含引用类型字段时的某些用法
 不支持：UdonSharpBehaviour 上写 static 方法
-受限：  ref / out 参数（仅在部分场合可用）
+不支持：用 new 实例化自定义类（自己写的 class，不能 new MyClass()）
+受限：  ref / out 参数（基本场景可用，复杂场景仍可能编译失败）
 受限：  switch 表达式（C# 8 的 switch e => 写法）
-受限：  字符串内插 $"..." （早期版本不支持，目前已支持，但旧文档可能写不能用）
 ```
 
 普通 C# 教程很爱用的 LINQ（`list.Where(x => x > 0).Select(x => x.Name)`）和 async（`await Task.Delay(1000)`）在 UdonSharp 里都用不了。前者是因为 LINQ 内部依赖大量泛型和委托，后者是因为整个并发体系被禁。
+
+字符串内插 `$"score = {score}"` 在当前版本是可用的。早期版本不支持，老社区帖子可能写「不能用」，按当前 SDK 跑一下编译器就知道。
 
 VRChat 世界要做「等一秒之后做某事」，常用的写法是 `SendCustomEventDelayedSeconds`：
 
@@ -87,6 +89,72 @@ SendCustomEventDelayedSeconds(nameof(OnTimerFinished), 1f);
 :::caution[踩坑预警]
 看到一篇普通 Unity 教程让你写 `IEnumerator MyCoroutine()` + `yield return new WaitForSeconds(1f)` + `StartCoroutine(MyCoroutine())`，**这套在 UdonSharp 里不能用**。不是写法不对，是 UdonSharp 不支持 `yield`。把它翻译成 `SendCustomEventDelayedSeconds` 才行。
 :::
+
+### 没有 try-catch，要靠提前判空
+
+普通 C# 里写「先尝试做某件事，出错了兜住」常用 `try-catch`：
+
+```cs
+// UdonSharp 里写不通
+try
+{
+    target.SetActive(false);
+}
+catch (NullReferenceException)
+{
+    Debug.Log("target 没填");
+}
+```
+
+UdonSharp 不支持这个语法。运行时如果 `target` 是 `null`，脚本会直接抛 `NullReferenceException` 然后**整个 UdonBehaviour 被禁用**（停止响应所有事件）。读者第一次撞上时常以为「按钮按了没反应」是其他原因，其实是脚本在第一次抛异常后就被关掉了。
+
+替代写法是**先判后用**：
+
+```cs
+if (target != null)
+{
+    target.SetActive(false);
+}
+else
+{
+    Debug.Log("target 没填");
+}
+```
+
+养成「调用之前先 `!= null` 检一下」的习惯，能省掉大半夜调试。
+
+### 自定义 class 不能 new，用数组或 DataList
+
+普通 C# 里很常见的「自己写一个数据类、然后 new 一堆出来」：
+
+```cs
+// 这两件 UdonSharp 都做不到
+public class Enemy
+{
+    public string name;
+    public int hp;
+}
+
+Enemy e = new Enemy();   // 编译失败
+```
+
+UdonSharp 不支持用 `new` 实例化自己写的 class。三条常见绕路：
+
+- **多个并行数组**代替一个对象数组：`string[] enemyNames; int[] enemyHps;`，索引对齐。简单粗暴但够用。
+- 把数据类做成 **UdonSharpBehaviour**，挂在场景物体上，通过 Inspector 引用。适合每个「实例」都对应一个真实 GameObject 的场景。
+- 用 VRChat SDK 提供的 **`DataList` 和 `DataDictionary`**（`VRC.SDK3.Data` 命名空间）。它们是 VRChat 给 Udon 准备的动态数组和字典，能装混合类型的数据，能当 `List<T>` / `Dictionary<TKey, TValue>` 的替代。
+
+```cs
+// 用法示意
+using VRC.SDK3.Data;
+
+DataList scores = new DataList();
+scores.Add(10);
+scores.Add(20);
+int first = scores[0].Int;   // 取出来时要从 DataToken 里解出原值
+```
+
+`List<T>`、`Dictionary<,>` 这套泛型容器虽然在 UdonSharp 里看起来能写（不报红），但运行时行为不稳，官方推荐用 `DataList` / `DataDictionary` 代替。
 
 ## 第三类：工程化层面的几条额外约束
 
@@ -146,25 +214,31 @@ public class Helper : UdonSharpBehaviour
 除了上面三大类，还有一组细节差别，写脚本一两次就习惯了：
 
 ```cs
-// 1. 初始化用 Start，不用 Awake。
-//    UdonSharp 不保证 Awake 的执行时机跟普通 MonoBehaviour 一致，统一用 Start。
-public override void Start() { ... }
+// 1. 初始化用 Start，不要用 Awake。
+//    UdonSharp 里 Awake 内部的赋值不会保留到 Awake 之外，行为跟普通 Unity 不同。
+//    需要在变量初始化、获取组件引用时统一放进 Start。
+private void Start() { ... }
 
-// 2. 父类方法用 override，包括 Update / Interact / OnPlayerJoined 等。
-//    标准 C# 里 Update 不需要 override，UdonSharp 里通常要写 override。
-public override void Update() { ... }
+// 2. Unity 标准生命周期方法（Start / Update / FixedUpdate / LateUpdate 等）
+//    不写 override。UdonSharpBehaviour 里这几个不是基类里的虚方法。
+private void Update() { ... }
 
-// 3. Inspector 上看见的 public 字段都会被序列化到场景里。
+// 3. UdonSharpBehaviour 自己定义的虚方法（Interact / OnPlayerJoined / OnPlayerLeft 等
+//    VRChat 专属事件）必须写 public override。
+public override void Interact() { ... }
+public override void OnPlayerJoined(VRCPlayerApi player) { ... }
+
+// 4. Inspector 上看见的 public 字段都会被序列化到场景里。
 //    不希望被外部修改的字段用 [SerializeField] private 替代。
 [SerializeField] private float speed = 2f;
 
-// 4. 跨脚本调用别的 UdonSharpBehaviour 上的方法，
+// 5. 跨脚本调用别的 UdonSharpBehaviour 上的方法，
 //    用 SendCustomEvent("方法名") 或者直接拿到引用调方法。
 //    SendCustomEvent 用字符串名字，写错了运行时才会报错。
 otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 ```
 
-这几条不是 bug，是约定。看到老的代码风格不一样很正常，这本书里统一用上面这套。
+「哪些写 override、哪些不写」这条规则是新手最容易混的：**Unity 自己的生命周期方法不写 override，VRChat 专属事件写 override**。看到老的代码风格不一样很正常，这本书里统一用上面这套。
 
 ## 一份排坑顺序
 
@@ -179,13 +253,15 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
    GameObject 名字对、脚本拖错位置，都是常见的。
 
 3. 看 Inspector 里每个引用槽是否真的指向了目标物体。
-   槽位是 None 时调用会 NullReferenceException。
+   槽位是 None 时调用会 NullReferenceException，
+   抛了之后整个 UdonBehaviour 会被禁用，按按钮没反应。
 
 4. 看用到的 API 是否在白名单。
-   Udon Graph 节点搜索框搜得到才能用，搜不到换写法。
+   打开 VRChat SDK Control Panel → Udon → Class Exposure Tree，
+   或在 UdonSharp 脚本里写一次让编译器告诉哪行不在白名单上。
 
-5. 看是否撞上 UdonSharp 的特性限制（async/yield/泛型/static/...）。
-   撞上了换 SendCustomEventDelayedSeconds 等替代写法。
+5. 看是否撞上 UdonSharp 的特性限制（async/yield/泛型/static/try-catch/...）。
+   撞上了换 SendCustomEventDelayedSeconds、判空、DataList 等替代写法。
 
 6. 看是否撞上工程化层面的约束（纯静态类没放在 Plugins/、运行时 AddComponent 等）。
    按本章第三节的写法绕开。
@@ -195,6 +271,13 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 ```
 
 第 40 章会再展开一节关于调试的方法，那一节会专门讲怎么读 Console、怎么用 Debug.Log 拆问题。
+
+:::tip[在 Unity 里直接试，不用每次 Build]
+排查脚本时不必每次都跑 Build & Test 进 VRChat 客户端。VRChat 官方提供了 [ClientSim](https://github.com/vrchat-community/ClientSim)，能在 Unity 编辑器里按 Play 直接模拟 VRChat 环境：玩家相机、Interact 按键、Pickup、UI 都能用，Debug.Log 也直接打到 Unity Console。安装方式见官方仓库的 README，多数 SDK 模板里已经预装。
+
+迭代脚本时省下来的时间会立刻显现：从「改 → Build → 等几十秒 → 进 VRChat 看效果」缩短到「改 → 按 Play → 立刻看效果」。
+:::
+
 
 ## 这一章在脑子里留下来什么
 

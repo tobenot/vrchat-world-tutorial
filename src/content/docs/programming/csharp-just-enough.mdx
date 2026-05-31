@@ -41,6 +41,32 @@ public class LampToggle : UdonSharpBehaviour
 
 短短一段 C#，已经把第 10 章谈到的东西全用上了：类、变量、方法、判断（`!` 是「取反」）。下面把每一块拆开。
 
+## 三件 C# 的语法基本功
+
+在拆变量、控制流之前，先把三件最朴素的语法物理过一遍。这三件不讲，新手会被一些莫名其妙的红字卡住。
+
+**分号 `;` 结束一条语句**。`int score = 0;` 末尾那个分号是必须的，少一个就报错。同一段代码里换行不重要，分号才决定一条语句到哪里结束。
+
+**大括号 `{ ... }` 圈出一组语句**。类的内容、方法的内容、`if` 块的内容、`for` 块的内容，都用一对大括号括起来。括号必须成对，少一个右括号编译器会一路报错到文件末尾。Unity 里写代码时编辑器会自动配对，大概率不会漏。
+
+**注释 `//` 和 `/* ... */`**。`//` 后面到行尾的内容是给人看的、编译器忽略：
+
+```cs
+int score = 0;  // 玩家分数，每分一格
+// 整行只是说明文字，不会被执行
+```
+
+`/* ... */` 用来注释多行：
+
+```cs
+/*
+   这一段先放着不跑，调试时再开
+   targetLight.enabled = false;
+*/
+```
+
+调试时常用注释临时屏蔽一两行代码，比删掉再写回去稳。
+
 ## 变量和类型
 
 C# 每个变量都得有个**类型**。这跟 Python、JavaScript 这种「动态类型」不一样，在 C# 里写变量时必须告诉编译器它是什么。
@@ -74,6 +100,8 @@ VRChat 世界里高频出现的几种类型：
 
 变量名必须以字母或下划线开头，区分大小写。`Health` 和 `health` 是两个不同的变量。
 :::
+
+C# 项目通行的命名约定：类名、方法名、`public` 字段用大驼峰（`PlayerHealth`、`OpenDoor`），`private` 字段和局部变量用小驼峰（`isOpen`、`currentScore`）。本书里的代码统一这套写法。约定不是硬性规则，但跟主流不一致的命名会让其他读者迷惑，也容易跟 Unity API 的命名风格打架。
 
 ## 字段、属性和局部变量
 
@@ -226,12 +254,43 @@ VRChat 脚本里有几个特殊方法名是 Unity 和 VRChat 帮调的：
 | 方法名 | 调用时机 |
 | :--- | :--- |
 | `Start()` | 物体出现在场景里之后调用一次 |
-| `Update()` | 每一帧调用一次（一秒钟可能六七十次） |
+| `Update()` | 每一帧调用一次（桌面端约 60 次/秒，VR 模式约 90 次/秒） |
 | `Interact()` | 玩家按 Use 键交互时调用 |
 | `OnPlayerJoined(VRCPlayerApi player)` | 有玩家进入这个房间实例 |
 | `OnPlayerLeft(VRCPlayerApi player)` | 有玩家离开 |
 
 第四部会反复用到这几个。这一章先认识到：**作者不主动调用它们，是 VRChat 在合适的时机替作者调用**。作者的工作是定义「被调用时该做什么」。
+
+写法上有一个细分要点先打个伏笔：上面这五个里，`Start` 和 `Update` 是 Unity 标准生命周期方法，写定义时**不写 `override`**；`Interact` / `OnPlayerJoined` / `OnPlayerLeft` 是 UdonSharpBehaviour 自己定义的虚方法，**必须写 `public override`**。第 12 章会专门讲这条规则的来历。
+
+## 把脚本说出来：Debug.Log
+
+写脚本时最常用的「工具方法」是 `Debug.Log`。它把一段文字打到 Unity 编辑器的 Console 面板里：
+
+```cs
+public override void Interact()
+{
+    Debug.Log("按钮被按了");
+    score = score + 1;
+    Debug.Log("现在分数是 " + score);
+}
+```
+
+按下 Use 键之后，Unity 顶上的菜单 `Window → General → Console` 打开的那个面板里会看到刚才打出来的字。这是新手最有效的「程序到底跑没跑、跑到哪一步、变量是什么值」的检查手段。
+
+```text
+不知道脚本有没有挂上 → Start 里写一句 Debug.Log("我活了")
+不知道按钮按了没      → Interact 里写一句 Debug.Log("被按了")
+不知道变量是什么值    → 在那一行前后写 Debug.Log("score = " + score)
+```
+
+这一招在做完第四部里几个练习之前不会显眼，撞上第一个「按钮按下去没反应」的问题时立刻有用。
+
+:::caution[踩坑预警]
+`Debug.Log` 不能放进 `Update()` 里随便打。Update 一秒会被调几十次，每次都打日志会瞬间塞满 Console，连带把 Unity 卡住。
+
+要在 Update 里观察值，要么加一个计数器（每 60 帧打一次），要么换成 `Interact()` 之类按需触发的方法里打。
+:::
 
 ## 类
 
@@ -310,6 +369,7 @@ public class ButtonOpensDoor : UdonSharpBehaviour
 只列学过的，方便回忆：
 
 ```text
+语法物理      ; 结束语句， { } 圈块， // 注释
 变量声明      类型 名字 = 初始值;
 访问修饰符    public / private / [SerializeField] private
 基本类型      int / float / bool / string
@@ -319,6 +379,7 @@ Unity 类型    Vector3 / GameObject / Transform / Light / Material
 特殊方法      Start / Update / Interact / OnPlayerJoined / OnPlayerLeft
 类            public class XXX : UdonSharpBehaviour { ... }
 引用别的物体  在字段里声明，Inspector 里拖
+调试          Debug.Log("...")，看 Unity Console
 ```
 
 这些就是 VRChat 世界写脚本的工具盘。第四部用到的所有交互，几乎都是把这些拼一拼。
