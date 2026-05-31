@@ -1,0 +1,160 @@
+---
+// 覆盖 Starlight 默认 SiteTitle，做成顶栏面包屑：
+//   书名 · 第X部 · 当前章节标题
+//
+// 为什么这样做：
+//   读者看书时常要截图分享或贴 issue。只有正文 H1 标识章节的话，截图必须连
+//   文章顶部一起截下来，否则看不出在哪章；只有章节名又看不出在书的哪一部分。
+//   把"第几部 + 章节名"放进粘性 header 里，滚到任何位置截图都自带完整定位。
+//
+// 「部」的来源：
+//   sidebar 里每一部对应一个目录（getting-started / workbench / programming /
+//   appendix）。这里把「目录前缀 → 部名」硬编码成一张表，避免运行时去解析
+//   sidebar 配置（Starlight 不在 locals 暴露 sidebar 完整结构，绕路反而更脆）。
+//   新增一部时来这里加一行即可——和加 sidebar 项是相邻动作，心智负担可控。
+//
+// 整块仍是「返回首页」链接（语义和原版一致），章节/部信息都包在同一个 <a>
+// 里：移动端隐藏书名后，仍然有可见的回首页入口（aria-label 说明用途）。
+//
+// 移动端策略：
+//   · ≥72rem 宽屏 / 桌面：三段全显。
+//   · ≤72rem 中等屏：先把书名压到 14ch，部和章节优先保留。
+//   · ≤50rem 移动布局（Starlight 切汉堡的断点）：隐藏书名，留「第X部 · 章节」。
+//   · ≤30rem 极窄（折叠屏外屏 / 老安卓）：再隐藏「部」，只留章节标题。
+//
+// 首页 (splash) 不显示这些附加段，避免和 hero H1 重复。
+
+const route = Astro.locals.starlightRoute;
+const { siteTitle, siteTitleHref } = route;
+const data = (route?.entry?.data ?? {}) as Record<string, unknown>;
+const pageTitle = (data as any).title as string | undefined;
+const tpl = (data as any).template as string | undefined;
+const isSplash = tpl === 'splash';
+
+// 目录前缀 → 部名（与 astro.config.mjs 的 sidebar 一一对应）
+const partMap: Array<{ prefix: string; label: string }> = [
+  { prefix: '/getting-started/', label: '第一部' },
+  { prefix: '/workbench/', label: '第二部' },
+  { prefix: '/programming/', label: '第三部' },
+  { prefix: '/appendix/', label: '附录' },
+];
+const pathname = Astro.url.pathname;
+const partLabel = partMap.find((p) => pathname.startsWith(p.prefix))?.label;
+
+const showChapter = !isSplash && !!pageTitle && pageTitle !== siteTitle;
+const showPart = !isSplash && !!partLabel;
+---
+
+<a
+  href={siteTitleHref}
+  class="site-title sl-flex"
+  aria-label={showChapter ? `返回首页 · ${siteTitle}` : siteTitle}
+>
+  <span class="site-title__book">{siteTitle}</span>
+  {showPart && (
+    <>
+      <span class="site-title__sep site-title__sep--book" aria-hidden="true">·</span>
+      <span class="site-title__part">{partLabel}</span>
+    </>
+  )}
+  {showChapter && (
+    <>
+      <span class="site-title__sep site-title__sep--part" aria-hidden="true">·</span>
+      <span class="site-title__chapter">{pageTitle}</span>
+    </>
+  )}
+</a>
+
+<style>
+  /* 容器：允许子元素被压缩，自带 gap，避免 margin 重复堆叠 */
+  .site-title {
+    min-width: 0;
+    gap: 0.5rem;
+    /* 防止 flex 子在 nowrap 下溢出父容器、把右侧图标顶出去 */
+    max-width: 100%;
+  }
+
+  /* 通用文本省略：所有可能变长的子元素都需要 min-width:0 才能正确截断 */
+  .site-title__book,
+  .site-title__part,
+  .site-title__chapter {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    /* 不继承父链接的 underline 行为，这些段落视觉上是文本不是链接 */
+    text-decoration: none;
+  }
+
+  /* 分隔符：低对比度，不抢戏，不会被压缩 */
+  .site-title__sep {
+    color: var(--sl-color-gray-3);
+    font-weight: 400;
+    user-select: none;
+    flex-shrink: 0;
+  }
+
+  /* 「第X部 / 附录」：作为面包屑中段，用主题色描边的小 chip。
+     这样和左右两段的纯文本视觉拉开层级，截图时一眼能识别。 */
+  .site-title__part {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1;
+    padding: 0.2em 0.55em;
+    border: 1px solid var(--sl-color-accent-low, var(--sl-color-gray-4));
+    border-radius: 999px;
+    color: var(--sl-color-accent-high, var(--sl-color-gray-1));
+    background: transparent;
+  }
+
+  /* 章节标题：稍亮、稍粗。
+     注意：custom.css 里 .site-title { font-weight: 800 !important } 是作用在
+     <a> 上的，子元素的独立选择器仍能覆盖（!important 不会传染给子元素的
+     自有规则）——所以这里 600 会生效。 */
+  .site-title__chapter {
+    color: var(--sl-color-gray-1);
+    font-weight: 600;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  /* —— 断点策略 —— */
+
+  /* ≥72rem（宽屏 / 桌面）：默认即可，三段尽量完整显示 */
+
+  /* 中等屏（≤72rem，含小桌面 / 横屏平板）：先压书名 */
+  @media (max-width: 72rem) {
+    .site-title__book { max-width: 14ch; }
+    .site-title__chapter { max-width: 24ch; }
+  }
+
+  /* 平板竖屏 / 大手机（≤50rem）：
+     Starlight 在这个断点切到移动布局，
+     左边汉堡 + 右边搜索/主题切换会吃掉相当宽度。
+     隐藏书名和它后面的分隔符，保留「部 chip · 章节」。 */
+  @media (max-width: 50rem) {
+    .site-title__book,
+    .site-title__sep--book {
+      display: none;
+    }
+    .site-title__chapter {
+      /* 不再用固定字符宽度，让它跟随 flex 容器收缩 */
+      max-width: none;
+      flex: 1 1 auto;
+    }
+  }
+
+  /* 极窄屏（≤30rem，老安卓 / 折叠屏外屏）：
+     再隐藏「部 chip」和它后面的分隔符，只留章节标题。
+     给章节标题保底字号，避免被搜索图标挤到 0 宽度。 */
+  @media (max-width: 30rem) {
+    .site-title__part,
+    .site-title__sep--part {
+      display: none;
+    }
+    .site-title__chapter {
+      font-size: 0.95rem;
+    }
+  }
+</style>
