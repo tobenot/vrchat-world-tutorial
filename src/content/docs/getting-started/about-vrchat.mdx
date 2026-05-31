@@ -39,7 +39,7 @@ VRChat Inc. 由 Graham Gaylor 和 Jesse Joudrey 在 2014 年成立，最初的�
 2025 Oct    iOS / Android 端结束 beta，正式上线
 ```
 
-写本书时（2026 年中），仅 Steam 平台的同时在线峰值就摸到过 13.6 万（2025 年元旦），加上 Quest 商店和移动端实际更多。但公司规模一直不大，公开员工数在百人量级，2024 年 6 月还经历过约三成的裁员。比起做大型 MMO 的工作室小得多，这一点下面要反复用到。
+写本书时（2026 年中），VRChat 公开过的全平台最高同时在线已经到 158,192，日均同时在线约 10 万。Steam 单平台的历史峰值在七八万人量级；按 2026 年中公开实时数据粗略对照，Steam PC 在线人数只占公开总在线的一半上下，剩下来自 Quest、移动端和其他非 Steam 入口。也就是说，Steam 图表只能看趋势，不能代表全部用户。但公司规模一直不大，公开员工数在百人量级，2024 年 6 月还经历过约三成的裁员。比起做大型 MMO 的工作室小得多，这一点下面要反复用到。
 
 ## VRChat 是 Unity 之上的一层「世界格式」
 
@@ -54,7 +54,7 @@ VRChat Inc. 由 Graham Gaylor 和 Jesse Joudrey 在 2014 年成立，最初的�
 剩下的事，按下按钮灯亮、地板有反射、镜子里照得到自己，全是 Unity 在做。SDK 的工作是让 Unity 知道「这个项目是给 VRChat 做的」：让场景里的 `VRC Scene Descriptor` 能被识别，让脚本能被编译进沙箱。
 
 :::tip[为什么是这样？]
-做一个新的 3D 引擎是十年起步的工程。VRChat 选择「站在 Unity 上面」的路线，让一个小团队能在三五年里覆盖 PC 加三个移动平台。代价是 Unity 改什么 VRChat 都得跟着改，Unity 不支持的事 VRChat 也办不到。这解释了为什么 Unity 升大版本时整个 VRChat 生态会停滞几个月。
+做一个新的 3D 引擎是十年起步的工程。VRChat 选择「站在 Unity 上面」的路线，让一个小团队能覆盖 PC、Quest 和手机端。代价是 Unity 改什么 VRChat 都得跟着改，Unity 不支持的事 VRChat 也办不到。这解释了为什么 Unity 升大版本时整个 VRChat 生态会停滞几个月。
 :::
 
 ## Worlds 和 Avatars 是两件不同的事
@@ -94,7 +94,7 @@ com.vrchat.worlds      世界专用：Scene Descriptor、Pickup、Station、Udon
 com.vrchat.clientsim   本地模拟器，不上传也能在 Unity 里测
 ```
 
-如果是 Avatar 项目，第二个会换成 `com.vrchat.avatars`。`base` 和 `clientsim` 两边共用。写本书时 `com.vrchat.worlds` 在 3.10.x 系列，玩家持久化数据等较新的 API 需要 SDK 不低于 3.7.4，后面相关章节会再点出版本要求。
+如果是 Avatar 项目，第二个会换成 `com.vrchat.avatars`。`base` 和 `clientsim` 两边共用。写本书时 `com.vrchat.worlds` 仍在 3.10.x 系列，具体小版本以 VCC 里显示的官方包版本为准。玩家持久化数据等较新的 API 需要 SDK 不低于 3.7.4，后面相关章节会再点出版本要求。
 
 这三件套现在叫 SDK3。它的前面还有过两代：
 
@@ -132,9 +132,9 @@ UdonSharp 之外还有 **Udon Graph**，可视化连线版本，长得像 Unreal
 
 这两件事 [理解章 A](/getting-started/world-pipeline/) 也会再讲一次，这里只补一句不重复的。
 
-Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2CPP、改 Shader 编译器。客户端要能加载所有用户上传过的世界，工程上不可能同时兼容十几代格式。官方的策略是整个生态钉同一个 Unity 版本，每隔一两年统一升级一次。当前是 `2022.3.22f1`。
+Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2CPP、改 Shader 编译器。客户端要能加载所有用户上传过的世界，工程上不可能同时兼容十几代格式。官方的策略是整个生态钉同一个 Unity 版本，每隔一两年统一升级一次。写本书时，VRChat 创作者项目仍在 Unity 2022 LTS 线上，常用推荐版本是 `2022.3.22f1`；实际安装前以官方当前 Unity 版本页面和 VCC 提示为准。
 
-跨平台意味着同一份场景要分别打包才能让所有平台进得来。目前支持的平台：
+跨平台意味着同一份场景要分别打包才能让所有平台进得来。公开数据不提供精确的 PC / Quest / 移动端拆分；按 2026 年中公开实时数据粗略对照，Steam PC 只是一半上下，非 Steam 入口也占很大一块。后者包括 Quest、移动端和其他入口，不能直接等同于 Quest，但足以说明 Quest 和手机端不是可忽略的小众平台。目前支持的平台：
 
 ```text
 Windows PC          主力。SteamVR / Oculus 头显或纯 Desktop 模式都能玩
