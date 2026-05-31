@@ -121,7 +121,7 @@ RETURN
 
 **为什么 `LINQ`、`async`、`reflection` 这些用不了。** 它们要么依赖白名单外的 API，要么生成的字节码模式 UdonSharp 编译器还没支持。沙箱和编译器同时在拦。
 
-**为什么 public 字段能在 Inspector 里调。** 字段值不是写死在字节码里的常量，而是被 Unity 序列化到场景文件里。打包成 `.vrcw` 时一起带过去，虚拟机启动时把场景里存的值塞回字段。Inspector 里改这些值，是在改场景文件，下次加载时虚拟机会拿到新的值。
+**为什么 public 字段能在 Inspector 里调。** 字段值会被 Unity 序列化到场景文件里，而不是写死在字节码里。打包成 `.vrcw` 时一起带过去，虚拟机启动时把场景里存的值塞回字段。Inspector 里改这些值，是在改场景文件，下次加载时虚拟机会拿到新的值。
 
 **为什么 `[UdonSynced]` 字段能在多人之间同步。** 这是 Udon 虚拟机的另一项扩展能力。后面第六部会展开。
 
@@ -134,3 +134,10 @@ RETURN
 这句话不需要背。但脑子里有这条链路的影子，看到任何一个奇怪现象，都能猜到它发生在链路上的哪一节。
 
 第三部最重要的事，不是学了多少 C# 语法，是**对「代码是怎么变成行为」这件事不再陌生**。再看自己写过的那段 `targetLight.enabled = true`，已经能看出从这行字到屏幕上灯亮，背后到底走过了多少道关。
+
+## 参考资料
+
+- [UdonSharp 官方文档](https://udonsharp.docs.vrchat.com/)
+- [UdonSharp Random Tips & Performance Pointers](https://udonsharp.docs.vrchat.com/random-tips-&-performance-pointers/)
+- [VRChat Creator Docs：Udon](https://creators.vrchat.com/worlds/udon/)
+
