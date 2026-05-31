@@ -32,7 +32,7 @@ pagefind: true
 
 让物体可被玩家拿起。默认是本地行为，配 `VRC Object Sync` 才能让所有人看到。
 
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
 ⏳ 详细字段表 第 14 章 写完后补。  
 官方文档：[VRC Pickup](https://creators.vrchat.com/worlds/components/vrc_pickup/)。
 
@@ -42,7 +42,7 @@ pagefind: true
 
 多人之间同步物体的位置 / 旋转 / 速度。Pickup 物体的同步标配。
 
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
 ⏳ 详细字段表 第 14 章 写完后补。  
 官方文档：[VRC Object Sync](https://creators.vrchat.com/worlds/components/vrc_objectsync/)。
 
@@ -52,7 +52,7 @@ pagefind: true
 
 3D 空间音效。比 Unity 原生 `Audio Source` 多一些 VRChat 端的限制（远距离衰减默认更激进，Gain 上限）。
 
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
 ⏳ 详细字段表 第 32 章 写完后补。  
 官方文档：[VRC Spatial Audio Source](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)。
 
@@ -62,7 +62,7 @@ pagefind: true
 
 生成镜子。**性能很贵**，每多一面镜子相当于场景多渲染一遍。
 
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
 ⏳ 详细字段表 第 15 章 写完后补。  
 官方文档：[VRC Mirror Reflection](https://creators.vrchat.com/worlds/components/vrc_mirrorreflection/)。
 
@@ -72,7 +72,7 @@ pagefind: true
 
 让物体能被坐下（椅子、沙发、驾驶座）。会接管玩家移动控制。
 
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
 ⏳ 详细字段表 第 15 章 写完后补。  
 官方文档：[VRC Station](https://creators.vrchat.com/worlds/components/vrc_station/)。
 
@@ -82,7 +82,7 @@ pagefind: true
 
 挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。
 
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。  
 ⏳ 详细字段、事件清单见 第三、四部。  
 官方文档：[Udon](https://creators.vrchat.com/worlds/udon/)。
 
@@ -94,7 +94,7 @@ pagefind: true
 
 每个 GameObject 自带、删不掉。三个字段：`Position`、`Rotation`、`Scale`。
 
-首次出现：[第 5 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
+首次出现：[第 6 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
 
 ---
 
@@ -102,7 +102,7 @@ pagefind: true
 
 形状（Mesh Filter）和"画出来"（Mesh Renderer）的两件套。关掉 Mesh Renderer 物体隐形，但 Collider 还在。
 
-首次出现：[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。  
+首次出现：[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。  
 关键字段：Mesh Renderer 的 `Materials` 槽（决定外观）、`Cast Shadows`（投不投影）。
 
 ---
@@ -116,7 +116,7 @@ pagefind: true
 | `Capsule Collider` | 胶囊 | 便宜 | Capsule |
 | `Mesh Collider` | 任意 Mesh | 贵，可能漏检 | Plane |
 
-能用 Box/Sphere 就别用 Mesh。首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+能用 Box/Sphere 就别用 Mesh。首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
 
 ---
 
@@ -132,7 +132,7 @@ pagefind: true
 | `Mode` | `Realtime` / `Mixed` / `Baked` |
 
 `Directional Light` 位置无关，只看 Rotation。
-首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)、[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+首次出现：[第 7 章](/workbench/components/#在-inspector-里调参数)、[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
 
 ---
 
@@ -146,7 +146,7 @@ pagefind: true
 | `Spatial Blend` | `0` = 2D 全场等响，`1` = 3D |
 
 VRChat 世界中通常优先用 `VRC Spatial Audio Source`。  
-首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)。
+首次出现：[第 7 章](/workbench/components/#在-inspector-里调参数)。
 
 ---
 
@@ -154,7 +154,7 @@ VRChat 世界中通常优先用 `VRC Spatial Audio Source`。
 
 让物体获得重力 / 物理模拟。VRChat 中谨慎用，物理交互成本不低。
 
-首次出现：[第 6 章](/workbench/components/#add-component按需加能力)。
+首次出现：[第 7 章](/workbench/components/#add-component按需加能力)。
 
 ---
 
@@ -162,7 +162,7 @@ VRChat 世界中通常优先用 `VRC Spatial Audio Source`。
 
 状态机驱动动画。开关门、电梯、风扇等平滑运动用它。
 
-首次出现：[第 6 章](/workbench/components/#add-component按需加能力)。  
+首次出现：[第 7 章](/workbench/components/#add-component按需加能力)。  
 ⏳ 详细 第 16 章 写完后补。
 
 ---

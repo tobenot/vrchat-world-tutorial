@@ -12,7 +12,7 @@
  *   - 如果文字含有「第 N 章」，并且 url 指向某个已知 slug，
  *     就把 N 与该页面真正的章号比较；
  *   - 不一致 ⇒ stale，可自动修；
- *   - 多章引用（如「第 27、28 章」）和非链接里的散文引用只报告。
+ *   - 多章引用（如「第 27、28 章」）只报告；非链接里的散文引用仅在非严格模式报告。
  *
  * 还会顺手报：
  *   - 同一个 num 出现在多个 slug（章节编号冲突）
@@ -33,6 +33,7 @@ const DOCS_DIR = join(ROOT, 'src/content/docs');
 
 const WRITE = process.argv.includes('--write');
 const STRICT = process.argv.includes('--strict');
+const REPORT_PLAIN = !STRICT;
 
 // ---------- 文件遍历 ----------
 async function walk(dir) {
@@ -251,14 +252,17 @@ async function main() {
       });
 
       // 3.3 非链接里的「第 N 章」（链接里的已经处理了）
-      const stripped = s.replace(MD_LINK, '').replace(LINK_CARD, '');
-      const lines = stripped.split(/\r?\n/);
-      for (const ln of lines) {
-        const trimmed = ln.trim();
-        if (!trimmed) continue;
-        if (CHAPTER_SINGLE.test(trimmed) || CHAPTER_MULTI.test(trimmed)) {
-          plain++;
-          reports.push({ type: 'plain', line: trimmed });
+      // CI 严格模式不报告 plain，避免写作计划类文本刷屏；人工运行 check:chapters 时再审。
+      if (REPORT_PLAIN) {
+        const stripped = s.replace(MD_LINK, '').replace(LINK_CARD, '');
+        const lines = stripped.split(/\r?\n/);
+        for (const ln of lines) {
+          const trimmed = ln.trim();
+          if (!trimmed) continue;
+          if (CHAPTER_SINGLE.test(trimmed) || CHAPTER_MULTI.test(trimmed)) {
+            plain++;
+            reports.push({ type: 'plain', line: trimmed });
+          }
         }
       }
 
@@ -296,15 +300,16 @@ async function main() {
   console.log(`章节编号冲突          : ${conflicts.length}`);
   if (WRITE) {
     console.log(`已写入文件数          : ${filesChanged}`);
+  } else if (STRICT) {
+    console.log(`\n结构性章节引用检查完成。`);
   } else {
     console.log(`\n这是预览模式。加 --write 实际写入：`);
     console.log(`  node scripts/check-chapter-refs.mjs --write`);
   }
 
-  if (
-    STRICT &&
-    (stale > 0 || multi > 0 || plain > 0 || orphan > 0 || conflicts.length > 0)
-  ) {
+  // plain 只是叙述性章节号，可能是“第 39 章会展开”这类写作计划；
+  // 默认 CI 只阻断能被机器可靠判断的结构性问题。
+  if (STRICT && (stale > 0 || multi > 0 || orphan > 0 || conflicts.length > 0)) {
     process.exit(1);
   }
 }

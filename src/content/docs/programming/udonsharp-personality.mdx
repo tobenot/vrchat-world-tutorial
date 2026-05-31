@@ -1,5 +1,5 @@
 ---
-title: 11. UdonSharp，长得像 C# 但它有脾气
+title: 12. UdonSharp，长得像 C# 但它有脾气
 description: UdonSharp 不是一门新语言，但也不完全等于 C#。一份给 VRChat 世界写脚本时一定会撞上的限制清单与真实踩坑案例。
 difficulty: 进阶
 chapterType: hands-on
@@ -15,7 +15,7 @@ sidebar:
 
 ## 为什么会有这些限制
 
-[第 2 章](/getting-started/about-vrchat/#写的是-c-跑的是-udon)铺过沙箱的来历：VRChat 客户端要执行陌生人写的代码，必须把可调用的 API 限制在一个白名单上，否则任何一个公开世界里都可能藏着木马。
+[第 2 章](/getting-started/about-vrchat/)铺过沙箱的来历：VRChat 客户端要执行陌生人写的代码，必须把可调用的 API 限制在一个白名单上，否则任何一个公开世界里都可能藏着木马。
 
 这个白名单叫 **Class Exposure Tree**。写下的 C# 不是直接编成 IL 跑在 .NET 运行时上，而是先被 UdonSharp 编译器翻译成 **Udon Assembly**（一种字节码），再交给 VRChat 自己写的 Udon 虚拟机执行。这条路上每多一道转换，就多一些「这段普通 C# 写不通」的原因。
 
@@ -247,7 +247,7 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 
 第 39 章会再展开一节关于调试的方法，那一节会专门讲怎么读 Console、怎么用 Debug.Log 拆问题。
 
-## 这一部到此结束
+## 这一章在脑子里留下来什么
 
 第 9 到 11 章铺完之后，应该能拿到的：
 
@@ -256,4 +256,4 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 - 知道 UdonSharp 不是普通 C#，遇到「怎么不行」时大致能猜到方向。
 - 撞上 bug 时不慌，知道按上面那份顺序排查。
 
-接下来理解章 C 不教新东西，回头把「写下的字怎么变成灯亮了」这条链条解一遍。读完它再看自己写过的脚本，会有一种从俯瞰角度看自己刚才在做什么的清晰感。
+这一章里那份「白名单 / 编译器限制 / 已知 bug」三类清单不需要背。撞上具体怪现象时知道大概去哪一类里翻，比记住每条都重要。

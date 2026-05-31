@@ -218,23 +218,23 @@ Cloudflare 的对象存储服务。这里可以先把它理解成 VRChat 用来�
 
 **`Scene`**（场景）  
 后缀 `.unity` 的文件，存这个空间里的所有物体、灯光、引用关系。  
-首次出现：[第 5 章 · 第一步：新建并保存场景](/getting-started/first-world/#第一步新建并保存场景)、[第 5 章](/workbench/gameobjects/#三块面板的分工)。
+首次出现：[第 5 章 · 第一步：新建并保存场景](/getting-started/first-world/#第一步新建并保存场景)、[第 6 章](/workbench/gameobjects/#三块面板的分工)。
 
 **`GameObject`**（游戏物体）  
 Unity 中所有场景物体的容器。本身没有任何能力，能力来自挂在它身上的 Component。  
-首次出现：[第 5 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)。
+首次出现：[第 6 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)。
 
 **`Empty GameObject`**（空物体）  
 不挂渲染组件，画面里看不见。常用作组的父级容器、旋转轴心、纯逻辑挂载点。`Spawn` 就是空物体。  
-首次出现：[第 5 章 · 空物体：看不见但很有用](/workbench/gameobjects/#空物体看不见但很有用)。
+首次出现：[第 6 章 · 空物体：看不见但很有用](/workbench/gameobjects/#空物体看不见但很有用)。
 
 **`Hierarchy`**（层级面板）  
 当前场景里所有 GameObject 的目录清单。父子关系在这里调整。  
-首次出现：[第 5 章 · 三块面板的分工](/workbench/gameobjects/#三块面板的分工)。
+首次出现：[第 6 章 · 三块面板的分工](/workbench/gameobjects/#三块面板的分工)。
 
 **`Inspector`**（检视面板）  
 选中某物体后展示它身上所有组件和参数的面板。  
-首次出现：[第 5 章](/workbench/gameobjects/#三块面板的分工)。
+首次出现：[第 6 章](/workbench/gameobjects/#三块面板的分工)。
 
 **`Project` 面板**  
 项目的所有文件夹与资源。材质、模型、脚本、声音、Prefab 都在这里。  
@@ -250,35 +250,35 @@ Scene 视图是搭世界的画布，Game 视图是模拟玩家视角。
 
 **`Transform`**  
 每个 GameObject 自带、删不掉的组件。管 Position、Rotation、Scale 三件事。  
-首次出现：[第 5 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
+首次出现：[第 6 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
 
 **`Position` / `Rotation` / `Scale`**  
 Transform 的三个字段：在哪、朝哪、多大。  
-首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#transform每个物体的标配)。
+首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 6 章](/workbench/gameobjects/#transform每个物体的标配)。
 
 **父子层级**  
 在 Hierarchy 里把一个 GameObject 拖到另一个下面，子物体的 Transform 变为相对父物体。父物体一移动，子物体跟着走。  
-首次出现：[第 5 章 · 父子层级：让一组物体一起动](/workbench/gameobjects/#父子层级让一组物体一起动)。
+首次出现：[第 6 章 · 父子层级：让一组物体一起动](/workbench/gameobjects/#父子层级让一组物体一起动)。
 
 **`Component`**（组件）  
 挂在 GameObject 上的能力单元。每个组件只管一件事，按需组合。  
-首次出现：[第 5 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)、[第 6 章](/workbench/components/)。
+首次出现：[第 6 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)、[第 7 章](/workbench/components/)。
 
 **`Add Component`**  
 Inspector 底部按钮，给当前物体加新组件。  
-首次出现：[第 6 章 · Add Component：按需加能力](/workbench/components/#add-component按需加能力)。
+首次出现：[第 7 章 · Add Component：按需加能力](/workbench/components/#add-component按需加能力)。
 
 **`Play Mode`**  
 Unity 顶部三角形按钮启动的运行时预览模式。在里面调的所有参数，退出后**全部还原**。  
-首次出现：[第 6 章 · Play Mode 调参的陷阱](/workbench/components/#play-mode-调参的陷阱)。
+首次出现：[第 7 章 · Play Mode 调参的陷阱](/workbench/components/#play-mode-调参的陷阱)。
 
 **`Playmode tint`**  
 `Edit → Preferences → Colors` 里的设置，给 Play Mode 下的编辑器界面染色，避免误以为还在编辑模式而白调一通参数。  
-首次出现：[第 6 章 · 踩坑预警 · 把 Play Mode 染上颜色](/workbench/components/#play-mode-调参的陷阱)。
+首次出现：[第 7 章 · 踩坑预警 · 把 Play Mode 染上颜色](/workbench/components/#play-mode-调参的陷阱)。
 
 **引用槽（`None (Object)`）**  
 组件参数中可以把其他物体或资产拖进来的字段。新手最常见的「莫名其妙不工作」就是引用槽空着。  
-首次出现：[第 6 章 · 引用槽：新手最容易卡的一关](/workbench/components/#引用槽新手最容易卡的一关)。
+首次出现：[第 7 章 · 引用槽：新手最容易卡的一关](/workbench/components/#引用槽新手最容易卡的一关)。
 
 ---
 
@@ -306,15 +306,15 @@ GPU 把场景画成一帧画面的流水线，依次做几何变换、光栅化�
 
 **`Mesh`**（网格）  
 模型的几何数据，由顶点和三角形组成。形状由它定义。  
-首次出现：[第 8 章 · 材质：物体的外衣](/workbench/materials-light/#材质物体的外衣)。
+首次出现：[第 9 章 · 材质：物体的外衣](/workbench/materials-light/#材质物体的外衣)。
 
 **`Mesh Filter`**  
 存 Mesh 数据的组件，给 Mesh Renderer 提供形状。  
-首次出现：[第 5 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)。
+首次出现：[第 6 章 · GameObject 只是一个空壳](/workbench/gameobjects/#gameobject-只是一个空壳)。
 
 **`Mesh Renderer`**  
 负责把 Mesh 画出来的组件。关掉它，物体隐形，但 Collider 还在。  
-首次出现：[第 5 章 · 一个小实验：让地板消失](/workbench/gameobjects/#一个小实验让地板消失)。
+首次出现：[第 6 章 · 一个小实验：让地板消失](/workbench/gameobjects/#一个小实验让地板消失)。
 
 **`Cube` / `Plane`**  
 Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地板首选 Cube 拍扁，原因是 Plane 单面渲染会从底面消失，且 Mesh Collider 没厚度容易被擦边漏检。  
@@ -322,7 +322,7 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`Box Collider` / `Sphere Collider` / `Mesh Collider`**  
 三种最常见的碰撞体。Box 是盒子（默认 Cube 自带），Sphere 是球，Mesh 按网格逐三角形碰撞（默认 Plane 自带）。能用 Box 不用 Mesh，便宜得多。  
-首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 5 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
 
 **`Backface Culling`**（背面剔除）  
 渲染优化：默认情况下从背面看一个三角形会直接消失。Plane 单面 + 背面剔除导致从底面看不见。  
@@ -330,7 +330,7 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`Rigidbody`**（刚体）  
 让物体获得重力、能被物理引擎模拟。VRChat 中谨慎用，物理交互成本高。  
-首次出现：[第 6 章 · Add Component：按需加能力](/workbench/components/#add-component按需加能力)。
+首次出现：[第 7 章 · Add Component：按需加能力](/workbench/components/#add-component按需加能力)。
 
 ---
 
@@ -340,27 +340,27 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`VRC Pickup`**  
 让玩家能把物体拿起来。默认本地行为；要让别人也看见拿起，需要配 `VRC Object Sync`。  
-首次出现：[第 6 章 · VRChat SDK 自带的那批组件](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 14 章。
+首次出现：[第 7 章 · VRChat SDK 自带的那批组件](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 14 章。
 
 **`VRC Object Sync`**  
 多人之间同步物体位置 / 旋转 / 速度。Pickup 类物体的同步标配。  
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 14 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 14 章。
 
 **`VRC Spatial Audio Source`**  
 3D 空间音效组件，离远了变小。比 Unity 原生 `Audio Source` 多一些 VRChat 端的限制（最大距离上限等）。  
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 32 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 32 章。
 
 **`VRC Mirror Reflection`**  
 生成镜子。镜子是 VRChat 性能最重的几样东西之一，做休闲世界时谨慎用。  
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
 
 **`VRC Station`**  
 让物体能被坐下（椅子、沙发、驾驶座）。会接管玩家移动控制。  
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
 
 **`Udon Behaviour`**  
 挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。  
-首次出现：[第 6 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第三、四部。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第三、四部。
 
 ---
 
@@ -368,31 +368,31 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`Light`**  
 通用光源组件。`Type` 字段决定它是什么光（Directional / Point / Spot / Area）。  
-首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)、[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+首次出现：[第 7 章](/workbench/components/#在-inspector-里调参数)、[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
 
 **`Directional Light`**（方向光）  
 模拟太阳/月亮，光线平行，位置无关，只看 Rotation。每个场景默认一盏。  
-首次出现：[第 8 章 · Directional Light：全局日光](/workbench/materials-light/#directional-light全局日光)。
+首次出现：[第 9 章 · Directional Light：全局日光](/workbench/materials-light/#directional-light全局日光)。
 
 **`Point Light`**（点光源）  
 从一个点向四周发光，超过 Range 不再照亮。常做暖色局部光源。  
-首次出现：[第 7 章](/workbench/prefabs/#先动手做一个-glowball)、[第 8 章 · Point Light：局部暖光](/workbench/materials-light/#point-light局部暖光)。
+首次出现：[第 8 章](/workbench/prefabs/#先动手做一个-glowball)、[第 9 章 · Point Light：局部暖光](/workbench/materials-light/#point-light局部暖光)。
 
 **`Spot Light`**（聚光灯）  
 朝一个方向打锥形光束，像手电筒或舞台灯。  
-首次出现：[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+首次出现：[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
 
 **`Area Light`**（面光源）  
 柔和的大面积光，通常需烘焙进 lightmap。本书前期不用。  
-首次出现：[第 8 章](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 35 章。
+首次出现：[第 9 章](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 35 章。
 
 **`Audio Source`**  
 Unity 原生音频组件。VRChat 世界里通常优先用 `VRC Spatial Audio Source` 替代。  
-首次出现：[第 6 章](/workbench/components/#在-inspector-里调参数)。
+首次出现：[第 7 章](/workbench/components/#在-inspector-里调参数)。
 
 **`Animator`**  
 状态机驱动的动画组件，用于平滑运动（开关门、电梯、风扇）。  
-首次出现：[第 6 章](/workbench/components/#add-component按需加能力)。详细见 ⏳ 第 16 章。
+首次出现：[第 7 章](/workbench/components/#add-component按需加能力)。详细见 ⏳ 第 16 章。
 
 ---
 
@@ -400,27 +400,27 @@ Unity 原生音频组件。VRChat 世界里通常优先用 `VRC Spatial Audio So
 
 **`Prefab`**（预制体）  
 可以理解为一个 GameObject 的"模具"。配好一组组件和参数后存成磁盘上的 `.prefab` 文件，所有从它压出的 Instance 共享同一份配置。  
-首次出现：[第 7 章 · 制作模具](/workbench/prefabs/#制作模具)。
+首次出现：[第 8 章 · 制作模具](/workbench/prefabs/#制作模具)。
 
 **`Prefab Instance`**（预制体实例）  
 场景里从 Prefab 拖出来的具体物体，名字在 Hierarchy 里显示成蓝色。  
-首次出现：[第 7 章](/workbench/prefabs/#制作模具)。
+首次出现：[第 8 章](/workbench/prefabs/#制作模具)。
 
 **`Override`**（覆盖）  
 某个 Prefab Instance 上某个字段相对模具被改过。Inspector 里那个字段旁边有一条蓝色小标记。  
-首次出现：[第 7 章 · Override：允许个别实例不一样](/workbench/prefabs/#override允许个别实例不一样)。
+首次出现：[第 8 章 · Override：允许个别实例不一样](/workbench/prefabs/#override允许个别实例不一样)。
 
 **`Apply` / `Revert`**  
 Override 的两种处理：Apply 把 Override 写回 Prefab 模具，Revert 把这个字段拉回模具值。  
-首次出现：[第 7 章](/workbench/prefabs/#override允许个别实例不一样)。
+首次出现：[第 8 章](/workbench/prefabs/#override允许个别实例不一样)。
 
 **`Prefab Variant`**（预制体变体）  
 基于一个已有 Prefab 派生出的"子模具"。母模具改了，所有 Variant 跟着变；Variant 自己改的部分是它独立的。Override 太多时升级成 Variant 比堆 Override 干净。  
-首次出现：[第 7 章 · 踩坑预警 · Override 多了会乱](/workbench/prefabs/#override允许个别实例不一样)。
+首次出现：[第 8 章 · 踩坑预警 · Override 多了会乱](/workbench/prefabs/#override允许个别实例不一样)。
 
 **`Unpack Prefab`**  
 把一个 Instance 与模具断开。之后改模具不再影响它。引入第三方 Prefab 想拆开研究时常用，自家项目里慎用。  
-首次出现：[第 7 章 · Unpack：把实例和模具断开](/workbench/prefabs/#unpack把实例和模具断开)。
+首次出现：[第 8 章 · Unpack：把实例和模具断开](/workbench/prefabs/#unpack把实例和模具断开)。
 
 ---
 
@@ -428,43 +428,43 @@ Override 的两种处理：Apply 把 Override 写回 Prefab 模具，Revert 把�
 
 **`Material`**（材质）  
 模型的"外衣"。一份具体配置（颜色、贴图、金属度、光滑度），决定这块表面被画成什么样。  
-首次出现：[第 8 章 · 材质：物体的外衣](/workbench/materials-light/#材质物体的外衣)。
+首次出现：[第 9 章 · 材质：物体的外衣](/workbench/materials-light/#材质物体的外衣)。
 
 **`Shader`**（着色器）  
 一套渲染规则，告诉 GPU"这种表面怎么被画"。Material 是 Shader 的一份具体参数。  
-首次出现：[第 8 章 · Material、Shader、Texture 三层关系](/workbench/materials-light/#materialshadertexture-三层关系)。
+首次出现：[第 9 章 · Material、Shader、Texture 三层关系](/workbench/materials-light/#materialshadertexture-三层关系)。
 
 **`Texture`**（贴图）  
 图片资源（木纹、砖缝、划痕、发光图案），被 Material 引用，最终铺到模型表面。  
-首次出现：[第 8 章](/workbench/materials-light/#materialshadertexture-三层关系)。
+首次出现：[第 9 章](/workbench/materials-light/#materialshadertexture-三层关系)。
 
 **`Albedo` / `Base Color` / `Base Map`**  
 材质的底色字段，不同 Shader 名字略有差异，作用接近。  
-首次出现：[第 8 章 · 颜色是物体、光、角度三者的结果](/workbench/materials-light/#颜色是物体光角度三者的结果)。
+首次出现：[第 9 章 · 颜色是物体、光、角度三者的结果](/workbench/materials-light/#颜色是物体光角度三者的结果)。
 
 **`Metallic`**  
 金属感字段。`0` 是非金属（木头、布料、墙面），`1` 接近纯金属。  
-首次出现：[第 8 章 · 材质面板先盯四个参数](/workbench/materials-light/#材质面板先盯四个参数)。
+首次出现：[第 9 章 · 材质面板先盯四个参数](/workbench/materials-light/#材质面板先盯四个参数)。
 
 **`Smoothness`**  
 光滑度字段。低值像水泥，高值像抛光金属或塑料。  
-首次出现：[第 8 章](/workbench/materials-light/#材质面板先盯四个参数)。
+首次出现：[第 9 章](/workbench/materials-light/#材质面板先盯四个参数)。
 
 **`Emission`**  
 自发光字段。霓虹、屏幕、发光符号常用。**注意：自发光只是看起来亮，不真的照亮周围物体**，照亮要靠 Light 组件。  
-首次出现：[第 8 章 · 给发光球做颜色](/workbench/materials-light/#给发光球做颜色)。
+首次出现：[第 9 章 · 给发光球做颜色](/workbench/materials-light/#给发光球做颜色)。
 
 **`PBR`**（Physically Based Rendering，基于物理的渲染）  
 一套基于物理参数（金属度、光滑度等）描述表面的渲染范式。Unity Standard Shader 走的就是 PBR。  
-首次出现：[第 8 章](/workbench/materials-light/#材质面板先盯四个参数)。
+首次出现：[第 9 章](/workbench/materials-light/#材质面板先盯四个参数)。
 
 **`Standard Shader`**  
 Unity 内置的 PBR 标准 Shader。本书前期默认用它。  
-首次出现：[第 8 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细见 ⏳ 第 36 章。
+首次出现：[第 9 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细见 ⏳ 第 36 章。
 
 **「材质突然变粉色」**  
 Shader 丢了 / 不兼容 / 渲染管线对不上的视觉表现。处理：先把 Material 的 Shader 切回稳定可用的标准 Shader。  
-首次出现：[第 8 章](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细排查见 ⏳ 附录 F。
+首次出现：[第 9 章](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细排查见 ⏳ 附录 F。
 
 ---
 
@@ -472,15 +472,15 @@ Shader 丢了 / 不兼容 / 渲染管线对不上的视觉表现。处理：先�
 
 **`Lightmap`**（烘焙光贴图）  
 事先把光照算好烤成贴图，运行时不再实时计算。代价是贴图占内存、不能动。  
-首次出现：[第 8 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 35 章。
+首次出现：[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 35 章。
 
 **`Light Probe`**  
 散布在场景里的探针，存间接光信息，让动态物体（玩家、Pickup）也能受静态烘焙光影响。  
-首次出现：[第 8 章 · VRChat 里要节制实时灯光](/workbench/materials-light/#vrchat-里要节制实时灯光)。详细见 ⏳ 第 35 章。
+首次出现：[第 9 章 · VRChat 里要节制实时灯光](/workbench/materials-light/#vrchat-里要节制实时灯光)。详细见 ⏳ 第 35 章。
 
 **`Shadow Map`**  
 实时阴影的内部表示。Unity 每帧重算，灯多 + 投影开 = 帧率掉。  
-首次出现：[第 8 章 · 阴影让空间立起来](/workbench/materials-light/#阴影让空间立起来)。
+首次出现：[第 9 章 · 阴影让空间立起来](/workbench/materials-light/#阴影让空间立起来)。
 
 ---
 
