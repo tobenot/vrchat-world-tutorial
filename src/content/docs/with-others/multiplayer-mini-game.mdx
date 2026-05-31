@@ -1,0 +1,541 @@
+---
+title: 30. 做一个多人小游戏
+description: 把第 26 到 29 章的工具拼起来，做一个 4 个按钮的「按抢分」小游戏。一个按钮在场上随机发光，谁先按谁加一分；计分板实时同步给所有玩家；中途加入的人也能看到当前比分；任何人可以按重置按钮把分数清零。
+difficulty: 进阶
+estimatedMinutes: 90
+chapterType: hands-on
+requiresSDK: true
+summary: 第六部的收尾项目。同步变量、网络事件、所有权、Late Joiner 四件事一次用上：Manager 维护当前发光按钮和所有玩家的分数，每位玩家加入实例时自动分配槽位，按到发光按钮时抢一次所有权改全局状态，下一个发光按钮从剩下三个里随机选。整个项目分成四块代码：Manager、Button、PlayerSlot、UI。最后讨论几条「能再做下去」的扩展。
+sidebar:
+  order: 5
+---
+
+第 26 到 29 章的工具到位了。这一章把它们拼成一个能拉朋友进来玩的项目。
+
+游戏规则简单到一句话能说清：场地里 4 个按钮，每次只有一个发光，发光的按钮被按一下，按的人得 1 分，另一个按钮再发光。计分板实时显示每位玩家的分数。
+
+短到一个晚上能做完，但需要的同步技巧覆盖第六部的全部内容：
+
+- **同步变量**：当前发光是哪个按钮、每位玩家的分数。
+- **所有权转移**：按下按钮时把 Manager 的所有权抢过来，再改全局状态。
+- **网络事件**：「重置游戏」要让所有客户端看到一次特效。
+- **Late Joiner**：第三个玩家中途加入，看到当前发光按钮和现存比分。
+- **OnPlayerJoined / OnPlayerLeft**：自动给新玩家分配计分板槽位、玩家走了清空槽位。
+
+读完这一章如果还有精力，几条进阶扩展放在最后，可以接着发挥。
+
+## 项目结构
+
+整个游戏由四块组成：
+
+```text
+TapTheLightGame
+├─ GameManager          (空 GameObject + GameManager.cs，跑游戏全局状态)
+├─ Button_0             (Cube + GameButton.cs + Light + Box Collider)
+├─ Button_1             (同上)
+├─ Button_2             (同上)
+├─ Button_3             (同上)
+├─ ResetButton          (Cube + ResetButton.cs)
+└─ Scoreboard           (TextMeshPro，显示当前分数)
+```
+
+`GameManager` 是中心：所有同步状态都在这一个 UdonSharpBehaviour 里。4 个按钮各自只是「按下时通知 Manager」的薄壳，自己不存任何同步状态。这样一个项目里只有一份同步状态需要操心。
+
+::::tip[为什么把所有同步状态集中在 Manager]
+分散的话每个按钮都是独立网络对象，所有权各自管。按下按钮 0 加分得抢按钮 0 的所有权，下一秒按下按钮 2 又得抢按钮 2 的所有权，每次都是一次完整的所有权转移流程，带宽和延迟都在浪费。
+
+集中到 Manager 后，所有权语义变成了「现在谁在控制这局游戏」。按按钮时只要抢这一次所有权，所有同步状态在一个 `RequestSerialization` 里一起发出去。
+
+通用经验：**一个游戏系统，一个 Manager，一份同步状态**。装饰物体（按钮、灯、UI）只通过本地引用调用 Manager 的方法，自己不加 `[UdonSynced]`。
+::::
+
+## 第一步：搭场地
+
+打开第二部那间小屋（或者新建一个空场景）。在地面上放 4 个 Cube 当按钮：
+
+```text
+Button_0    Position  -2,  1.0,  0      Scale 0.5, 0.3, 0.5
+Button_1    Position  -0.7, 1.0,  0      Scale 0.5, 0.3, 0.5
+Button_2    Position   0.7, 1.0,  0      Scale 0.5, 0.3, 0.5
+Button_3    Position   2,  1.0,  0      Scale 0.5, 0.3, 0.5
+```
+
+每个 Button 上做这几件事：
+
+1. 自带的 `Box Collider` 保留，**不**勾 `Is Trigger`。
+2. `Add Component` → 搜 `Light`，选 `Point Light`。`Range = 2`，`Intensity = 0`（默认是灭的），`Color` 可以挑一个鲜艳的（每个按钮不同色更直观）。
+3. （可选）做一个亮色材质让按钮在灭着时也看得见。
+
+新建空 GameObject `GameManager`，位置随意（不参与渲染，可以放在 `0, 0, 0` 或埋到地下）。
+
+新建空 GameObject `ResetButton`，位置摆在场地一角：
+
+```text
+ResetButton  Position  0, 1.0, 2   Scale 0.4, 0.4, 0.4
+```
+
+加一个 `Box Collider`、一个亮色材质方便看见。
+
+新建一个 `Canvas` → `World Space`，在它下面加 `TextMeshPro - Text`，命名 `Scoreboard`。位置摆在场地后方墙上、字号调到能看清。这一章 UI 的细节不展开，第七部会讲，先能显示文字就行。
+
+## 第二步：写 GameManager
+
+`Assets/Scripts/` 下新建 `GameManager.cs`：
+
+```cs title="GameManager.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+using VRC.Udon.Common.Interfaces;
+using TMPro;
+
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+public class GameManager : UdonSharpBehaviour
+{
+    private const int MAX_PLAYERS = 16;
+
+    [Header("场上的 4 个按钮")]
+    public GameButton[] buttons;
+
+    [Header("计分板 UI")]
+    public TextMeshProUGUI scoreboardText;
+
+    // 当前发光按钮的下标。-1 表示没有按钮发光（重置后到第一次激活之间）
+    [UdonSynced]
+    private int activeButtonIndex = -1;
+
+    // 玩家槽位：parallel arrays
+    [UdonSynced]
+    private int[] playerIds = new int[MAX_PLAYERS];
+
+    [UdonSynced]
+    private int[] scores = new int[MAX_PLAYERS];
+
+    private void Start()
+    {
+        // 第一个进实例的玩家自动是 Owner，由她启动第一轮
+        if (Networking.IsOwner(gameObject))
+        {
+            ActivateRandomButton();
+            RequestSerialization();
+        }
+        UpdateUI();
+    }
+
+    public override void OnDeserialization()
+    {
+        // 收到状态更新：重画 UI 和按钮发光状态
+        UpdateUI();
+    }
+
+    public override void OnPlayerJoined(VRCPlayerApi player)
+    {
+        if (!Networking.IsOwner(gameObject)) return;
+
+        int slot = FindSlot(player.playerId);
+        if (slot >= 0) return;  // 已经注册过
+
+        slot = FindEmptySlot();
+        if (slot < 0) return;   // 满了
+
+        playerIds[slot] = player.playerId;
+        scores[slot] = 0;
+        RequestSerialization();
+    }
+
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        if (!Networking.IsOwner(gameObject)) return;
+
+        int slot = FindSlot(player.playerId);
+        if (slot < 0) return;
+
+        playerIds[slot] = 0;
+        scores[slot] = 0;
+        RequestSerialization();
+    }
+
+    // 由 GameButton 在玩家按对了发光按钮时调用
+    public void OnButtonHit(int buttonIndex)
+    {
+        if (buttonIndex != activeButtonIndex) return;  // 没按到发光的，忽略
+
+        // 抢所有权
+        if (!Networking.IsOwner(gameObject))
+        {
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        }
+
+        // 给本机玩家加 1 分
+        int slot = FindSlot(Networking.LocalPlayer.playerId);
+        if (slot < 0)
+        {
+            slot = FindEmptySlot();
+            if (slot >= 0)
+            {
+                playerIds[slot] = Networking.LocalPlayer.playerId;
+            }
+        }
+        if (slot >= 0)
+        {
+            scores[slot]++;
+        }
+
+        // 选下一个发光按钮
+        ActivateRandomButton();
+
+        RequestSerialization();
+        UpdateUI();
+    }
+
+    // 由 ResetButton 调用
+    public void ResetGame()
+    {
+        if (!Networking.IsOwner(gameObject))
+        {
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        }
+
+        for (int i = 0; i < scores.Length; i++)
+        {
+            scores[i] = 0;
+        }
+        ActivateRandomButton();
+        RequestSerialization();
+        UpdateUI();
+
+        // 让所有人看一次重置特效（事件，不是状态）
+        SendCustomNetworkEvent(NetworkEventTarget.All, nameof(PlayResetEffect));
+    }
+
+    public void PlayResetEffect()
+    {
+        // 这一段在所有客户端都跑一次。下面留个简单实现，第二步可以扩展成粒子或音效
+        Debug.Log("[Game] Reset!");
+    }
+
+    // ---- 内部工具方法 ----
+
+    private void ActivateRandomButton()
+    {
+        if (buttons == null || buttons.Length == 0) return;
+
+        int next = Random.Range(0, buttons.Length);
+        // 尽量不选当前那个，让玩家有移动感
+        if (next == activeButtonIndex && buttons.Length > 1)
+        {
+            next = (next + 1) % buttons.Length;
+        }
+        activeButtonIndex = next;
+    }
+
+    private int FindSlot(int playerId)
+    {
+        for (int i = 0; i < playerIds.Length; i++)
+        {
+            if (playerIds[i] == playerId) return i;
+        }
+        return -1;
+    }
+
+    private int FindEmptySlot()
+    {
+        for (int i = 0; i < playerIds.Length; i++)
+        {
+            if (playerIds[i] == 0) return i;
+        }
+        return -1;
+    }
+
+    private void UpdateUI()
+    {
+        // 更新按钮发光状态
+        if (buttons != null)
+        {
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                if (buttons[i] != null)
+                {
+                    buttons[i].SetGlowing(i == activeButtonIndex);
+                }
+            }
+        }
+
+        // 更新计分板文字
+        if (scoreboardText == null) return;
+
+        string text = "<size=120%>抢分计分板</size>\n\n";
+        for (int i = 0; i < playerIds.Length; i++)
+        {
+            if (playerIds[i] == 0) continue;
+
+            VRCPlayerApi p = VRCPlayerApi.GetPlayerById(playerIds[i]);
+            string name = p != null ? p.displayName : "(离线)";
+            text += $"{name}：{scores[i]}\n";
+        }
+        scoreboardText.text = text;
+    }
+}
+```
+
+值得停下来看几件事：
+
+- 类标 `[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`：所有同步都走手动模式。
+- `playerIds` 和 `scores` 是两个并行数组，都标 `[UdonSynced]`。第 28 章说过 UdonSharp 同步支持基础类型的数组。
+- `OnPlayerJoined` 只让 Owner 处理。其他客户端跑 `OnPlayerJoined` 也会进入这个方法但被第一行 `if (!IsOwner) return` 挡住，不会做任何事。
+- `OnButtonHit` 写成 `public`：它会被另一个脚本（`GameButton`）通过本地引用直接调用。第 28 章见过：本地脚本之间互相调方法不需要 `SendCustomEvent`，直接调就行。
+- `ActivateRandomButton` 里那个「不选当前的」防止连续两下按同一个按钮，让玩家感觉「光在跳」。
+- `UpdateUI` 里通过 `VRCPlayerApi.GetPlayerById` 把 playerId 翻译成显示名。这个 API 找不到对应玩家时返回 null，要判一下。
+
+::::caution[playerId 用 0 当「空槽位」标记的小风险]
+理论上 VRChat 的 playerId 从 1 开始递增，0 不会被分配给真实玩家。所以用 0 当空槽位标记是安全的。
+
+但写代码时容易把这个约定忘掉。一种更稳妥的写法是用一个 bool 数组 `slotOccupied[]` 平行存储，跟 `playerIds[]` 一起同步。代价是多 16 个 bool 的同步带宽，对 4–8 人小游戏可以忽略。
+
+这一章选了「playerId 0 = 空」的简化版，是因为不想再多一个数组。如果项目变大，加一个标记数组让代码意图更明显是值得的。
+::::
+
+## 第三步：写 GameButton
+
+`Assets/Scripts/` 下新建 `GameButton.cs`：
+
+```cs title="GameButton.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+public class GameButton : UdonSharpBehaviour
+{
+    public GameManager manager;
+    public Light buttonLight;
+    public int buttonIndex;
+
+    private bool isGlowing = false;
+
+    public void SetGlowing(bool glowing)
+    {
+        isGlowing = glowing;
+        if (buttonLight != null)
+        {
+            buttonLight.intensity = glowing ? 4f : 0f;
+        }
+    }
+
+    public override void Interact()
+    {
+        if (!isGlowing) return;  // 只有发光的按钮接受按下
+        if (manager == null) return;
+
+        manager.OnButtonHit(buttonIndex);
+    }
+}
+```
+
+很短：
+
+- `[UdonBehaviourSyncMode(BehaviourSyncMode.None)]` 明示这个脚本不存任何同步状态。`isGlowing` 是本地缓存，由 Manager 在 `UpdateUI` 里调 `SetGlowing` 更新。
+- `Interact` 检查 `isGlowing`：按了不发光的按钮直接忽略。VRChat 的 `Interaction Text` 可以在 Inspector 里填空字符串让按钮看起来「不能按」，但这里更简单的做法是脚本内部判一下。
+- 调用 `manager.OnButtonHit(buttonIndex)`：把「按到了」这件事告诉 Manager，让 Manager 处理同步状态。
+
+把 `GameButton.cs` 挂到每个按钮 GameObject 上：
+
+| 字段 | Button_0 | Button_1 | Button_2 | Button_3 |
+| :--- | :--- | :--- | :--- | :--- |
+| `Manager` | 拖 GameManager 物体 | 同左 | 同左 | 同左 |
+| `Button Light` | 拖本物体的 Light | 同 | 同 | 同 |
+| `Button Index` | 0 | 1 | 2 | 3 |
+| `Interaction Text` | 按 | 按 | 按 | 按 |
+
+回 `GameManager`，把 4 个按钮拖进 `Buttons` 数组：Inspector 里 `Buttons` → `Size = 4` → 4 个槽分别拖 `Button_0` 到 `Button_3`。再把 `Scoreboard` 那块 TextMeshPro 拖进 `Scoreboard Text` 槽。
+
+## 第四步：写 ResetButton
+
+```cs title="ResetButton.cs"
+using UdonSharp;
+using UnityEngine;
+
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+public class ResetButton : UdonSharpBehaviour
+{
+    public GameManager manager;
+
+    public override void Interact()
+    {
+        if (manager == null) return;
+        manager.ResetGame();
+    }
+}
+```
+
+挂到 `ResetButton` 物体上，把 GameManager 拖进 `Manager` 字段。`Interaction Text` 写「重置」。
+
+::::tip[ResetGame 用 SendCustomNetworkEvent，不用同步变量]
+读一下 `GameManager.ResetGame`：它两件事：清零分数（同步状态变化）、播放一次重置特效（一次性事件）。
+
+清零分数走的是「改 `[UdonSynced]` 字段 + RequestSerialization」的状态同步。
+播放重置特效走的是 `SendCustomNetworkEvent(All, nameof(PlayResetEffect))` 的事件广播。
+
+两件事虽然都是「重置」触发的，但数据形态不同。状态走变量，事件走网络事件。第 28 章那张分类表反复用。
+::::
+
+## 第五步：单人 Build & Test
+
+先单人测一遍，确认本地逻辑通畅。
+
+`Build & Test`，进世界。Start 时 Owner 是自己，应该能看到一个按钮发光。走过去按一下：
+
+- 发光按钮的灯熄灭。
+- 另一个按钮发光。
+- 计分板上自己的名字 + 分数 1 出现。
+
+按几下，分数累加。按 ResetButton，分数归零、按钮换一个发光。
+
+如果某一步不对，按这条顺序自查：
+
+1. 计分板没显示自己 → `OnPlayerJoined` 没跑：检查 GameManager 是不是挂到了一个**网络化 GameObject**（默认所有挂 UdonBehaviour 的 GameObject 都满足）。
+2. 按了按钮没反应 → 看 Console 红字，多半是引用槽没拖（`manager` 是 None、`Buttons` 数组 Size 是 0）。
+3. 按了按钮分数加了但 UI 没变 → `UpdateUI` 没被调：检查 `OnButtonHit` 末尾有没有 `UpdateUI()` 那一行。
+
+## 第六步：双人 Build & Publish 验证同步
+
+单人通过后 Build & Publish 上传，开 Friends 实例。两个客户端同时进。
+
+预期表现：
+
+- 两个屏幕看到同一个按钮发光（Manager 同步过的 `activeButtonIndex`）。
+- Alpha 抢先按下，两边都看到分数变化（Alpha +1）。
+- 下一个按钮发光的位置两边一致。
+- 计分板上 Alpha 和 Beta 都列出来。
+
+如果 Alpha 看到自己分数 +1 但 Beta 看到自己分数也 +1，是 `playerIds` 用错了：自查 `OnButtonHit` 里 `Networking.LocalPlayer.playerId` 这一行。每个客户端跑这段代码时，`Networking.LocalPlayer` 应该是按按钮的那个人。
+
+::::caution[「按一下我得 2 分」的常见原因]
+偶尔会看到按一次按钮分数 +2 而不是 +1。两种常见原因：
+
+- 按钮上挂了多份 GameButton 脚本（误操作）。Inspector 里看一眼组件数。
+- 同一个按钮的 Collider 跟另一个按钮重叠，VRChat 的 Interact 在两个目标上都触发了。隔开一点距离。
+
+要彻底防多重触发，可以在 `OnButtonHit` 里加一个本地的「最小间隔」：
+
+```cs
+private float lastHitTime = 0f;
+
+public void OnButtonHit(int buttonIndex)
+{
+    if (Time.time - lastHitTime < 0.1f) return;
+    lastHitTime = Time.time;
+    // ...原本的逻辑
+}
+```
+
+这种本地防抖跟同步无关，挂在 OnButtonHit 入口，所有客户端各自挡掉自己那台的双触发。
+::::
+
+## 第七步：测 Late Joiner
+
+让 Charlie 加入这个实例（开第三个客户端，或拉一位朋友）。
+
+Charlie 进来后应该立刻看到：
+
+- 当前发光的按钮（不需要等下一次切换）。
+- Alpha 和 Beta 的当前分数。
+- 自己的名字会在下一次按按钮（或下一次玩家加入）后出现在计分板上。
+
+第三条值得说明。回顾 `OnPlayerJoined` 的逻辑：Charlie 加入时所有客户端的 `OnPlayerJoined` 都会被调用，但只有 Owner 那台会真的写 `playerIds[slot] = Charlie.playerId` 并广播。
+
+如果 Charlie 自己**就是 Owner**（罕见，但 Alpha 和 Beta 都已经离开过、Charlie 是当前实例最早的玩家时会发生），她自己写一次。
+
+她加入瞬间她那台客户端会触发一次 `OnDeserialization`（拿到当前 playerIds 和 scores），UI 立刻显示已有玩家分数。她自己的名字要等 Owner 那台客户端广播下一次 `RequestSerialization` 后才出现：按按钮、其他玩家加入、被人按了 ResetButton 等等任何引发 `RequestSerialization` 的操作都行。
+
+::::tip[新玩家想立刻在计分板上看到自己]
+要做到这一点，在 Charlie 自己的客户端额外发一次「自己加入了」的请求给 Owner：
+
+```cs
+// 在 GameManager 里
+public override void OnPlayerJoined(VRCPlayerApi player)
+{
+    // ... Owner 处理逻辑同前
+
+    // 如果加入的是本机玩家，主动让 Owner 立刻广播一次
+    if (player == Networking.LocalPlayer && !Networking.IsOwner(gameObject))
+    {
+        SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(RequestImmediateSerialize));
+    }
+}
+
+public void RequestImmediateSerialize()
+{
+    if (!Networking.IsOwner(gameObject)) return;
+    RequestSerialization();
+}
+```
+
+第 28 章那个「让 Owner 替我做事」的模式又出现了。这种小细节决定的是体验：玩家进来 0.2 秒就看到自己 vs 玩家进来 30 秒还看不到自己。
+::::
+
+## 第八步：测 Owner 切换
+
+让 Alpha 离开实例。她原本是 Manager 的 Owner。
+
+VRChat 自动把所有权转给下一位玩家（按加入顺序）：Beta。Beta 客户端的 GameManager 上 `OnOwnershipTransferred` 会触发。这之后所有「只让 Owner 跑」的逻辑（`OnPlayerJoined`、`ResetGame`、`OnButtonHit` 里的 RequestSerialization）会在 Beta 客户端执行。
+
+游戏不应该中断：Alpha 离开瞬间她的分数留在 `playerIds[slot]` 里几秒，直到 Beta 客户端的 `OnPlayerLeft(Alpha)` 跑完才被清掉。这件事多数情况下没问题。
+
+边界情况要小心：如果 Alpha 离开时她**手里**还有「等待广播」的状态变化（比如 RequestSerialization 调了但还没真的发出去），那个变化会丢。这是分布式系统的常态，不用过分追求完美一致。
+
+## 自己改三个版本
+
+游戏雏形跑起来后，几个方向可以扩展：
+
+- **加倒计时**：用 `Networking.GetServerTimeInSeconds()` 同步一个游戏开始时间戳，所有客户端可以本地计算「剩余秒数」。倒计时归零时 Owner 触发 `ResetGame`。这个 API 返回的是服务器时间，所有客户端拿到的是同一个值，不需要同步。
+- **同步特效**：在 `PlayResetEffect` 里实际播一段粒子和音效。这一章预留了空函数，每个客户端各自播一次自己本地的粒子，效果就是全场同时炸开。
+- **多档难度**：加一个 `[UdonSynced] int difficulty` 字段，通过额外的「难度按钮」让任意玩家切换。难度高的话 `ActivateRandomButton` 后立刻安排一个 `SendCustomEventDelayedSeconds` 在 X 秒后强制切换（玩家没按到也会丢机会）。
+
+第三个变体能让游戏从「比手快」变成「能不能撑住节奏」，玩感大不一样。改难度按钮的时候会发现「有些字段任何人都能改」（比如难度）跟「有些字段只有 Owner 能改」（比如分数）混合起来需要小心安排，让别的玩家也能按按钮先抢所有权再改是简单做法。
+
+## 一个完整多人系统的形状
+
+把第 26 到 30 章学的东西拼一起看，一个 VRChat 多人系统通常长这样：
+
+```text
+┌──────────────────────────────────────┐
+│  Manager UdonSharpBehaviour          │
+│  ───────────────                     │
+│  [UdonBehaviourSyncMode(Manual)]     │
+│                                      │
+│  [UdonSynced] 全局状态 1, 2, 3 ...   │
+│                                      │
+│  Owner 改字段 → RequestSerialization │
+│  其他客户端 → OnDeserialization       │
+│                                      │
+│  OnPlayerJoined / OnPlayerLeft       │
+│   只让 Owner 处理玩家槽位             │
+│                                      │
+│  对外公开方法：                       │
+│   - OnButtonHit(int)                 │
+│   - ResetGame()                      │
+│   ...                                │
+└──────────────────────────────────────┘
+       ↑                ↑
+       │                │
+   ┌───┴────┐      ┌────┴────┐
+   │ Button │      │ Reset   │
+   │ (None) │      │ (None)  │
+   └────────┘      └─────────┘
+   不存同步状态        不存同步状态
+   只调 Manager         只调 Manager
+   公开方法              公开方法
+```
+
+中心一份同步状态、若干薄壳交互组件、一个状态变化的统一入口。这套形状在四人桌游、抢点游戏、多人解谜、社交派对小游戏里反复出现。换皮换玩法，骨架不变。
+
+第六部到这里走完。回到第四部那段创作者视角说过的话：「会回应人的房间」加上「能让所有人看到同一件事」，VRChat 多人世界的两块基本能力就到位了。剩下的更大的话题（空间体验设计、性能、发布维护）是把这个能跑的多人世界做扎实做大。
+
+## 本章参考
+
+- [VRChat Creator Docs：Udon Networking](https://creators.vrchat.com/worlds/udon/networking/)
+- [VRChat Creator Docs：Player API](https://creators.vrchat.com/worlds/udon/players/)
+- [Udon Networking Decision Guide（VR Creators，2026-05）](https://vrcreators.net/docs/vrchat/udon-networking-decision-guide)
+- [Networking and Synchronization（DeepWiki，2025-04）](https://deepwiki.com/vrchat-community/creator-docs/4.5-networking-and-synchronization)
+- [VRChat Networking & Ownership（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-networking-basics/)

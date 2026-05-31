@@ -1,0 +1,357 @@
+---
+title: 27. 谁说了算，Ownership
+description: 每个网络对象同一时刻只有一个 Owner，只有 Owner 改的同步字段才会广播给其他客户端。Pickup 抓起来时自动转移所有权，按钮门那种自定义机关要自己 Networking.SetOwner。OnOwnershipRequest / OnOwnershipTransferred 决定能不能换主人和换完之后做什么。
+difficulty: 进阶
+estimatedMinutes: 45
+chapterType: hands-on
+requiresSDK: true
+summary: 第六部第二章。先给第 26 章那盏灯加几行 Networking.IsOwner / GetOwner 的调试日志，看每个客户端各自认为自己是不是 Owner。再看 Pickup 抓起来时所有权自动转移的过程。最后用 Networking.SetOwner 给一扇门加一个「按按钮的人变成 Owner」的步骤，为同步打地基。OnOwnershipRequest 决定要不要批准转移、OnOwnershipTransferred 决定换完之后做什么。
+sidebar:
+  order: 2
+---
+
+第 26 章那盏灯，两个客户端各按各的，状态各走各的。要让两边「按一次只翻一次」，必须先回答一个问题：A 按了和 B 按了，谁的值算数？
+
+VRChat 给的答案是：每个网络对象同一时刻**只有一个 Owner**，第 28 章要广播的同步字段，**只有 Owner 改了才会发出去**。其他人在自己客户端上改这个字段，只在本地生效，发不出去。
+
+这一章不让灯真的同步起来，那是第 28 章的事。这一章把 Owner 这件事讲清楚，并给那盏灯加一个「按按钮的人成为 Owner」的步骤。地基铺好了，再接 `[UdonSynced]` 才能合拢。
+
+## Owner 是什么、不是什么
+
+每个被 VRChat 视为「网络对象」的 GameObject 都有一个 Owner。判断标准是这个物体上至少挂着一个 `UdonBehaviour` 或 `VRC Object Sync` 这类网络组件。
+
+Owner 是一名玩家。具体规则：
+
+- 一个网络物体一开始的 Owner 是**实例的第一个进来的玩家**（业内常叫 Master）。
+- Owner 离开实例时，所有权会自动转给当前实例里最早加入的另一名玩家。
+- 任何在场玩家都可以通过 `Networking.SetOwner(player, gameObject)` 主动接管所有权（前提是脚本不拒绝，下面 `OnOwnershipRequest` 会讲）。
+- 同一时刻，Owner 只有一位。
+
+Owner 不能做的事：
+
+- Owner 不是「管理员」。它不能阻止别人的客户端在本地改自己的字段。
+- Owner 离世界后这个角色就消失了，不带走任何数据。下一个 Owner 接手时看到的是这个对象当前的同步状态。
+
+::::tip[为什么要有 Owner 这个角色]
+反过来想：如果让任何客户端都能改同步字段，会出什么事？
+
+A 客户端把灯设为亮，把这个变化广播。B 同时把灯设为灭，也广播。两条广播在 VRChat 服务器上撞车。所有其他客户端会收到两条互相矛盾的「灯应该是 X」消息，状态系统进入一种「最后一条到的算」的悬而未决状态。
+
+让一个对象同一时刻只有一个 Owner，避免了这种「两位同时争同一个状态」的根本性混乱。所有权转移时序列是清楚的：A 是 Owner → A 改字段 → 广播 → 其他人收到。B 想改？先把所有权要过来，再改。
+
+整套机制等于把分布式系统里复杂的并发问题，化简成「同一时刻只有一个写入者」这条单线索。代价是作者得主动管所有权，收益是状态行为可预测。
+::::
+
+## 给灯加几行 Owner 调试日志
+
+继续用第 26 章那盏灯。把 `LampToggle.cs` 改成：
+
+```cs title="LampToggle.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+public class LampToggle : UdonSharpBehaviour
+{
+    public Light targetLight;
+
+    public override void Interact()
+    {
+        targetLight.enabled = !targetLight.enabled;
+
+        VRCPlayerApi local = Networking.LocalPlayer;
+        VRCPlayerApi owner = Networking.GetOwner(gameObject);
+
+        bool isOwner = Networking.IsOwner(gameObject);
+
+        string ownerName = owner != null ? owner.displayName : "null";
+        Debug.Log(
+            $"[Lamp] {local.displayName} pressed. " +
+            $"enabled = {targetLight.enabled}, " +
+            $"owner = {ownerName}, " +
+            $"IsOwner = {isOwner}"
+        );
+    }
+}
+```
+
+三个新工具方法这一章会反复用：
+
+- `Networking.LocalPlayer`：本机客户端的玩家对象。
+- `Networking.GetOwner(gameObject)`：返回当前是哪位玩家拥有这个物体。
+- `Networking.IsOwner(gameObject)`：是不是本机玩家就是这个物体的 Owner。等价于 `GetOwner(go) == LocalPlayer`，写起来更短。
+
+`Networking` 是 VRChat 提供的静态类，所有网络相关的工具方法都挂在它上面。第三部讲过静态类，这里就是典型应用。
+
+存盘，Build & Publish，让两个客户端进同一个实例，按几下灯，看各自的 Output Log。
+
+### 预期看到的日志
+
+假设玩家 Alpha 第一个进入实例，玩家 Beta 后进。
+
+Alpha 客户端的 Output Log：
+
+```text
+[Lamp] Alpha pressed. enabled = False, owner = Alpha, IsOwner = True
+```
+
+Beta 客户端的 Output Log（按下同一个开关）：
+
+```text
+[Lamp] Beta pressed. enabled = False, owner = Alpha, IsOwner = False
+```
+
+两件值得停一下的事：
+
+- **owner = Alpha**：两台客户端都认为这个物体是 Alpha 拥有的。Alpha 是实例的第一个加入者，默认所有权给了她。
+- **Beta 那边 IsOwner = False**：Beta 按下去，灯在 Beta 本地仍然翻了（`targetLight.enabled` 在本地还是会变）。但 Beta 不是 Owner，第 28 章接同步变量后会发现 Beta 在这种状态下改的同步字段不会被广播。
+
+::::caution[IsOwner 不是「能不能改本地字段」]
+读到这里容易误解：「不是 Owner 就别动这个字段了」。其实可以动，本地字段随便改。
+
+`IsOwner` 决定的是：**改的这个值会不会被发出去**。如果字段没标 `[UdonSynced]`（这一章那盏灯就是这种），Owner 是谁都无所谓，反正都发不出去。
+
+把灯标上 `[UdonSynced]` 之后，这个区别才显现：Owner 改了 → 广播；非 Owner 改了 → 只在本地翻一下，没人收到。
+::::
+
+## VRC Pickup 已经在悄悄转移所有权
+
+回头看第 15 章那只 `PickupBall`。挂了 `VRC Object Sync` 的它，在多人下行为正常：A 抓起来，B 那边看到球被搬到 A 手里。
+
+这件事背后就是所有权自动转移。`VRC Pickup` 加 `VRC Object Sync` 配合时，VRChat 替作者做了这一连串：
+
+```text
+玩家伸手抓物体
+    ↓
+VRC Pickup 检测到抓取尝试
+    ↓
+内部调用 Networking.SetOwner(抓的人, 球)
+    ↓
+所有权转给这位玩家
+    ↓
+她接下来移动球时，球的 Transform 变化
+    ↓
+VRC Object Sync 检测变化（她是 Owner，发得出去）
+    ↓
+广播给其他客户端
+    ↓
+其他客户端的 OnDeserialization 把球摆到对应位置
+```
+
+每一步都是一条已经存在的机制，VRChat 把它们打包成「抓起 Pickup 自动同步」这件让作者觉得理所当然的事。
+
+给 `PickupBall` 也加一段调试日志，亲眼看一次：
+
+```cs title="给第 15 章 PickupGlow.cs 的 OnPickup 加日志"
+public override void OnPickup()
+{
+    if (targetLight != null)
+    {
+        targetLight.intensity = heldIntensity;
+    }
+
+    VRCPlayerApi owner = Networking.GetOwner(gameObject);
+    Debug.Log($"[Pickup] picked up. owner is now {owner.displayName}");
+}
+```
+
+A 实例的 Owner 是 Alpha。Beta 抓起小球的瞬间，Beta 的客户端会打：
+
+```text
+[Pickup] picked up. owner is now Beta
+```
+
+Alpha 那边也会接到 `OnPickup`（同步事件触发），打的也是相同内容。所有权已经在球抓起的瞬间转给了 Beta。
+
+::::tip[为什么 Pickup 要自动转移所有权]
+不转移会怎样？球会按抓的人的手运动，但因为她不是 Owner，这个运动不会被广播。其他客户端看到球还停在桌上。她伸出去的手在虚空里抓着空气。
+
+Pickup 的设计前提是「拿起的人接管这个物体」。VRChat 把所有权转移内置进 `VRC Pickup` + `VRC Object Sync` 的协作里，正是为了让这件事在写零行代码的情况下也能正常工作。这是 VRChat 替作者准备好的「默认同步」中最常用的一档。
+
+按按钮、踩开关、改字段这些自定义机关 VRChat 没法替作者预设语义，所以要不要 SetOwner 得作者自己决定。
+::::
+
+## 给灯按钮加 SetOwner
+
+回到那盏灯。要让它在多人下能正常同步，得在按下的瞬间把所有权先抢过来：
+
+```cs title="LampToggle.cs（27 章版）"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+public class LampToggle : UdonSharpBehaviour
+{
+    public Light targetLight;
+
+    public override void Interact()
+    {
+        // 第一步：把所有权抢到本机
+        if (!Networking.IsOwner(gameObject))
+        {
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        }
+
+        // 第二步：本地翻字段
+        targetLight.enabled = !targetLight.enabled;
+
+        // 调试：日志
+        VRCPlayerApi owner = Networking.GetOwner(gameObject);
+        Debug.Log(
+            $"[Lamp] {Networking.LocalPlayer.displayName} pressed. " +
+            $"enabled = {targetLight.enabled}, " +
+            $"owner = {owner.displayName}"
+        );
+    }
+}
+```
+
+新加那一段就两件事：
+
+1. 先用 `Networking.IsOwner(gameObject)` 检查本机是不是 Owner。
+2. 不是就调 `Networking.SetOwner(Networking.LocalPlayer, gameObject)`，把所有权抢过来。
+
+这一章字段还没加 `[UdonSynced]`，所以两台客户端的灯还是各自翻各自的。但 Owner 的归属会变了。
+
+Build & Publish 重测：Alpha 进来，按一下，日志：
+
+```text
+[Lamp] Alpha pressed. enabled = False, owner = Alpha
+```
+
+Beta 接着按一下，日志（注意 owner 变了）：
+
+```text
+[Lamp] Beta pressed. enabled = False, owner = Beta
+```
+
+Alpha 在自己客户端再按一下：
+
+```text
+[Lamp] Alpha pressed. enabled = True, owner = Alpha
+```
+
+`SetOwner` 的效果立刻可见：每次有人按，Owner 都会切到她。把 `enabled` 标成 `[UdonSynced]` 之后（第 28 章会做这件事），这个 Owner 切换的瞬间就是「广播这条新状态」的时机。
+
+::::caution[SetOwner 之前的 IsOwner 检查为什么不能省]
+看起来 `Networking.SetOwner` 是幂等的：本来就是 Owner 时再调一次，应该没事吧？
+
+文档建议是：调之前先用 `IsOwner` 判断，已经是 Owner 就跳过。原因是 `SetOwner` 即使重复调用也会经过完整的所有权转移流程：触发一次 `OnOwnershipRequest`、一次 `OnOwnershipTransferred`，并触发所有同步字段的重新打包。这件事不便宜，对于像 Pickup 那种每帧都被检查的场景，少调一次就少一次完整流程。
+
+习惯上写成「先 IsOwner 判断、再 SetOwner、再改字段」三步：
+
+```cs
+if (!Networking.IsOwner(gameObject))
+{
+    Networking.SetOwner(Networking.LocalPlayer, gameObject);
+}
+// 改字段、调 RequestSerialization
+```
+
+这一段会在第六部反复出现，写到第三次会自动成肌肉记忆。
+::::
+
+## 拒绝接管：OnOwnershipRequest
+
+某些场景不希望随便就被人接管所有权。考虑一个游戏房间：A 玩家正在玩一段单人小关卡，B 玩家走过来按了那个开关，所有权抢过去，A 的小关卡数据全乱。
+
+VRChat 给的工具是 `OnOwnershipRequest`。在脚本里重写它，返回 `bool` 决定批不批准这次所有权请求：
+
+```cs
+public override bool OnOwnershipRequest(VRCPlayerApi requestingPlayer, VRCPlayerApi requestedOwner)
+{
+    // requestingPlayer：发起请求的玩家（多数情况下就是想成为新 Owner 的那个）
+    // requestedOwner：请求把所有权转给谁
+    // 返回 true：允许；返回 false：拒绝
+    return true;
+}
+```
+
+默认行为（不重写时）等价于 `return true`：所有请求都批准。要写一个「比赛进行中不许换 Owner」的关卡，可以这样：
+
+```cs
+[UdonSynced]
+private bool isInMatch = false;
+
+public override bool OnOwnershipRequest(VRCPlayerApi requestingPlayer, VRCPlayerApi requestedOwner)
+{
+    if (isInMatch)
+    {
+        return false;   // 比赛中拒绝换 Owner
+    }
+    return true;
+}
+```
+
+`OnOwnershipRequest` 在**当前 Owner**的客户端上跑。意思是：B 想抢 A 的所有权，VRChat 先发请求到 A 的客户端，A 客户端的脚本来判断要不要批准。批准了，转移流程才会真的开始。
+
+::::tip[OnOwnershipRequest 适合保护「私有状态」]
+门、灯、按按钮这种「谁按谁来管」的开放机关，默认 `return true` 就够了。任何人按都能接管。
+
+需要 `OnOwnershipRequest` 拒绝的典型场景：
+
+- **个人私有的物品**：比赛里给每位玩家分了一把剑，不希望别人抢走改它。
+- **进行中的关键状态**：抓宝过程中宝箱已经在被一位玩家打开，别人不该插队抢所有权。
+- **管理员才能动的开关**：场地里只有指定玩家能动的总闸。
+
+写得太严会把正常使用也挡掉，写得太松又留漏洞。多数 VRChat 世界的策略是：能开放就开放，少数关键状态加保护。
+::::
+
+## 转完做什么：OnOwnershipTransferred
+
+所有权真的转完之后，VRChat 在新 Owner 和旧 Owner 两台客户端上都会触发 `OnOwnershipTransferred`：
+
+```cs
+public override void OnOwnershipTransferred(VRCPlayerApi player)
+{
+    // player：新 Owner 是谁
+    Debug.Log($"[Lamp] ownership transferred to {player.displayName}");
+}
+```
+
+参数是新 Owner。回调的常见用途：
+
+- **更新 UI**：在某个面板上显示「现在由 Alpha 控制」。
+- **重置某些状态**：旧 Owner 留下的临时数据清掉。
+- **触发音效或视觉反馈**：让玩家知道控制权变了。
+
+::::tip[OnOwnershipTransferred 在所有客户端都会跑]
+不止两位当事人收到。所有看着这个物体的玩家客户端都会触发 `OnOwnershipTransferred`。原因是：所有权变化是个公共事实，所有人都需要更新自己的本地缓存。
+
+写 UI 反馈时不需要额外加广播，VRChat 已经替作者把事件分发好了。
+::::
+
+## 不是所有 GameObject 都有 Owner
+
+`Networking.GetOwner(gameObject)` 只对**网络化的 GameObject**有意义。判断标准：物体上至少挂了一个 `UdonBehaviour` 或 `VRC Object Sync` 等网络组件。
+
+挂了几个普通 Unity 组件（`MeshRenderer`、`Light`、`Collider`）的物体，VRChat 不把它当网络对象，调 `GetOwner` 会报警告或返回 null。
+
+实战里这条不太容易踩到。习惯做法是：要管所有权的脚本字段，挂在写 UdonSharp 的那个 GameObject 上。`gameObject` 这个引用在 UdonSharpBehaviour 里指的就是「自己挂在的那个 GameObject」，自动满足条件。
+
+## 自己改两个版本
+
+把当前的 `LampToggle.cs` 当骨架，做两个变体看 Owner 行为：
+
+- 加一个字段 `public bool ownershipLocked = false;`，并在 `OnOwnershipRequest` 里返回 `!ownershipLocked`。Build & Publish 后，让 A 把 `ownershipLocked` 在 Inspector 里设为 true（或用一个调试按钮翻它），观察 B 再按那盏灯时 Owner 是否变化。
+- 重写 `OnOwnershipTransferred(VRCPlayerApi player)`，里面 `Debug.Log` 一行「ownership now belongs to X」。两个客户端都看一眼日志，确认这个事件在两边都触发了。
+
+第一个变体会让 B 那边看到「按按钮没反应」的现象。所有权拒绝转移之后，本地 `Interact` 仍然跑（VRChat 不会因为拒绝 Owner 转移就跳过 Interact），但因为 B 不是 Owner，加了 `[UdonSynced]` 后 B 改的字段广播不出去。这种「能按但没效果」的现象常常让玩家以为按钮坏了，所以拒绝接管的世界通常配一个 UI 提示告诉玩家「现在不能动这个」。
+
+## Owner 工具箱
+
+到这里 Owner 的工具齐了：
+
+- **`Networking.IsOwner(go)` / `GetOwner(go)`**：判断当前 Owner。
+- **`Networking.SetOwner(player, go)`**：抢占所有权，先 `IsOwner` 判一下、再调，少做一次完整的转移流程。
+- **`OnOwnershipRequest(req, target)` 返回 bool**：在当前 Owner 那一台决定批不批准。
+- **`OnOwnershipTransferred(player)`**：转移完成后所有客户端都触发，常用来更新 UI 或重置临时状态。
+
+「按按钮的人成为 Owner」这一步铺好之后，灯本身仍然两边各亮各的。所有权决定的是「谁改的字段才会被发出去」，但 VRChat 还需要知道**哪个字段要被发出去**。这件事要等同步变量上场才合拢。
+
+## 本章参考
+
+- [VRChat Creator Docs：Network Components](https://creators.vrchat.com/worlds/udon/networking/network-components/)
+- [VRChat Creator Docs：Udon Networking](https://creators.vrchat.com/worlds/udon/networking/)
+- [Networking and Synchronization（DeepWiki，2025-04）](https://deepwiki.com/vrchat-community/creator-docs/4.5-networking-and-synchronization)
+- [VRC Override Methods Reference（UdonVR）](https://github.com/UdonVR/Tutorials/blob/master/VRC%20Override%20Methods%20reference.cs)

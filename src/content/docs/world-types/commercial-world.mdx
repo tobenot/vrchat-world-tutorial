@@ -1,0 +1,313 @@
+---
+title: 25. Commercial World，商品、赞助和创作者经济
+description: VRChat Creator Economy 让创作者能从世界里直接收钱：Listings、Subscriptions、Group Stores、Udon Products。这一章把这些组件讲清楚，并讨论怎么让商业元素不破坏体验。
+difficulty: 进阶
+estimatedMinutes: 25
+chapterType: concept
+summary: 2024 年起 VRChat 推出 Creator Economy，世界开发者可以通过订阅、商品、付费角色获得 VRChat Credits 收益。这一章讲清楚这套经济系统的组件、规则、抽成比例，并讨论怎么把商业元素融进世界而不让它显得廉价。
+sidebar:
+  order: 8
+---
+
+VRChat Creator Economy（VRChat 创作者经济）2024 年正式上线，2025 年起逐步铺开。它解决的是一件长期被讨论的事：在 VRChat 里让创作有可持续的回报路径，而非永远只能算兴趣。
+
+这一章把 Commercial World（含商业元素的空间）这一类拎出来。需要先说明的是：「商业世界」并不是单独的一类，更像是给前面 18 到 24 章的任意类型「叠加一层」。一个 Chill 世界可以加订阅会员只能进的 VIP 房；一个 Game 世界可以加付费解锁的特殊角色；一个 Gallery 可以让访客直接在画作旁边购买数字版。这一章主要讲两件事：经济系统怎么用、商业元素怎么不破坏体验。
+
+## 这类世界的核心是「在不破坏体验的前提下产生收益」
+
+商业元素加进 VRChat 世界，最容易出现的失败是：世界变成一个广告牌。每堵墙上一个赞助按钮、每件 Pickup 旁边一个购买提示、每三分钟弹一次升级会员的 UI。这种世界访问量会断崖式下跌。
+
+成功的 Commercial World 通常做对了几件事：
+
+- **付费门槛对体验的影响是「增益」而非「卡门」**。免费玩家进来能看到完整的核心体验，付费玩家解锁的是装饰、外观、特殊房间、加速、便利功能。门槛不卡在「能不能玩」上。
+- **付费提示低调**。付费提示放在合理位置（一个独立的商品区、订阅者专属房的入口），不打断主体流程。
+- **价值清晰**。用户付钱之前知道自己买的是什么、能用多久、跟免费版差别在哪。
+- **没有暗黑模式**。VRChat Creator Economy 的合规守则明令禁止 dark patterns（暗黑模式）和虚假广告，违规会下架。这条是平台规则，不只是道德上的偏好。
+- **跟整个世界的氛围一致**。一座赛博朋克世界的购买台是发着霓虹的科技终端，不是直接搬来一个商城页面。
+
+跟前面六章比，Commercial World 多出来的是设计自律，技术骨干基本沿用前面。技术工具 VRChat 已经准备好了，怎么用是设计师的责任。
+
+:::tip[VRChat Creator Economy 的整体结构]
+基于 VRChat 官方文档（截至 2026 年），Creator Economy 由四块核心组件组成：
+
+| 组件 | 作用 | 用在哪 |
+| :--- | :--- | :--- |
+| **Products（产品）** | 用户最终买到的东西 | 分两类：Udon Products（世界内功能 / 内容解锁）、Subscription Role Products（群组特殊角色和权限） |
+| **Listings（一次性购买）** | 把一个或多个 Products 打包售卖 | 三种持续期：Instant 即时一次性 / Temporary 限时 / Permanent 永久 |
+| **Subscriptions（订阅）** | 周期性付费维持福利 | 含 Subscription Role Product，自动加入群组并获得指定角色 |
+| **Stores（商店）** | 发现 + 购买入口 | World Stores 关联世界，Group Stores 关联群组 |
+
+收入分成大致：平台（Steam/Meta）30%、创作者 50%、VRChat + 支付处理方 20%。提现门槛 30,000 VRChat Credits（约 150 美元），通过 Tilia 走 PayPal。
+
+这套体系是 VRChat 官方的内置变现系统，跟 Booth、Gumroad 这些外部平台并行。世界开发者可以选用任意组合。
+:::
+
+## 几种典型的商业元素叠加方式
+
+Commercial 是一组叠加方式，而非一种独立的世界类型。列几种常见组合：
+
+### Chill / Social Hub + 订阅会员
+
+最常见的组合。基础世界免费可入，订阅会员获得：
+
+- 进入 VIP 区（一个独立的小房间，环境更好或视野更佳）。
+- 头顶显示订阅者标记（用 Udon Products 检查订阅状态来切换头顶物体）。
+- 专属座位（普通玩家看不到这些座位）。
+- 提前进入新活动 / 新区域的特权。
+
+技术实现：用 Group Subscription（订阅角色产品）+ Udon Products 检查特权。第六部讲 Group 集成时会展开。
+
+### Gallery + 作品销售
+
+数字作品 Gallery 加售卖：玩家在画作前面有「购买」按钮，按一下打开商店页面（跳转 VRChat 商店或外部商店），实际购买在站外完成。
+
+技术上分两种实现：
+
+- **VRChat 内购**：用 Udon Products + Listings。买完之后玩家在 PlayerData 里有标记，可以解锁高分辨率版本下载链接、3D 文件下载链接等。
+- **外部商店跳转**：Booth、Gumroad 链接通过 VRChat 的 OpenURL API 在浏览器打开。这种不抽 VRChat 的成，但创作者要自己处理支付和交付。
+
+两种各有取舍：内购合规但抽成更高，外部商店灵活但要自己处理一切。多数大型 Gallery 用外部商店为主，VRChat 内购作为可选。
+
+### Tool World + 高级版
+
+工具基础版免费，高级功能（更多预设、保存数量上限、批处理、专属 Shader 测试）通过订阅或一次性购买解锁。
+
+技术实现：在 UI 上把高级功能用「锁」图标标记，按下时检查玩家的 Udon Product 持有状态。未持有则跳出购买引导，已持有则直接开放功能。
+
+### Event World + 票务
+
+演出 Event 可以做「门票」：
+
+- **永久 Listing**：买了之后任何时间进 VIP 区都行（演唱会的 SVIP 票）。
+- **临时 Listing**：买了之后限定时间内有效（一场限时活动的入场券）。
+- **订阅**：定期举办活动的常驻 VIP 通道。
+
+技术实现：跟前面几种类似，用 Listings 和 Udon Products。
+
+### 任意类型 + 赞助按钮
+
+最轻量的商业化。世界里某个角落放一个「赞助」物体，按一下看到一段感谢文字 + 链接（跳转 VRChat 商店购买一个 Listing 或外部 Patreon / 爱发电）。
+
+这种最不打扰体验，也最不容易吸引到购买。多数靠常驻群体的人情。
+
+## 设计上最容易翻车的几堵墙
+
+按踩坑频率排：
+
+### 把付费内容放在主流程里
+
+做 Commercial World 时容易冒出「让用户进来 5 分钟就遇到付费墙，转化率高」的设想。
+
+实际效果：转化率不高，反而口碑塌陷。VRChat 里玩家对付费墙的容忍度比手游低得多（VRChat 主体本来是免费体验），第一次见到付费墙就退出的比例非常高。
+
+更稳的做法：让免费用户拿到完整核心体验，付费部分是「锦上添花」。一个 Chill 世界的免费版本应该已经能让人愿意来三次，第三次开始才会想「这里有 VIP 区，我要不要订阅」。
+
+### 价格定得太高 / 太低
+
+VRChat Credits 大约 200 Credits = 1 美元。Listings 最低 100 Credits（约 0.5 美元）。订阅价格通常 200 到 1000 Credits / 月。
+
+价格定得太高（一个 Pickup 物品 1000 Credits）：根本没人买。
+
+价格定得太低（订阅 100 Credits / 月）：抽成之后到手太少（200 \* 0.5 = 100 → 减 30% 平台 → 减 20% VRChat = 30 Credits 到手），不划算。
+
+参考社区里的常见定价：
+
+- 一次性 Listing：100 到 500 Credits（0.5 到 2.5 美元）。
+- 月度订阅：500 到 1500 Credits（2.5 到 7.5 美元）。
+- 大型主题包 Listing：1000 到 5000 Credits（5 到 25 美元）。
+
+具体定价要参考自己服务的社群消费力。
+
+### 没有合规审查
+
+VRChat Creator Economy 的合规守则有几条硬线：
+
+- 只销售自己拥有或有权分发的内容（用了 Booth 买来的素材？看授权是否允许商用 / 二次销售）。
+- 明确说明用户购买的内容（不能模糊）。
+- 禁止 dark patterns（强制订阅、隐藏取消按钮、虚假倒计时）。
+- 禁止用 VRChat Credits 募捐 / 筹款（Credits 是商品交换工具，不是捐款渠道）。
+
+违规可能被下架内容或封号。设计阶段就要把所有商业元素过一遍这些规则。
+
+### 提现门槛意识不清
+
+提现要求 30,000 Credits 余额（约 150 美元）。不到这个数字提不了。
+
+不少创作者开 Commercial 几个月，攒了 5000 Credits（约 25 美元），发现拿不出来，士气受打击。
+
+一开始就要意识到：Creator Economy 的提现门槛对小型创作者是一道坎。短期目标可以是「攒够提现门槛」，但更实际的预期是「这是长期事业的一部分，前两年大概就是积累阶段」。
+
+如果对收益时效要求高，外部平台（Booth、Gumroad、Patreon）反而更合适。VRChat Creator Economy 的优势是「在世界里直接买」的体验流畅性，而非「快速变现」。
+
+### 商业元素跟世界氛围打架
+
+一个看起来温馨的 Chill 世界，墙角放一个亮黄色的「赞助」按钮，整个氛围立刻被打断。一个赛博朋克 Gallery 用 Unity 默认 Standard UI 做付费弹窗，违和感拉满。
+
+商业元素要按「跟世界氛围一致」的标准设计：
+
+- Chill 世界的赞助按钮做成一个「打赏小盒子」造型，配世界整体的光照风格。
+- 赛博朋克世界的购买台做成发光的科技终端，UI 用赛博朋克字体。
+- 美术馆的购买入口做成一个小卖部 / 礼品店区域，单独成区不打扰主展。
+
+这件事是设计费力气，但能差出体验质感。
+
+:::caution[VRChat Creator Economy 不能解决「世界没人来」的问题]
+有时会把 Commercial 当作激励：「做一个 Commercial World，靠订阅赚钱来支撑长期开发」。
+
+现实是：Creator Economy 的收益强烈正相关于「世界本身的人气」。一座没人来的世界，加多少订阅都没用。订阅来自常驻群体的支持，常驻群体来自世界本身的吸引力。
+
+正确的顺序：先做一座有人愿意来的世界 → 看它能不能形成常驻 → 等常驻群体到一定规模再考虑 Creator Economy。
+
+跳过前两步直接做 Commercial 几乎不会成功。第 18 到 24 章的世界类型本身的「核心体验」是基础，Commercial 是放在上面的一层。
+:::
+
+## 技术上要做的事
+
+Commercial 元素加在前面六章已学技术之上：
+
+- **VRChat Creator Economy SDK**：检查玩家持有的 Listings、Subscriptions、Udon Products。第九部第 45 章会展开具体 API。
+- **VRChat Group 集成**：订阅类商业模式必须配 Group。第六部相关章节。
+- **PlayerData 持久化**：玩家解锁状态要持久化（一次买永久 Listing 之后下次进还要解锁）。VRChat 自身已经处理 Listing 持有状态的存储，不需要自己存。但跟玩家选择相关的状态（用了哪个购买的皮肤）要自己存 PlayerData。
+- **UI 和引导**：购买引导、价格展示、解锁状态提示。第七部第 34 章。
+- **OpenURL 跳转**：跳到外部商店。`VRC.SDKBase.URL` + `Networking.OpenURL`（注意：这个 API 在 VRChat 里需要玩家确认才打开，不能强制）。
+
+简化版优先级（在前面六章选完类型之后）：
+
+| 顺序 | 学什么 | 在书里的位置 |
+| :--- | :--- | :--- |
+| 1 | 主世界类型已选定（前面 18 到 24 章对应章节） | 第 18 到 24 章 |
+| 2 | Group 集成 | 第六部 |
+| 3 | PlayerData 持久化 | 第 28 章 |
+| 4 | UI 和引导 | 第 34 章 |
+| 5 | Creator Economy API（产品检查、商店打开） | 第 45 章 |
+| 6 | 合规审查 | 第 43、45 章 |
+| 7 | 发布 + 持续优化 | 第 44、46 章 |
+
+## 关于跟外部平台的取舍
+
+VRChat Creator Economy 不是唯一的变现方式。常见的几种平台对比：
+
+| 平台 | 抽成 | 提现门槛 | 优势 | 劣势 |
+| :--- | :--- | :--- | :--- | :--- |
+| **VRChat Creator Economy** | 约 50%（Steam/Meta + VRChat 共拿 50%） | 30,000 Credits（约 150 美元） | 在世界内直接买，体验流畅；自动处理订阅 | 抽成高，提现门槛高 |
+| **Booth.pm**（日本主流） | 约 5% | 低 | 抽成低，VRChat 圈子核心 | 需要导出资源到外部 |
+| **Gumroad**（英文圈主流） | 约 10% | 低 | 灵活，支持订阅 | 跟 VRChat 体验不连续 |
+| **Patreon** | 约 8% | 低 | 长期赞助型粉丝可控 | 跟具体世界关联弱 |
+| **VRChat Group Boost**（间接） | — | — | 社群积分激励 | 不直接产生 Credits |
+
+多数严肃的 VRChat 创作者会**组合使用**：
+
+- 重型资产（Avatar、3D 模型、Shader 包）走 Booth / Gumroad。
+- 世界内体验型功能走 VRChat Creator Economy。
+- 长期粉丝赞助走 Patreon / 爱发电。
+- VRChat 自己的 Boost 系统作为社群激励的辅助。
+
+各取所长。VRChat Creator Economy 不必是唯一选项。
+
+## 设计自律的几条参考线
+
+商业化之后世界容易变形。几条参考线可以帮助克制：
+
+1. **每三个免费功能配一个付费功能**。比例不绝对，但「付费内容占总功能比例不超过 30%」是社群里被广泛接受的隐性标准。
+2. **付费提示不在主流程**。玩家走主路径不会撞上付费墙。所有商业接口都在「单独的区域 / 单独的入口」。
+3. **价值要超过价格**。一个 500 Credits 的订阅，每月给的内容（不论是装饰还是特权）应该让常驻群体觉得「物超所值」。
+4. **取消订阅要简单**。VRChat 自带的订阅管理已经简化这件事，但创作者不要在世界里搞「劝退取消」的设计。
+5. **免费用户也要被欢迎**。免费用户跟付费用户的体验差距应该是「锦上添花」级别，而非「能玩 vs 不能玩」级别。
+
+这些都是设计的自律，不是技术问题。技术上 VRChat 已经允许各种商业组合，用得过度会反噬。
+
+:::note[AI 小助手]
+Commercial World 的设计阶段 AI 在「定价策略」和「商业 vs 体验平衡检查」上能帮上忙。
+
+定价策略：
+
+```
+我做一个 VRChat Chill 世界，常驻群体大约 50 人，已经运营 6 个月。
+现在想加 Creator Economy 元素：
+- 订阅会员制（VIP 区 + 头顶标记）
+- 一次性购买的装饰物（5 种）
+- 限时季节内容
+
+请帮我设计价格策略：
+- 三类内容各定多少 VRChat Credits 合理
+- 哪些应该捆绑、哪些独立
+- 起步阶段 vs 稳定运营阶段的差异
+- 跟同类世界的常见定价对比
+```
+
+平衡检查：
+
+```
+我的 VRChat 世界商业元素布局：
+[列出每个商业接口的位置和功能]
+免费玩家的核心体验：[描述]
+付费玩家的额外内容：[描述]
+
+请评估：
+- 免费玩家会不会感到「被歧视」
+- 付费玩家会不会觉得「物有所值」
+- 哪些商业接口可能让玩家不适
+- 是否有 dark pattern 嫌疑
+```
+
+AI 在「找出可能让玩家反感的设计」上有用。但 VRChat 具体的合规规则要查官方文档（DeepWiki 上 Creator Economy 节点是当前最完整的整理之一），AI 给的合规判断要交叉核实。
+:::
+
+## 自己想想能落地的画面
+
+把心里那个 Commercial World 写下来，回答这五件事：
+
+1. **底层世界类型**：是 Chill / Game / Social Hub / Gallery / Narrative / Event / Tool 中的哪一种？基础体验先做扎实。
+2. **常驻群体规模**：现有多少能频繁回访的玩家？少于 30 人时商业化基本不必启动。
+3. **商业内容是什么**：装饰性内容（皮肤、特效）？功能性内容（VIP 区、专属工具）？还是体验性内容（特殊活动入场券）？
+4. **价格档位**：有几档，分别面向什么用户？一档 vs 三档差别巨大。
+5. **跟外部平台的关系**：完全 VRChat 内购？还是混合策略？
+
+这五条答完，可以画「商业化布局图」：在世界 Hierarchy 上标出每个商业接口的位置、价格、解锁的内容。这张图比技术实现重要。
+
+## 这一章在脑子里留下来的
+
+走 Commercial World 这条路要带走的：
+
+- Commercial 是叠加层，不构成单独类型。基础世界类型先做扎实。
+- VRChat Creator Economy 由 Products / Listings / Subscriptions / Stores 四块组成，抽成约 50%，提现门槛 30,000 Credits。
+- 商业元素要让免费用户拿到完整核心体验，付费部分是锦上添花。
+- 价值要超过价格，付费提示不在主流程。
+- 跟外部平台（Booth / Gumroad / Patreon）组合使用更灵活。
+- 合规守则有硬线（dark patterns 禁止、募捐禁止），违规会下架。
+- 商业化的成败强烈依赖世界本身的人气，没人来的世界加多少商业化都没用。
+
+走这条路的话，后面几部按这个顺序读最稳：
+
+```text
+前面 18 到 24 章                   ← 先选定底层世界类型并做扎实
+
+第六部（和别人一起）              ← 重点：Group 和 PlayerData
+  ├ 第 27 章 Ownership
+  └ 第 28 章 同步基础（含 PlayerData）
+
+第七部（让世界变成一个地方）
+  └ 第 34 章 UI 和反馈              ← 关键：商品展示和购买引导
+
+第八部（做着做着会撞上的事）
+  └ 第 43 章 素材和版权              ← 重要：自己卖的东西必须有授权
+
+第九部（发出去，然后继续走）       ← 重点
+  ├ 第 44 章 发布                  ← Description 把商业内容写清
+  ├ 第 45 章 创作者经济             ← 核心：Creator Economy 详解
+  └ 第 46 章 维护                   ← 商业化世界维护成本最高
+```
+
+第五部到这里就完了。八种世界类型走完一遍，关于「我接下来时间砸在哪」的回答应该开始有雏形了。后面六到九部按选定的方向有侧重地读。
+
+第六部一开门讲多人同步。Game World、Social Hub、Event World 走这条路的人会把第六部全部啃完；Chill、Gallery、Narrative、Tool 这几条路只需要看大致概念。每一章开头会再次提示「这一章对哪几类世界尤其重要」。
+
+## 本章参考
+
+- [VRChat Creator Docs：Economy](https://creators.vrchat.com/economy/)
+- [VRChat Creator Docs：Subscriptions](https://creators.vrchat.com/economy/subscriptions/)
+- [VRChat Creator Docs：Products](https://creators.vrchat.com/economy/products/)
+- [VRChat Creator Docs：Stores](https://creators.vrchat.com/economy/stores/)
+- [VRChat Creator Docs：Payout（提现规则）](https://creators.vrchat.com/economy/payout/)
+- [DeepWiki：VRChat Creator Economy 结构整理](https://deepwiki.com/vrchat-community/creator-docs/5-creator-economy)
+- [VR Creators：Creator Economy Subscriptions Guide（社区整理）](https://vrcreators.net/docs/vrchat/creator-economy-subscriptions)

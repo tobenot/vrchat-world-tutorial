@@ -1,0 +1,262 @@
+---
+title: 39. PC 和 Quest
+description: VRChat 的 Quest 版是 Android 构建。Shader 必须用 VRChat Mobile 系列、纹理 1K 上限、世界包体 100 MB 上限、几乎不能用透明、烘焙光必须用 Subtractive 模式。在同一个工程里同时维护 PC 和 Quest 两份构建。
+difficulty: 进阶
+estimatedMinutes: 50
+chapterType: hands-on
+requiresSDK: true
+summary: VRChat 玩家差不多一半在 Quest 上。一个只发 PC 的世界，等于把这一半玩家挡在外面。Quest 是 Android Snapdragon 设备，渲染预算大约是中端 PC 的 1/10。这一章讲怎么在同一份 Unity 工程里并存 PC 和 Quest 两套构建，以及 Quest 该砍哪些东西。
+sidebar:
+  order: 9
+---
+
+打开 VRChat 客户端按下 `Esc`，玩家列表里能看到每个人头像后面跟着一个标识：`PC`、`Quest`，或者两个都有。Quest 的玩家比例随时间在涨，2026 年中已经接近一半。
+
+世界做好之后，如果只构建 PC 版，意味着 Quest 玩家进不来。世界列表会显示一个「This world is not available on Quest」的提示，玩家直接走人。
+
+「Quest 适配」不是上传前那一下点击，是一种从一开始就影响美术决策的预算约束。预算严到什么程度，第 38 章的性能预算（FPS、Batches）打个 1/4 到 1/3 折扣后就是 Quest 的预算。
+
+## Quest 是什么硬件
+
+Meta Quest 系列基于 Qualcomm Snapdragon XR2 系列芯片：
+
+| 设备 | 芯片 | GPU | 上市年份 |
+| :--- | :--- | :--- | :--- |
+| Quest 2 | Snapdragon XR2 | Adreno 650 | 2020 |
+| Quest 3 | Snapdragon XR2 Gen 2 | Adreno 740 | 2023 |
+| Quest 3S | Snapdragon XR2 Gen 2 | Adreno 740 | 2024 |
+
+XR2 Gen 2 大约相当于一台中端手机的算力。VRChat 在 Quest 上跑双眼 90Hz 渲染，每只眼睛 1832×1920 起步。GPU 分到每帧的预算非常少。
+
+Quest 设备运行的是定制版 Android。VRChat Quest 版本就是一个 Android 应用包（apk）。所有东西要按 Android 规则走：用 ASTC 纹理压缩、不能用 PC 专用 Shader、不能用 .NET 桌面专用 API。
+
+::::tip[「Quest 版」实际上是「Android 版」]
+VRChat 官方文档里有时把这部分叫 Quest，有时叫 Android。两个词在 VRChat 语境里**完全是同一件事**：Quest 设备运行 Android 系统，VRChat 给 Android 平台编译的 apk 包就是 Quest 版。
+
+未来 VRChat 也可能把这个 Android 构建用到其他 Android 设备（手机、其他 XR）。但目前实际上跑这个版本的只有 Meta Quest 系列。所以行业里说 Quest 版 = Android 版，没区别。
+
+第 39 章的「Quest」一律指代 Android 平台构建。
+::::
+
+## 第一节：在 VRChat SDK 里切换平台
+
+VRChat SDK Control Panel（菜单 `VRChat SDK` → `Show Control Panel`）的 `Builder` 选项卡里有一个 `Platform Target`：
+
+```text
+Platform Target
+├─ ● Windows           （PC 构建）
+├─ ○ Android           （Quest 构建）
+└─ ○ iOS               （iOS 构建，2025 年新增的）
+```
+
+切换平台时 Unity 会重新导入所有资源（贴图按目标平台压缩、Shader 按目标平台编译）。这一步在大型项目里能花十几分钟到一小时，第一次切换时尤其慢。第二次切换（已经导入过）会快得多，Unity 会缓存平台特定的资源。
+
+切到 Android 之后，所有材质 / 贴图自动用 Android 版本（这是 Unity 的 per-platform 资源系统）。要做的事：
+
+1. 切到 Android 平台。
+2. 检查所有 Material 的 Shader：所有不是 `VRChat/Mobile/...` 的 Material 在 Quest 上要么被 fallback 成默认材质（变粉色或灰色），要么直接渲不出来。换成 Mobile Shader。
+3. 检查 Lighting 设置，把 `Lighting Mode` 切到 `Subtractive`（最便宜的烘焙模式）。
+4. 重新烘焙 Lightmap（Quest 版的 Lightmap 是单独烘的）。
+5. Build & Test 上传 Quest 版。
+
+切回 Windows 平台时所有这些设置自动恢复成 PC 版。
+
+## 第二节：Quest 必须用 VRChat Mobile Shader
+
+VRChat 在 Quest 版本上**强制限制 Shader**。允许的范围：
+
+- `VRChat/Mobile/Diffuse`：最简单，只有 Albedo + 烘焙光。
+- `VRChat/Mobile/Bumped Diffuse`：加 Normal Map 的 Diffuse。
+- `VRChat/Mobile/Bumped Mapped Specular`：加高光（不推荐，移动 GPU 上贵）。
+- `VRChat/Mobile/Lightmapped`：专为烘焙世界设计，性能最好。配合 Lighting Mode = Subtractive 用。
+- `VRChat/Mobile/Standard Lite`：简化版 PBR。
+- `VRChat/Mobile/Skybox`：天空盒。
+- `VRChat/Mobile/Particles/...`：粒子系统专用。
+- 几个 Toon 子分支。
+
+世界 Shader 没有像 Avatar 那样的硬性白名单（PC 版可以自定义 Shader），但 Quest 版本上自定义 Shader 性能往往跑不动。**实务上世界也按 Mobile 系列走**。
+
+### 给 Quest 版做一份独立 Material
+
+第 37 章那个 `Mat_Wall_Brick` 用的 Standard Shader。切到 Android 时这个 Shader 不会自动换，玩家在 Quest 上看到的是粉色或者一片黑。
+
+实务做法：给每个 Material **单独做一份 Quest 版本**。
+
+```text
+Materials/
+├─ PC/
+│  ├─ Mat_Wall_Brick.mat        (Standard, 复杂)
+│  └─ Mat_Floor_Wood.mat
+└─ Quest/
+   ├─ Mat_Wall_Brick_Quest.mat  (VRChat/Mobile/Lightmapped)
+   └─ Mat_Floor_Wood_Quest.mat
+```
+
+Quest 版本 Material：
+- Shader = `VRChat/Mobile/Lightmapped`
+- Albedo 用同一张贴图（Unity 会按平台分别压缩）
+- 没有 Normal / Metallic / Smoothness（Mobile/Lightmapped 不支持复杂 PBR）
+
+切换平台时手动把场景里物体的材质换一遍。这件事很烦，但有个工具帮忙：
+
+### Quest 版材质替换工具
+
+社区提供了几个工具能自动批量切换：
+
+- **VRWorld Toolkit**（GitHub: oneVR/VRWorldToolkit）：菜单 `VRWorld Toolkit` → `Quick Functions` → `Convert Materials to Mobile`，一键把场景里所有 Material 换成对应的 Mobile 版本。
+- **AvaCrypt / Marker / 等社区工具**：各自有不同的快捷功能。
+
+实务上做大世界时这种工具是必备的。手动一个一个换 Material，几十个材质很快就让人放弃。
+
+## 第三节：Lighting Mode 要换成 Subtractive
+
+第 36 章 PC 版本的 `Lighting Mode = Shadowmask`。Quest 上这个模式还是太贵。换成 `Subtractive`：
+
+```text
+Lighting Settings (Quest 平台下)
+├─ Lighting Mode    Subtractive
+├─ Realtime Lighting          关掉
+├─ Baked GI                   开
+└─ Lightmapper                Progressive GPU
+```
+
+Subtractive 的特点：所有直接光也烘焙到 Lightmap 里，动态物体（玩家、Pickup）只接受一道粗糙的实时影子。视觉上会牺牲一些（动态影子边缘糊一些），换来运行时几乎不算光。
+
+切到 Android 平台后，Lighting Settings 要重新烘一次（Lightmap 是 per-platform 的）。
+
+### Quest 版完全没有实时光
+
+Quest 上的实时光开销太大，社区共识是**完全不要用**。
+
+实操：
+
+- 把场景里所有 Light 组件 Mode 设为 `Baked`（如果不是按钮控制的）。
+- 按钮控制的开关灯，用 `SetActive(true/false)` 替代实时灯切换。靠两组 Lightmap（开 / 关两版）切换。
+- 装饰发光物体一律用 `Emission` 材质烘到 Lightmap。
+
+这一点跟 PC 完全分歧。一个项目要同时支持 PC 和 Quest 时，往往要做两套灯光：PC 用 Mixed + 实时切换，Quest 全 Baked。
+
+## 第四节：纹理和包体限制
+
+Quest 上传给 VRChat 的世界包体硬上限 **100 MB**（压缩后）。这个限制非常严：
+
+- 一张 2K（2048×2048）RGBA 贴图压缩后约 5–8 MB。十几张 2K 贴图就把包体吃完了。
+- 一段几分钟的背景音乐压缩后 5–15 MB。
+- 模型 fbx 一般几 MB。
+
+实务做法：
+
+1. **所有贴图 Max Size 设到 1K（1024×1024）**。Texture Inspector 里 `Android` 标签下单独设。
+2. **可以接受的贴图压缩格式：ASTC**。Unity 默认在 Android 平台用 ASTC 6×6（中等压缩）。要更小可以用 ASTC 8×8（粗压缩）。`Format` 字段：`ASTC 6x6` 是常用起点。
+3. **音频用 Vorbis 或 MP3 压缩**，不要用 WAV。Audio Source 上的 `Compression Format` 字段在 Android 平台单独设。
+4. **避免 4K 贴图**。即使 PC 版有，Quest 版也要降到 1K。
+5. **删除未使用的资源**。Project 面板里很容易堆很多没用的贴图 / 模型，构建时被打包进去。VRWorld Toolkit 有 `Find Unused Assets` 功能。
+
+构建之前看 Build Control Panel 的 `Estimate Build Size`：超过 100 MB 时一定会被退回。
+
+## 第五节：Quest 的几条硬规矩
+
+按 VRChat 官方 Quest 优化文档列的规矩：
+
+| 规矩 | 必须 / 建议 |
+| :--- | :--- |
+| 贴图最大 1K | 必须（实际能跑但内存压力大） |
+| 单世界三角面 ≤ 50,000 | 建议（给玩家头像留预算） |
+| 世界总材质数尽量少 | 建议（合并材质 + 图集） |
+| 实时灯数量 = 0 | 强烈建议 |
+| Cloth 组件 = 0 | 必须 |
+| Post Processing = 0 | 必须（Android 版不支持） |
+| 透明物体最少 | 强烈建议 |
+| 包体 ≤ 100 MB | 必须 |
+| Skinned Mesh 数量低 | 建议 |
+| 所有 Material 启用 GPU Instancing | 建议 |
+| 烘焙 Occlusion Culling | 建议 |
+
+不能违反「必须」类。「建议」类违反了世界能上传，但跑起来会塌。
+
+## 第六节：Quest 玩家在世界列表里看到什么
+
+Quest 玩家打开 VRChat 主菜单浏览世界时，世界缩略图角落会显示一个标签：
+
+- 双兼容（PC + Android）：可以正常进。
+- 只 PC：旁边一个红色 X，进不去。
+- 只 Quest：可以进（PC 玩家也能进 Quest 版世界，反过来不行）。
+
+发布世界时，VRChat 网站会显示这个世界已经构建过哪些平台。第一次发布是 PC 版，要再发一次 Android 版（第 44 章会展开发布流程）。两次发布的是**同一个世界**（同一个 Room Id），客户端按玩家所在平台自动选。
+
+## 第七节：维护一份工程做两个版本
+
+实务上不要做两个 Unity 工程，维护成本翻倍。在同一个工程里：
+
+1. **场景结构 PC 和 Quest 共享**。Hierarchy 里物体一致。
+2. **关键资源用 per-platform 设置**：贴图分别设 Default / Android Max Size，材质用 Material Variant 或者两套独立的 .mat 文件。
+3. **Quest 不需要的物体打 EditorOnly tag**：Inspector 顶部 `Tag` 选 `EditorOnly`，构建时被剥离。复杂粒子、装饰物体可以让 Quest 版本不带。
+4. **脚本里用平台条件**：UdonSharp 不直接支持 `#if UNITY_ANDROID`，但可以用 GameObject 启用 / 禁用的方式：在场景里放两组物体，编辑器手动按当前 Build 平台启用对应的一组。
+
+或者用更直接的策略：
+
+- 构建 PC 时把场景另存为 `MyWorld_PC.unity`，把 Quest 不要的物体保留。
+- 构建 Quest 时把同一份场景另存为 `MyWorld_Quest.unity`，删掉过重的物体、换 Material。
+- 两个场景文件都指向**同一个 Blueprint**（VRChat 上传时用同一个世界 ID）。
+
+社区里两种思路都有用。VRChat 官方推荐第二种（两份 .unity 文件）+ Tag = EditorOnly 的组合。
+
+## 第八节：Quest 不只是「裁剪 PC 版」
+
+最容易踩的一个观念错误：把 PC 版做完，最后一步「砍一砍移植到 Quest」。
+
+实际上 Quest 适配应该**从一开始**就考虑：
+
+- 美术风格选择上，避免依赖透明、PBR 强反射、复杂粒子的风格。卡通 / 极简 / 烘焙风格更容易跨平台。
+- 灯光设计上，从一开始就走「主光烘焙 + 局部 Emission」。少用甚至不用实时光，PC 版反而更稳。
+- 场景规模上，Quest 上一个 50,000 三角面的世界已经接近上限。所以世界范围别太大，单个房间面积控制在 30m × 30m 内，多个房间靠走廊或传送连。
+- 交互系统上，Pickup、Station 这些 SDK 自带的组件 Quest 都支持。复杂粒子、Cloth 不支持。
+
+::::caution[「先做 PC 版，发布后再做 Quest 版」是常见陷阱]
+最常见的项目悲剧之一：
+
+1. 作者花一个月做 PC 世界，灯光 / 材质 / 特效都精心调好。
+2. 上传 PC 版反响不错，被催「能不能出 Quest 版」。
+3. 切到 Android 平台，一半材质变粉色 / 黑色，整个场景需要重做。
+4. 实际上花了第二个月去重新搭一份。
+
+避免这个陷阱的方法：在 PC 版做到一半（场景结构稳定下来）时，切一次 Android 平台，看一遍 Quest 版能不能跑。这是一个早期诊断，确认整体方向能不能跨平台。
+
+如果只想做 PC 版（明确决定不做 Quest），那 OK。但「以后再做 Quest」的项目很少真的做出来。做 Quest 的成本不比做 PC 低。
+::::
+
+## 自己做一遍跨平台测试
+
+挑一个或几个改：
+
+- 把现在的世界切到 Android 平台，看构建大小估计。如果超过 100 MB，找出最大的几个文件（贴图 / 音频）压缩。
+- 把所有 Material 的 Shader 换成 `VRChat/Mobile/Lightmapped`，重新烘焙 Lighting Mode = Subtractive，对比 PC 版的画面差距。
+- 上传一个 Test 版本到 VRChat（Community Labs 或 Private），用 Quest 设备进去测帧率（按客户端帧率显示快捷键）。
+
+第三个最贵但也最有效。手头没 Quest 设备的话，找一个有的朋友帮忙测一次。
+
+## 一份 Quest 发布前清单
+
+- [ ] 切到 Android 平台，重新烘焙 Lighting（Subtractive 模式）
+- [ ] 所有 Material Shader 改成 VRChat/Mobile 系列
+- [ ] 所有贴图 Android Max Size = 1024
+- [ ] 没有 Cloth、Post Processing、Realtime Light
+- [ ] Build Estimate ≤ 100 MB
+- [ ] 用 VRWorld Toolkit 跑一次 Quick Audit
+- [ ] 实际在 Quest 设备上测过 FPS，72 以上
+- [ ] 跨平台测试（PC 玩家和 Quest 玩家在同一实例里能正常互动）
+
+## 这一部到此结束
+
+第 31 章到第 39 章把世界从「能上线」推到「能开放给陌生玩家」。出生点、空间尺度、声音、UI、传送、光照、材质、性能、跨平台，每一项都有一份可执行的检查清单。
+
+世界做到这一步，可以认真考虑发布。第 44 章开始的第九部讲发布流程：怎么打包、怎么写描述、怎么放缩略图、怎么进 Community Labs，以及发布之后怎么维护。
+
+## 本章参考
+
+- [VRChat Creator Docs：Quest Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
+- [VRChat Creator Docs：Cross-Platform Setup](https://creators.vrchat.com/platforms/android/setting-up-the-sdk-to-build-for-android/)
+- [VRChat Creator Docs：Mobile Best Practices](https://creators.vrchat.com/platforms/android/mobile-best-practices/)
+- [VRWorld Toolkit · GitHub](https://github.com/oneVR/VRWorldToolkit)
+- [VRCreators：Quest Compatibility Checklist](https://vrcreators.net/docs/vrchat/world-optimization-checklist)
+- [VRChat Quest 内容优化（汉化文档中心）](https://docs.vrczh.org/creators.vrchat.com/platforms/android/quest-content-optimization)

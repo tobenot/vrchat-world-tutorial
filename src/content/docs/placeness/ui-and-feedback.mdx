@@ -1,0 +1,323 @@
+---
+title: 34. UI、提示和反馈
+description: VRChat 不支持 Screen Space Overlay，所有 UI 都得做在三维空间里。这一章用 World Space Canvas + TextMeshPro 把欢迎牌、按钮提示和状态反馈做扎实，再讲怎么在 VR 里把中文字体加进来。
+difficulty: 新手
+estimatedMinutes: 45
+chapterType: hands-on
+requiresSDK: true
+summary: VRChat 世界的 UI 只能用 World Space Canvas，做在三维里。文字用 TextMeshPro，中文字体要自己生成 SDF Font Asset。这一章把欢迎牌、按钮提示、状态反馈三类 UI 各做一遍，给一份在 VR 里能看清的字号 / 距离参考。
+sidebar:
+  order: 4
+---
+
+第 31 章给出生点放过一块欢迎牌。那时候只是占位，文字字号、字体、位置都没细调。这一章把 VRChat 世界 UI 的整套做法走一遍。
+
+VRChat 世界的 UI 跟一般 Unity 项目不同。一般 Unity 游戏里能用屏幕空间叠加（Screen Space Overlay）做 HUD，玩家看到的是平铺在屏幕上的二维元素。**VRChat 世界里不行**：屏幕空间 UI 跟玩家自己的 VR 菜单冲突，会被禁用。所有世界 UI 都得做成 World Space（三维空间里的物体），玩家的 VR 头显或桌面相机像看一块画板那样看它。
+
+这是一个限制，也是一个特点。它逼着作者把信息做成「场景里真的存在的牌子 / 屏幕 / 标签」，比一堆飘在屏幕角落的图标更有「地方」感。
+
+## 第一节：World Space Canvas 的搭法
+
+第 31 章那块欢迎牌做对了一半。这一节把它做扎实。
+
+打开自己的世界，回到出生点附近。Hierarchy 空白处右键 `UI` → `Canvas`：
+
+```text
+Canvas
+└─ Inspector 默认值
+   Render Mode    Screen Space - Overlay     ← 这就是默认值，要改
+```
+
+把 `Render Mode` 改成 `World Space`。Inspector 里 Canvas 的 RectTransform 立刻变成跟普通 GameObject 一样的 `Position / Rotation / Scale`：
+
+```text
+Canvas (World Space)
+Position    出生点正前方 3 米的位置
+Rotation    朝向玩家
+Width       400
+Height      200
+Scale       0.005, 0.005, 0.005
+```
+
+为什么 `Scale` 是 `0.005` 这个奇怪的数字：
+
+World Space Canvas 的 1 单位等于 Unity 世界 1 米。`Width = 400` 等于 400 米宽，肉眼看是一面巨大的电子广告牌。把 Scale 缩到 `0.005` 之后，实际呈现宽度变成 `400 × 0.005 = 2` 米。给 UI 设大像素然后整体缩放，比直接把 Width 设小（比如 `Width = 4`）更稳定，TextMeshPro 在低 Width 下会出现字体抗锯齿模糊。
+
+`Width × Scale = 实际宽度（米）` 的常用搭配：
+
+| 实际宽度 | Width × Scale |
+| :--- | :--- |
+| `0.5` 米（小标签） | `200 × 0.0025` |
+| `1.0` 米（房间内的提示牌） | `400 × 0.0025` |
+| `2.0` 米（欢迎牌、规则板） | `400 × 0.005` |
+| `4.0` 米（大堂或舞台主屏幕） | `800 × 0.005` |
+
+记一个直觉：`Scale = 0.0025` 是「显示像素 ≈ 实际像素 / 4 当米」，`Scale = 0.005` 是「ratio 8」。
+
+## 第二节：TextMeshPro 和中文字体
+
+新建文字时优先用 `Text - TextMeshPro`，不要用普通 `Text`（Legacy）。Legacy Text 在 VR 里抗锯齿很糙，TextMeshPro（TMP）用 SDF（Signed Distance Field，距离场）字体技术，远近都能保持锐利边缘。
+
+`Canvas` 下右键 `UI` → `Text - TextMeshPro`。第一次添加时 Unity 会提示安装 TMP Essentials，点 `Import TMP Essentials`。
+
+新建出来的 Text 默认字体只支持英文。中文字符显示成方框。原因是 TMP 字体是预生成的字符表，没收录中文字符。
+
+### 给 TMP 加一份中文字体
+
+中文字符常用字有 6500–8000 个，全字符 SDF 生成一次会让字体文件超过 100 MB，世界上传时被打回来。实务做法是只把世界里**真正会用到的字符**生成 SDF。
+
+步骤：
+
+1. **拿到一个开源中文字体的 .ttf 文件**。常用的：思源黑体（Source Han Sans，Apache 2.0）、思源宋体（Source Han Serif，OFL）、文泉驿微米黑（GPL）。从字体官网下载放到 `Assets/Fonts/` 目录。
+2. **打开 TMP Font Asset Creator**：菜单 `Window` → `TextMeshPro` → `Font Asset Creator`。
+3. **配置生成**：
+   - `Source Font File`：刚才那个 .ttf。
+   - `Sampling Point Size`：`Auto Sizing`。
+   - `Padding`：`5`。
+   - `Atlas Resolution`：`2048 × 2048`（更大的图集能容纳更多字符）。
+   - `Character Set`：`Custom Characters`。
+   - 在 `Custom Character List` 里贴入想用的字符。比如：
+
+   ```text
+   欢迎来到月光小屋可以坐下拿起桌上的灯出口在右边按一下交互打开关闭确认取消是否
+   你我他她它们的得地着了过吗呢吧啊哦
+   123456789010分钟秒位玩家已经在线人欢迎请稍等加载中
+   ```
+
+   把整个世界里所有 UI 文字会用到的字一次性贴进来。
+   - `Render Mode`：`SDFAA`（默认即可）。
+4. 点 `Generate Font Atlas`，等一会儿生成完。
+5. 点 `Save TextMeshPro Font Asset`，保存到 `Assets/Fonts/SourceHanSans_SDF.asset`。
+
+回到刚才那个 TMP Text，Inspector 里 `Font Asset` 槽换成 `SourceHanSans_SDF`。中文字符立刻能正常显示。
+
+::::caution[字符遗漏会显示成方框]
+TMP 用预生成的字符表。生成时漏掉的字符在运行时会显示成「□」方框，**不会**像系统字体那样自动 fallback 到默认字。
+
+防止做漏的几种实务做法：
+
+1. 把整个世界所有 UI 文本写进一个 `.txt` 文档里，全选去重，作为生成 SDF 的字符集。
+2. 用「全 GB2312 常用字 + 数字 + 标点」的字符集做一次（字符表网上能搜到现成的，约 6700 个），生成出来的 SDF 大约 50–80 MB，仍在可接受范围。
+3. 用 TMP 自带的 Dynamic SDF Atlas（运行时按需生成），但这个功能在 VRChat 世界里**不被支持**：VRChat 不允许运行时把贴图写进 GPU。所有字符必须打包前生成完。
+::::
+
+如果世界 UI 文字非常多、非常杂（比如玩家自定义文字），保险做法是用「全字符表」生成。多 50 MB 包体，省下「玩家输入了某个字结果显示方框」的所有边界问题。
+
+## 第三节：VR 里能看清的字号和距离
+
+World Space UI 在 VR 里的可读性，是字号和观看距离的函数。一个常用经验：
+
+```text
+TMP 字号 36，Scale 0.005，距离 1 米：能勉强看清
+TMP 字号 60，Scale 0.005，距离 1 米：舒适
+TMP 字号 80，Scale 0.005，距离 2 米：舒适
+TMP 字号 120，Scale 0.005，距离 4 米：舒适
+```
+
+可以记一个粗规则：**字号约等于距离米数 × 30 到 40**。距离 2 米的牌子，字号 60–80；距离 4 米的牌子，字号 120 起步。
+
+这个规则配合 `Auto Size` 用更顺手。在 TMP 上勾上 `Auto Size`，设 `Min` 和 `Max`（比如 `Min 40 / Max 120`），TMP 会按当前文字内容自动选合适的字号。多余的精细字号可以让 Unity 自己决定。
+
+### 字号检查的简便方法
+
+Hierarchy 里建一块尺子（一个 Cube，长度 1 米），摆到 Canvas 旁边。`Build & Test` 进世界，站到尺子标记的 1 米、2 米、4 米位置，对照看 UI 字能不能看清。
+
+VR 里看的距离不只是「肉眼到屏幕」，还要考虑 IPD 和 DPI。以 Quest 2 为例，有效角分辨率约每度 20 像素。一个 `40` 像素高的字符在 1 米外大约占 1 度视角，刚好够辨认。再小就开始糊。
+
+## 第四节：按钮提示文字（Interaction Text）
+
+第 13 章那个开关用了 `Interact` 事件，玩家瞄准它头顶会浮一行提示文字。那行文字叫 `Interaction Text`，是 `Udon Behaviour` 上的一个内置字段。
+
+打开任何挂着 UdonSharp 脚本的物体，Inspector 里 `Udon Behaviour` 折叠区会有：
+
+```text
+Udon Behaviour
+├─ Program Source       LampToggle (UdonSharp Program Asset)
+├─ Interaction Text     Use                    ← 改这里
+├─ Proximity            2                      ← 玩家多近才能交互
+└─ ...
+```
+
+`Interaction Text` 是玩家瞄准这个物体时浮在它头顶的一行字。常用的几种填法：
+
+| 物体 | 推荐文字 |
+| :--- | :--- |
+| 灯开关 | `开 / 关` |
+| 椅子 | `坐下` |
+| 镜子开关 | `打开镜子` / `关闭镜子` |
+| 拿起的物品 | `拿起` |
+| 传送区 | `进入` |
+| 信息板 | `查看` |
+| 录音机 | `播放` |
+
+中文 Interaction Text 在 VRChat 客户端里是支持的（这部分是客户端字体，不依赖于世界 SDF）。
+
+### 用脚本动态切换 Interaction Text
+
+镜子那个例子里，按钮文字最好随状态变。镜子开了显示「关闭镜子」、关了显示「打开镜子」。
+
+```cs title="MirrorSwitch.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class MirrorSwitch : UdonSharpBehaviour
+{
+    public GameObject mirrorObject;
+
+    public override void Interact()
+    {
+        if (mirrorObject == null) return;
+        bool nowOn = !mirrorObject.activeSelf;
+        mirrorObject.SetActive(nowOn);
+        InteractionText = nowOn ? "关闭镜子" : "打开镜子";
+    }
+}
+```
+
+`InteractionText` 是 `UdonSharpBehaviour` 自带的属性（继承自 `UdonBehaviour`），赋值后玩家下次瞄准这个物体看到的文字就更新了。这个改动是本地的，每个客户端独立显示自己看到的文字。
+
+### Proximity（接近距离）
+
+`Udon Behaviour` 里 `Proximity` 字段控制玩家要走多近才能看到 Interaction Text 和触发 Interact。默认 `2` 米。
+
+太大（比如 `8`）：玩家在房间另一头瞄到这个物体也会触发，把无关物体的提示文字弹出来，画面噪。
+太小（比如 `0.5`）：玩家几乎得贴脸才能交互，VR 玩家会感到操作不顺。
+
+实务起点：常规按钮 `2`、远距离触发的物体 `4`、要求玩家凑近确认的物体 `1`。
+
+## 第五节：视觉反馈
+
+「玩家做了某件事」这件事本身要被空间反馈出来。按按钮没动静、踩进 Trigger 区域没声音、拿起物品没高亮，玩家会怀疑自己没操作成功，反复点击。
+
+VRChat 世界里常用的几种反馈手段：
+
+**1. 物体高亮**
+
+按钮被瞄准时变亮，按下时短暂变更亮。最简的做法：换 Material 的 `Emission`。
+
+```cs title="ButtonHighlight.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class ButtonHighlight : UdonSharpBehaviour
+{
+    public Renderer buttonRenderer;
+    public Color idleEmission = Color.black;
+    public Color pressedEmission = Color.white;
+
+    public override void Interact()
+    {
+        if (buttonRenderer == null) return;
+        // 先变亮
+        buttonRenderer.material.SetColor("_EmissionColor", pressedEmission);
+        // 0.2 秒后还原
+        SendCustomEventDelayedSeconds(nameof(_RestoreEmission), 0.2f);
+    }
+
+    public void _RestoreEmission()
+    {
+        if (buttonRenderer == null) return;
+        buttonRenderer.material.SetColor("_EmissionColor", idleEmission);
+    }
+}
+```
+
+`SendCustomEventDelayedSeconds` 在第 12 章铺过：让 UdonSharp 在 N 秒后回调一个公开方法。配 `material.SetColor` 就能做出短暂闪光的反馈。
+
+`material` 这一行其实在 Unity 里会**实例化**这个材质（创建一份独立副本，避免改到所有共享这个材质的物体）。VRChat 世界里 OK，但要意识到这一行会增加一份材质开销。如果场景里有 100 个一样的按钮，最好用 `MaterialPropertyBlock`（Unity 提供的高效改单个 Renderer 属性的机制）替代。第 38 章会展开。
+
+**2. 文字提示弹出**
+
+玩家进入某个区域时弹一段提示文字。
+
+最薄做法：一块默认禁用的 World Space UI，在 `OnPlayerTriggerEnter` 时 `SetActive(true)`、几秒后 `SetActive(false)`。
+
+```cs title="HintPopup.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+public class HintPopup : UdonSharpBehaviour
+{
+    public GameObject hintCanvas;
+    public float showSeconds = 3f;
+
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        if (!player.isLocal) return;
+        if (hintCanvas == null) return;
+        hintCanvas.SetActive(true);
+        SendCustomEventDelayedSeconds(nameof(_HideHint), showSeconds);
+    }
+
+    public void _HideHint()
+    {
+        if (hintCanvas == null) return;
+        hintCanvas.SetActive(false);
+    }
+}
+```
+
+挂在一个 Trigger Box 上，把要弹的 Canvas 拖到 `Hint Canvas` 字段。
+
+**3. 音效反馈**
+
+按钮按下播一声「咔」，门开播一声木门吱呀，物品被拿起播一声「咣」。这些都用第 33 章的 `Audio Source.PlayOneShot`。在脚本里：
+
+```cs
+public AudioSource sfxSource;
+public AudioClip clickSfx;
+
+public override void Interact()
+{
+    if (sfxSource != null && clickSfx != null) sfxSource.PlayOneShot(clickSfx);
+    // ... 主逻辑
+}
+```
+
+`PlayOneShot` 不会打断 Audio Source 上其他正在播的声音，适合短促音效。
+
+## 第六节：把信息分层，避免视觉噪音
+
+World Space UI 容易出现的一个问题：作者很热心，房间里贴满了说明牌、规则板、常见问题、版权信息，玩家进来不知道先看哪个。
+
+实务上把信息分三层：
+
+1. **进门即看的核心信息**（出生点附近，1 块大牌子）：世界名、能做什么、出口在哪。
+2. **按需展示的功能说明**（贴在对应物体附近的小牌子）：椅子边上「按 V 坐下」、镜子开关上「点击打开镜子」。
+3. **深层信息**（不挡视线的角落）：致谢、版本号、外部链接。可以做成「玩家点一下才展开」的折叠面板。
+
+第一层用大字（`80`+），距离玩家 2–3 米；第二层用中字（`40`–`60`），距离玩家 1–2 米；第三层平时收起来，只在玩家主动探索时露出。
+
+最常踩的问题是把所有信息按第一层来做，结果出生点周围被 5 块大字牌包围，反而没人看。
+
+:::tip[为什么不在屏幕上做 HUD]
+VRChat 设计上禁用 Screen Space Overlay 是有原因的。VR 玩家自己的 VRChat 菜单（按下手柄菜单键弹出）是 Screen Space 的。如果世界也允许 Screen Space UI，这两个会叠到一起，玩家自己的菜单按钮被世界 UI 挡住，体验灾难。
+
+被强制做成 World Space 之后，世界 UI 自然变成「场景的一部分」。玩家可以走近看、转头不看、用视线选择。这种交互比屏幕角落浮一个图标更接近「在一个真实地方里看告示」。
+:::
+
+## 自己改两个版本
+
+挑一个或两个改：
+
+- 给前面做的欢迎牌加一段「按一下展开详细规则」的折叠面板：默认只显示标题，点击 Interact 后显示完整规则文字。提示：用两个 GameObject 互相 `SetActive`。
+- 给一个按钮做「按下高亮 + 音效 + 提示文字弹出」三层反馈，自己感受一下哪一层去掉之后体验最差。
+
+第二个改完之后，留意自己进 VRChat 玩别的世界时，那些做得好的按钮和门通常都满足这三层反馈。
+
+## 一份小检查清单
+
+- [ ] 所有 Canvas 的 Render Mode 都是 World Space
+- [ ] TMP Font Asset 收录了所有要用的中文字符
+- [ ] 关键 UI 文字距离 2 米时字号 60+
+- [ ] Interaction Text 简短（2–4 字），切换状态后会更新
+- [ ] 按钮和 Trigger 区域至少有「视觉 + 音效」两层反馈
+- [ ] 信息分层：核心 / 功能说明 / 深层信息，不要堆在一起
+
+## 本章参考
+
+- [Unity Manual：Canvas Render Mode](https://docs.unity3d.com/Manual/UICanvas.html)
+- [Unity Docs：TextMeshPro Font Asset Creator](https://docs.unity3d.com/Packages/com.unity.textmeshpro@3.0/manual/FontAssetsCreator.html)
+- [VRChat Creator Docs：Interactions and Triggers](https://creators.vrchat.com/worlds/udon/interactions/)
+- [Adobe Source Han Sans（开源思源黑体）](https://github.com/adobe-fonts/source-han-sans)

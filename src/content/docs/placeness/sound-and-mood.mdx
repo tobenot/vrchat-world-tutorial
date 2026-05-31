@@ -1,0 +1,229 @@
+---
+title: 33. 声音和氛围
+description: VRC Spatial Audio Source 的 Near、Far、Volumetric Radius、Gain 怎么填。背景音、环境音、点声源各管什么，还有几条常见的「世界进去就吵」的避坑做法。
+difficulty: 新手
+estimatedMinutes: 40
+chapterType: hands-on
+requiresSDK: true
+summary: VRChat 的声音 = Unity Audio Source + VRC Spatial Audio Source 包装层。配三种典型用法：随玩家走的背景音、点声源（壁炉、收音机、电脑风扇）、环境音（雨、风、鸟）。这一章把每种各做一遍，给一份不容易踩雷的字段值。
+sidebar:
+  order: 3
+---
+
+VRChat 玩家进一个世界时，眼睛比耳朵慢。视觉得等头像加载、灯光初始化、Shader 编译，耳朵从第一帧就开始接收信息。如果出生那一刻没有任何声音，世界的「真实感」会塌一截：玩家会下意识地觉得「这地方是空的」。
+
+但声音也是 VRChat 世界里第二容易翻车的元素。仅次于镜子。一个吵到打架的背景音乐、一个永远停不下来的雨声、一个走到房间另一头还在响的电视，都能让玩家在十秒内退出。
+
+这一章把「声音怎么不吵」拆成三类典型用法，每类一份字段填法。
+
+## VRChat 的声音是怎么算出来的
+
+在 Unity 里给一个物体加 `Audio Source`，它就是普通 Unity 项目里的 3D 音源：用 Unity 的滚降曲线，按距离衰减。
+
+但 VRChat 客户端做了一件事：所有 Unity Audio Source 进入运行时之后会被 VRChat 接管，**统一通过 VRC Spatializer**（VRChat 的空间化算法）来播放。这一层接管包括两件事：
+
+1. 默认套用一个反平方衰减曲线（更接近现实物理，比 Unity 默认对数曲线稍有不同）。
+2. 给世界 Audio Source 默认加 `+10 dB` 的增益（Avatar Audio Source 没有这个加成）。
+
+所以 VRChat 世界里的声音不能只按 Unity 编辑器里 Play 试听到的来调。最终听感由 VRChat 客户端决定。`VRC Spatial Audio Source` 这个组件存在的意义，是给作者一组对应 VRChat 算法的字段，让最终听感可控。
+
+任何想被空间化的声音，都应该挂上 `VRC Spatial Audio Source`。
+
+:::tip[为什么不直接用 Unity 自带的 3D 设置]
+Unity 自带的 3D Settings（Min Distance / Max Distance / Rolloff Mode）能在 Unity 编辑器里控制声音随距离的衰减，但 VRChat 客户端会把那套值映射到自己的算法里去，结果常常对不上预期。
+
+`VRC Spatial Audio Source` 的字段（Near、Far、Volumetric Radius）是 VRChat 算法的**原生输入**。填这套字段，编辑器试听和最终客户端听感差距小很多。
+
+这跟「为什么 VRChat 镜子不直接用 Unity 内置反射相机」「为什么 Pickup 不直接用 Rigidbody」一样：平台层的封装是为了解决「在多人 + 跨平台 + 同步 + 性能预算约束下」普通 Unity 组件不够用的问题。
+:::
+
+## VRC Spatial Audio Source 的字段速查
+
+按这个表填，多数情况下不需要每次重新查文档：
+
+| 字段 | 默认 | 含义 | 调整建议 |
+| :--- | :--- | :--- | :--- |
+| `Gain` | `10 dB`（世界） | 额外音量增益。世界默认 `+10 dB`，Avatar 不能超过 `10 dB` | 世界里很少调，原始音频太响时降到 `0 dB` |
+| `Far` | `40` 米 | 音量衰减到几乎听不见的远端半径 | 房间内的小声源 `5`–`8` 米；环境氛围声 `15`–`30` 米；广场音乐 `40` 米 |
+| `Near` | `0` 米 | 音量开始衰减的近端半径，建议保持 `0` | 体积型「面光源式」音源才需要调 |
+| `Volumetric Radius` | `0` 米 | 把点声源虚拟成一个体积。**必须 < Far** | 想让某段水流声「整片都在响」时设到 `1`–`3` 米；玩家不会进入这个半径内 |
+| `Use AudioSource Volume Curve` | `False` | 是否使用 Audio Source 自定义曲线 | 推荐保持 `False`，让 VRChat 默认反平方曲线生效 |
+| `Enable Spatialization` | `True` | 是否走 VRChat 空间化算法 | 想要 2D 全场等响（背景音乐）时关掉 |
+
+底层 Audio Source 字段也会照常生效，最常用的几个：
+
+- `AudioClip`：哪段音频。
+- `Loop`：循环播放（背景音、环境音必勾）。
+- `Play On Awake`：场景加载时自动播放。
+- `Volume`：基础音量（`0`–`1`），Gain 是它之上的额外增益。
+- `Spatial Blend`：`0` = 2D 全场等响，`1` = 完全 3D 跟距离衰减。
+
+## 第一类：背景音乐 / 大堂音乐
+
+「全场都听得到、玩家走到哪都一样响」的声音。最常见用法：休闲世界的环境音乐、活动世界的现场音乐。
+
+做法是 2D 全场等响 + 一个全局位置的 Audio Source：
+
+1. Hierarchy 空白处右键 `Create Empty`，命名 `Audio_Background`。Position 摆到 `0, 0, 0`（位置不重要，因为是 2D）。
+2. `Add Component` → `Audio Source`。设 `Audio Clip` 为想要的背景音轨；勾 `Loop`、`Play On Awake`；`Spatial Blend` 拉到 `0`（完全 2D）；`Volume` 先设 `0.5`。
+3. `Add Component` → `VRC Spatial Audio Source`。**取消勾选** `Enable Spatialization`，让 VRChat 不参与空间化（这一步关键，否则它仍然按 3D 处理）。
+
+这样玩家进世界第一秒就有底色，且无论走到哪里音量都一样。
+
+`Volume` 不要设到 1。VRChat 默认 +10 dB 增益叠上来时已经偏响。背景音乐对应玩家可能聊天的场景，留一点动态空间。
+
+### 一个常见错误：背景音盖住人声
+
+玩家在 VRChat 里聊天的语音也是音频。背景音乐设得太响，玩家自己听到的是「音乐 80%、人声 20%」，整个房间会变成靠喊的地方。
+
+实务上，背景音乐的 `Volume` 在 `0.2`–`0.4` 之间是合适的起点。比这个高就开始挤占人声，比这个低又听不清。具体值跟音轨本身的响度有关：先把音轨在 Audacity 里归一化到 `-12 dB` 左右，再到 Unity 里设 `Volume = 0.5` 当起点，进世界听一遍调。
+
+### 给玩家一个开关
+
+社区里关于背景音的最大共识：**永远要给玩家关掉的方式**。
+
+做法跟第 16 章的镜子开关一样：
+
+```cs title="MusicSwitch.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class MusicSwitch : UdonSharpBehaviour
+{
+    public AudioSource musicSource;
+
+    public override void Interact()
+    {
+        if (musicSource == null) return;
+        musicSource.enabled = !musicSource.enabled;
+    }
+}
+```
+
+挂在一个小 Cube 上当墙边的开关，把 `Audio_Background` 上的 `Audio Source` 拖到 `Music Source` 字段。
+
+注意这里改的是 `enabled`，不是 `mute` 也不是 `SetActive`。`enabled` 关掉之后 Audio Source 立刻停，再开启时从音轨当前位置继续播。`mute` 的话玩家关了音乐还在跑（占用音频通道）；`SetActive(false)` 整个 GameObject 消失，可能影响其他逻辑。
+
+这个开关是本地的，每个玩家自己关自己的，不需要同步。
+
+## 第二类：点声源（壁炉、收音机、电脑、流水）
+
+某个具体物体在响：壁炉的火、桌上的收音机、墙边电脑的风扇、墙上的水管。玩家靠近就听见，走开就听不见。
+
+做法是 3D 空间化 + 合适的 Far：
+
+1. 选中那个物体（比如壁炉的 GameObject `Fireplace`）。
+2. `Add Component` → `Audio Source`。设 `Audio Clip` 为火苗噼啪声；勾 `Loop`、`Play On Awake`；`Spatial Blend` 拉到 `1`；`Volume` 设 `0.7`。
+3. `Add Component` → `VRC Spatial Audio Source`。`Far` 设 `5` 米（玩家走出 5 米基本听不见），`Near` 留 `0`，`Volumetric Radius` 留 `0`。
+
+进世界，走近壁炉听得清，走远到房间另一头几乎听不见。这才像一个「实物在响」。
+
+不同的点声源有不同的合理 `Far`：
+
+| 物体 | 合理 Far | 备注 |
+| :--- | :--- | :--- |
+| 蜡烛火苗 | `1.5`–`2` 米 | 极短距离 |
+| 壁炉 | `4`–`6` 米 | 房间内主要 |
+| 桌上收音机 / 电脑 | `2`–`3` 米 | 凑近能听清 |
+| 墙上挂钟（滴答声） | `2`–`3` 米 | 想让人感受到「这是个有钟的房间」就够 |
+| 水管 / 滴水 | `3`–`5` 米 | 配合一个 Volumetric Radius `0.5` 让水声有体积 |
+| 风扇 / 空调 | `3`–`4` 米 | |
+| 室内阳台外的鸟叫 | `8`–`12` 米 | 让鸟叫感觉「在外面」而不在房间内 |
+
+### 体积音源（Volumetric Radius）什么时候用
+
+默认 `Volumetric Radius = 0` 时声音从一个数学点发出，玩家恰好走到这个点会听到声音「钉」在头里，体验奇怪。
+
+把 `Volumetric Radius` 设到 `0.5`–`1.5` 米，声音变成从一个小球区域发出。玩家进入这个球时不会出现「点声源贴脸」的尴尬感。
+
+适合用 Volumetric Radius 的场景：
+
+- 火堆 / 喷泉这种**有体积**的声源，半径设到火堆物理大小左右。
+- 长流水声（一段水沟），`Volumetric Radius` 设到水沟一半长度，声音感觉是「从整段水沟来的」。
+- 远处一片树林的鸟鸣，半径调大让它感觉是「从树林整片来的」而不是某棵树上的一只鸟。
+
+`Volumetric Radius` **必须严格小于 `Far`**，文档明确要求。如果 Volumetric 设了 `5`，Far 也是 `5`，运行时行为是未定义的，会出怪声。
+
+:::caution[远处一直响的环境声会让人头疼]
+在一个静谧森林世界里加一段全场响的虫鸣循环播放，结果玩家在客厅、地下室、阁楼都听到一样的虫鸣，进去十分钟开始头疼，是常见情况。
+
+环境声不是越多越好。常用的「层」结构：
+
+1. **底层全场氛围**（一段非常轻、`Volume` 0.15 的低频空间感声音，2D 等响）。
+2. **中层区域氛围**（按区域开关：靠近窗户能听到雨声，到地下室换成水滴声）。
+3. **顶层点声源**（具体物体：壁炉、收音机）。
+
+每一层换层时让前一层淡出。淡出可以用 `OnPlayerTriggerEnter / Exit` + 第 12 章那种 `SendCustomEventDelayedSeconds` 配合 `Mathf.Lerp` 慢慢改 `Volume`。
+:::
+
+## 第三类：环境音（雨、风、鸟、远处城市）
+
+这一类介于背景音乐和点声源之间：声音是「有方向的氛围」，但不属于具体某个物体。
+
+最朴素做法：把一段循环环境音挂在一个空 GameObject 上，3D 空间化，`Far` 设大、`Volumetric Radius` 设大。
+
+例子：一片户外区域的鸟鸣。
+
+1. `Create Empty` 命名 `Ambience_BirdsOutside`，Position 摆到这片区域中心，比如花园中心。
+2. `Audio Source` 配鸟鸣音轨；`Loop`、`Play On Awake`；`Spatial Blend = 1`；`Volume = 0.3`。
+3. `VRC Spatial Audio Source`：`Far = 25`、`Volumetric Radius = 8`、`Near = 0`。
+
+玩家在花园里听得到鸟鸣，进了室内（如果室内远离这个点超过 25 米）就基本听不见。
+
+如果世界由几个区域组成（咖啡厅 + 后巷 + 屋顶），分别给每个区域做一个这样的 ambience。玩家走到哪一片，对应那片的环境音占主导。这比一段「全世界都在响的下雨声」更自然。
+
+### Doppler 效应：能关就关
+
+Audio Source 上有一个 `Doppler Level` 字段，默认 `1`。Doppler 是车开过身边时音调先高后低的变化。它适用于真的在快速移动的声源。
+
+VRChat 世界里大多数声源是静止的（壁炉不跑、雨不动、收音机不动）。`Doppler Level` 默认 `1` 时，玩家自己快速移动也会让声音音调略微变化，听起来怪怪的。
+
+实务上 VRChat 世界里的 Audio Source 都把 `Doppler Level` 设到 `0`。除非有意做一辆开过的火车那种载具，需要 Doppler 效果。
+
+### Reverb Zone（混响区）
+
+Unity 自带 `Audio Reverb Zone`：在场景里画一个区域，玩家进入这个区域时所有 Audio Source 自动加上对应的混响（教堂、洞穴、小房间等几种预设）。
+
+VRChat 世界里使用 Reverb Zone 是 OK 的，但要注意：
+
+- Reverb Zone 影响的是 Audio Listener（玩家耳朵）所处区域，不是 Audio Source。玩家进入「教堂」Reverb Zone，所有声音都会带教堂混响，包括其他玩家的语音。
+- 多个 Reverb Zone 重叠时按权重混合。
+- 想要「室内 vs 室外混响差异」时是这个组件的主要用途。把整个室内画成一个 Reverb Zone（Mode = `Off` 之外的预设），室外不画，玩家进出室内自动切换。
+
+## 一个完整空间的声音搭建顺序
+
+按这个顺序加声音，最不容易翻车：
+
+1. **先加全场底层氛围**：一段 `Volume = 0.1`、2D、几乎听不见的低频空间感。让世界不至于「死寂」。
+2. **再加区域氛围**：按 Trigger 区域切换雨声 / 风声 / 鸟鸣。
+3. **再加点声源**：壁炉、收音机、风扇这些「有具体物体」的声音。
+4. **最后才加背景音乐**（如果有的话）：留一个开关，默认 `Volume = 0.3`。
+
+反过来先做背景音乐再加其他声音，最后整个世界会被音乐盖住，所有点声源听起来都偏远。
+
+## 自己改三个版本
+
+挑一个或几个改：
+
+- 把背景音乐 `Spatial Blend` 从 `0` 改到 `1`，Far 设 `5` 米。看「音乐从音箱里来」和「音乐弥漫全场」的体验差别。
+- 给壁炉加一段 `Volumetric Radius = 1.5` 的火苗噼啪声，再做一份 `Volumetric Radius = 0` 的版本。在编辑器里站到壁炉正中心，对比两种感觉。
+- 把房间外加一段鸟鸣 `Far = 15`、`Volumetric Radius = 6`。然后写一段 `OnPlayerTriggerEnter / Exit` 脚本，让玩家走到窗边时鸟鸣 `Volume` 平滑提升、走开时降回去。提示：用 `SendCustomEventDelayedFrames` 每帧改一点 `Volume`。
+
+第三个改起来最考验耐心，做完之后回头听一些做得好的休闲世界，会发现它们都在做这种「随玩家位置混响层」的细节。
+
+:::note[不同世界不同活法]
+- **休闲世界**主要靠声音定调子。背景音乐 + 几层氛围 + 几个点声源是标配。
+- **游戏世界**主要靠声音传信息。脚步、子弹、提示音必须能听清，所以背景音乐通常很轻或干脆没有。
+- **展览世界**优先「让作品说话」：默认无音乐，只在玩家靠近作品时触发该作品对应的解说或氛围声。
+- **舞台 / Event**则相反，主舞台音乐占主导，其他点声源全部静音。
+
+同一组 Audio Source 字段，按目的填法可以差很大。
+:::
+
+## 本章参考
+
+- [VRChat Creator Docs：VRC Spatial Audio Source](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)
+- [VRChat Creator Docs：Audio in VRChat（概览）](https://creators.vrchat.com/worlds/audio/)
+- [Unity Manual：Audio Source](https://docs.unity3d.com/Manual/class-AudioSource.html)
+- [Unity Manual：Audio Reverb Zone](https://docs.unity3d.com/Manual/class-AudioReverbZone.html)
+- [VRCreators：Audio Optimization for VRChat（2026-05 修订）](https://vrcreators.net/docs/vrchat/world-optimization-checklist)

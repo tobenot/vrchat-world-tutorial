@@ -126,6 +126,21 @@ export default defineConfig({
           autogenerate: { directory: 'come-alive' },
         },
         {
+          label: '第五部：你想做什么样的世界？',
+          collapsed: false,
+          autogenerate: { directory: 'world-types' },
+        },
+        {
+          label: '第六部：和别人一起',
+          collapsed: false,
+          autogenerate: { directory: 'with-others' },
+        },
+        {
+          label: '第七部：让世界变成一个地方',
+          collapsed: false,
+          autogenerate: { directory: 'placeness' },
+        },
+        {
           label: '附录 · 速查与参考',
           collapsed: true,
           autogenerate: { directory: 'appendix' },

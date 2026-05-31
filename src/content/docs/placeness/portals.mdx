@@ -1,0 +1,258 @@
+---
+title: 35. 传送门和世界之间的连接
+description: VRC Portal Marker 把世界 A 接到世界 B：填入目标世界的 Room Id、或者按 Search Term 让传送门自动指向某类世界。一个 Hub 由几个传送门串起来。
+difficulty: 新手
+estimatedMinutes: 35
+chapterType: hands-on
+requiresSDK: true
+summary: VRChat 里的「跨世界传送门」是 VRC Portal Marker 组件。两种用法：直接填目标世界的 Room Id，或者按搜索关键字让传送门指向「某分类下排名第 N 的世界」。把一个简单的 Hub 世界做出来：四个传送门通向四个常去的世界。
+sidebar:
+  order: 5
+---
+
+第 16 章的传送做的是**世界内**的传送：玩家从房间一头跨过 Trigger 区域瞬间到房间另一头，靠的是 `Networking.LocalPlayer.TeleportTo`。
+
+**世界之间**的传送是另一回事：玩家从世界 A 走进一道门，离开当前实例，进入世界 B 的某个实例。这个动作 VRChat 客户端要做的不只是改坐标：要保存玩家状态、卸载世界 A、下载世界 B 的资源、加入新实例。中间几秒会有 Loading 画面。
+
+`Networking.LocalPlayer.TeleportTo` 做不了这件事。VRChat 提供了一个专门的组件：`VRC Portal Marker`。
+
+## VRChat Hub 世界是什么
+
+社区里很常见的一类世界叫 Hub：进去就是一片大堂，墙上立着几个传送门，每个门通往一个常去的世界。Hub 起两个作用：
+
+1. **作为「家」**：某个朋友圈或社群的固定见面点，从这里出发去当晚要去的几个世界。
+2. **作为「展厅」**：作者把自己做过的所有世界做成 Hub，访客进来之后可以挨个进去看。
+
+Hub 的核心组件就是 VRC Portal Marker。一个 Hub 通常 4–8 个传送门，配几张说明牌、一段背景音乐、一组沙发就成立了。这一章把这件事做完。
+
+## 找到一个世界的 Room Id
+
+VRC Portal Marker 接受一个目标世界的 Room Id。Room Id 的格式：
+
+```text
+wrld_f995a2eb-7ddc-4558-aef1-815c3b23df6c
+```
+
+`wrld_` 前缀 + 一个 UUID。这个 ID 是世界发布时 VRChat 生成的，每个世界唯一。
+
+获取一个世界的 Room Id 有几种方式：
+
+1. **从世界详情页**。VRChat 网页版（vrchat.com）登录后搜索世界，进入详情页，URL 里就带这个 ID：
+
+   ```text
+   https://vrchat.com/home/world/wrld_f995a2eb-7ddc-4558-aef1-815c3b23df6c
+   ```
+
+2. **从客户端**。VRChat 客户端里打开世界菜单，找到世界详情，复制世界 ID。
+
+3. **自己上传过的世界**：第 44 章会讲怎么发布世界，发布完成的页面会显示自己世界的 Room Id。
+
+把这个 ID 完整复制下来，待会儿要填进 Portal Marker。
+
+:::caution[拿别人的世界做 Hub 链接，要尊重对方]
+做一个 Hub 时把别人的世界放进传送门里，要事先取得对方同意。VRChat 的世界默认是「Public Instance」，技术上谁都能链过去，但社区惯例是：
+
+- 链接非常知名的公共世界（如 The Black Cat、Just B Club、动漫展世界）问题不大。
+- 链接小社群朋友的私密世界、个人作品世界，要先问一句。
+- 永远不要做「未经允许把别人世界包装成自己作品」的 Hub。
+
+这跟 Web 上做友情链接同理：技术上链谁都行，但出于对创作者的尊重，先打个招呼。
+:::
+
+## 第一节：用 Room Id 做一个传送门
+
+打开第二部那间小屋，挑一面墙作为「出门口」位置。
+
+### 加 VRC Portal Marker
+
+`Hierarchy` 空白处右键 `Create Empty`，命名 `Portal_BlackCat`（或任何想链接的世界名）。
+
+这个空 GameObject 摆到墙边，Position 大约 `0, 1, 4`、Rotation 让它面向房间内（玩家从房间这边能看到正面）。
+
+`Add Component` → 搜 `VRC Portal Marker`。Inspector 里它的字段：
+
+```text
+VRC Portal Marker
+├─ World                    None                     # 选 VRChat 内置位置（Hub / Home）时用
+├─ Room Id                  wrld_xxxxxxxx-xxxx-...   # 直接填目标世界 ID
+├─ Custom Portal Name       (留空)                   # 覆盖传送门顶部显示的名称
+├─ Sort Heading             Featured / Trending /     # Search Term 模式的字段
+│                           Updated / Created /        # （Room Id 模式不用填）
+│                           Active / None
+├─ Sort Order               Ascending / Descending
+├─ Offset                   0
+├─ Search Term              (留空)
+└─ Tag                      (留空，逗号分隔)
+```
+
+把目标世界的 Room Id 完整粘贴到 `Room Id` 字段。其他字段留空。`Custom Portal Name` 想自定义就填一段文字，不填的话传送门会显示目标世界的真实名称。
+
+### 一个空 GameObject 怎么变成可见的传送门
+
+`Build & Test` 进世界。墙边那个空 GameObject 现在是一个旋转的椭圆形传送门，门里能透出目标世界的预览缩略图。走过去（或对桌面端按 Interact），客户端会卸载当前世界并加载目标世界。
+
+这个外观（椭圆门 + 预览图 + 上方世界名）是 VRChat 客户端在运行时**根据 VRC Portal Marker 自动生成的**，不需要在 Unity 里挂任何 Mesh 或 Material。在 Editor 里 Scene 视图能看到一个 Gizmo 提示传送门朝向，但实际外观要进 VRChat 客户端才看得到。
+
+朝向也很关键：Portal 的 Z 轴正方向（蓝色箭头）是「玩家走过来进入」的方向。如果朝向反了，玩家在场景里看到传送门的「背面」，过不去。
+
+### 三件踩坑常事
+
+1. **Room Id 填错一个字符**。Portal 仍然能在场景里渲染，但走过去会报「找不到世界」。粘贴时记得不要带前后空格、不要丢前缀 `wrld_`。
+2. **目标世界是私密 / 朋友限定**。访问者权限不够时无法进入，会回到原世界并提示。Hub 用的传送门要确保目标世界是 Public 或 Community Labs。
+3. **传送门挂太低或挂在地下**。Portal 默认椭圆门高度约 2 米，如果 Portal Marker 的 Y 设到 `0`，门有一半在地下，玩家从外面看半截门觉得不对劲。`Y = 1` 是常用起点（门底距地面 1 米左右）。
+
+## 第二节：搜索式传送门
+
+`VRC Portal Marker` 还有一种用法：不指定具体世界，而是按搜索条件让 VRChat 自动选一个世界过去。
+
+实务用法不多，但有几种值得知道：
+
+- 「这一周热度排名前 5 的休闲世界」做 5 个 Portal，让 Hub 自动反映 VRChat 当下热门。
+- 给某个 Tag（比如 `cozy`）做一个 Portal，每次玩家进来都通向不同的相关世界。
+
+做法：
+
+1. 把 `Room Id` **完全留空**（这一步关键，文档明确说明：填了 Room Id 就走 Room Id 模式，搜索字段失效）。
+2. `Sort Heading` 选 `Trending`（按热度）。
+3. `Sort Order` 选 `Descending`（高到低）。
+4. `Search Term` 填一个关键词，比如 `cozy`。
+5. `Offset` 填 `0`（取搜索结果第 1 个；填 `1` 取第 2 个，以此类推）。
+
+`Sort Heading` 的几个选项：
+
+| 值 | 排序依据 |
+| :--- | :--- |
+| `Featured` | VRChat 官方精选 |
+| `Trending` | 当前热度（最近的访问 / 收藏增长） |
+| `Updated` | 最近更新 |
+| `Created` | 最近创建 |
+| `Active` | 当前在线人数最多 |
+| `None` | 不排序，按内部顺序（这种模式下 `Tag` 字段才生效） |
+
+`Tag` 字段只在 `Sort Heading = None` 时生效：可以填多个用逗号分隔的 tag，传送门会从带这些 tag 的世界里随机选。
+
+### 搜索式传送门的注意事项
+
+它带一个不可控因素：传送门指向的世界**会变**。今天是世界 A，明天可能变世界 B。如果做的是稳定的展厅 Hub，建议一律用 Room Id 模式。如果做的是「探索类」Hub，让玩家每次来都能撞见新世界，搜索式才合适。
+
+## 第三节：把一面墙做成 Hub
+
+把上面两节的内容合到一起，做一个最小 Hub：四个传送门排成一面墙，上方各有一块说明牌。
+
+### Hierarchy 整理
+
+```text
+Hub
+├─ HubFloor              （地板）
+├─ HubWall_Back          （后墙）
+├─ Portals
+│  ├─ Portal_World1      （Room Id A）
+│  ├─ Portal_World2      （Room Id B）
+│  ├─ Portal_World3      （Room Id C）
+│  └─ Portal_World4      （Room Id D）
+└─ Signs
+   ├─ Sign_World1        （World Space Canvas + TMP，标题 + 简介）
+   ├─ Sign_World2
+   ├─ Sign_World3
+   └─ Sign_World4
+```
+
+把四个 Portal 在墙前一字排开，间距 `2.5` 米左右（小于 `1.5` 米 Portal 视觉会挤）。每个 Portal 头顶 `0.5` 米处放一块对应的说明牌（接第 34 章的 World Space Canvas + TMP）。
+
+说明牌内容尽量短：
+
+```text
+《月光小屋》
+咖啡 / 聊天 / 安静
+4–8 人
+```
+
+三行。第一行世界名，第二行类型/氛围，第三行人数推荐。比堆一段长描述有效得多。
+
+### 给玩家一段「准备离开」的提示
+
+VRChat 的传送门是「靠近就走」（玩家碰到 Portal 椭圆面就开始加载目标世界）。常见做法是把 Portal 摆在出生点 1 米外，结果玩家刚加载完头像就被弹去另一个世界。
+
+实务做法：
+
+- 出生点和最近的 Portal 之间至少留 4 米。
+- Portal 之间间距 2.5 米以上，避免玩家不小心擦到错的门。
+- Portal 周围地面有清晰的「这里是离开区」视觉提示（一圈地砖、一束聚光灯），跟普通房间区分开。
+
+### 给 Hub 加一个「离开就回来」的逻辑
+
+VRChat 玩家用过 Portal 离开当前世界，再回来时会重新加载这个 Hub。如果 Hub 状态需要持久化（玩家上次坐过哪把椅子、看过哪段视频），需要用第 27 章 PlayerData 那套持久化 API。
+
+但很多 Hub 不需要这个。每次回来都是新一轮，简单清爽。
+
+:::tip[Portal 的本质：客户端层面的世界切换]
+跟 `TeleportTo` 不同，Portal 触发的是 VRChat 客户端层面的「换世界」操作。这个操作会：
+
+1. 卸载当前世界的所有 GameObject、Material、Texture、Audio。
+2. 释放当前实例的网络连接。
+3. 下载目标世界的资源（如果本地没缓存）。
+4. 加入目标世界的实例。
+
+中间会有几秒到几十秒的 Loading。所以 Portal 不能用作「世界内快速切换」的手段。世界内传送一律用 `TeleportTo`，跨世界才用 Portal。
+
+理解这一点之后，Hub 设计就有了基本方向：Hub 是一个「中转站」，本身轻量、不留太多功能，让玩家进来快速选下一个目的地。
+:::
+
+## 第四节：Portal Marker 是 SDK Prefab，可以直接用
+
+VRChat SDK 自带一个现成的 `VRCWorld_PortalMarker` Prefab。在 Project 面板搜索 `VRC Portal Marker`，能找到一个 Prefab 文件。把它拖到场景里，自带的 GameObject 已经摆好了 Portal Marker 组件，只需要填 Room Id。
+
+实际项目里推荐用这个 Prefab 起步。第 8 章讲过 Prefab 的好处：以后 SDK 升级时官方更新这个 Prefab，自己的项目能跟着拿到新版本（如果用 Prefab Instance 而不是 Unpack）。
+
+## 自己改一个 Hub 模板
+
+挑一个或几个改：
+
+- 做一个三个 Portal 的小 Hub：一个 Portal 用 Room Id 链到具体世界，一个用 `Trending` 搜索式链到 `cozy` 关键词，一个用 `Active` 链到当下人最多的世界。对比三种 Portal 的体验。
+- 给 Hub 加一段背景音乐（第 33 章），加一个开关（第 16 章那个镜子开关结构改一下）。
+- 把 `Custom Portal Name` 字段填上自定义文字，覆盖默认显示的世界名。试试用「夜晚的咖啡店」覆盖一个原本叫 "Late Cafe" 的世界。
+
+第三个最有意思：Hub 作者可以给 Portal 重命名，让整面墙的命名风格统一（比如全用中文标题），即使目标世界名字是英文。
+
+:::note[不同世界不同活法]
+- **休闲世界**Hub：3–5 个 Portal，每个对应一个常去的安静世界。重氛围轻信息。
+- **社群 Hub**：链到社群成员各自的世界，每个 Portal 配一段「作者简介」说明牌。强调作者归属。
+- **展览类 Hub**：作者把自己历代作品做成 Hub，按时间排序。Portal 顶上加版本号或年份。
+- **活动 Hub**：临时为某个活动做的，活动期间有效，活动后世界归档。Portal 数量随活动议程变。
+
+同一组 Portal Marker，做出来的 Hub 性格可以非常不同。
+:::
+
+## 关于 Portal 在世界里的开关
+
+社区里偶尔有需求：白天 Portal 开放，晚上关闭；或者特定玩家进来才显示某个 Portal。
+
+VRC Portal Marker 本身没有「显示 / 隐藏」字段，但跟所有 GameObject 一样，可以通过启用 / 禁用整个 GameObject 来控制：
+
+```cs
+public GameObject portalGO;
+portalGO.SetActive(false);   // Portal 立即从场景消失
+portalGO.SetActive(true);    // Portal 重新显示
+```
+
+这种「按状态切换 Portal」的逻辑常见在活动世界里：活动主舞台开启前，相关分会场的 Portal 默认禁用，活动开始时统一开启。
+
+## 一份发布前检查清单
+
+发布 Hub 之前自己走一遍：
+
+- [ ] 每个 Portal 的 Room Id 都正确（从 vrchat.com 复制粘贴，不要手敲）
+- [ ] Portal 朝向：玩家从面前走向 Portal 时是正面
+- [ ] Portal Y 高度合理（门底距地面 0.5–1 米）
+- [ ] Portal 之间至少 2.5 米间距
+- [ ] 出生点距最近 Portal 至少 4 米
+- [ ] 每个 Portal 配一块说明牌
+- [ ] 链接的世界都是公开访问，且作者同意
+- [ ] 测试过每个 Portal 都能进得去
+
+## 本章参考
+
+- [VRChat Creator Docs：VRC Portal Marker](https://creators.vrchat.com/worlds/components/vrc_portalmarker/)
+- [VRChat Creator Docs：World Submission（找自己世界 ID）](https://creators.vrchat.com/worlds/submitting-a-world/)
+- [vrchatblog.com：World Portal 教程（2025-12）](https://vrchatblog.com/portal/)
+- [emu-v.com：VRChat ワールドにポータルを置く方法（2025-09）](https://emu-v.com/ja-jp/xr-worlds/2025/09/how-to-place-a-world-portal/)

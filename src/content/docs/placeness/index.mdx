@@ -1,0 +1,84 @@
+---
+title: 第七部 · 让世界变成一个地方
+description: 第六部把多人通起来，房间里能有别人。这一部专门把房间变成一个「地方」：进门第一眼、空间和身体的尺度、声音、UI、传送、光照、表面、性能与跨平台。
+template: splash
+hero:
+  tagline: 技术上能跑的世界，跟玩家愿意在里面待半小时的世界，中间隔着一层「这里是个地方」的感觉。这一部把它拆开。
+  actions:
+    - text: 从第 31 章开始
+      link: ./first-thirty-seconds/
+      icon: right-arrow
+      variant: primary
+    - text: 直接看性能章
+      link: ./performance/
+      variant: minimal
+sidebar:
+  label: 第七部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第二部到第四部把房间搭起来、让它会动起来；第六部又让别人能走进来。可这时候的世界，技术上每一项都对，玩家进去转一圈出来还是会说「就那样」。
+
+那一层差距，不在 API 也不在脚本。它在出生点的朝向、走廊的宽度、暖光照不照得到沙发、远处那盏灯响不响铃、玩家第一秒看到的提示能不能看懂。这些事情合起来决定一个空间是「场景」还是「地方」。
+
+九个动手 + 经验章，从「玩家入场的前三十秒」开始一层层往里走，最后落到性能与 PC / Quest 跨平台。
+
+<CardGrid>
+  <LinkCard
+    title="31. 玩家进来的前三十秒"
+    href="./first-thirty-seconds/"
+    description="出生点朝向、第一眼可读性、欢迎信息和动线起点：进门那 30 秒决定要不要留下来。"
+  />
+  <LinkCard
+    title="32. 空间、比例和舒适"
+    href="./space-and-comfort/"
+    description="VRChat 默认身高、走廊宽度、楼梯坡度、视高，以及在 VR 里不让人晕的几条硬规矩。"
+  />
+  <LinkCard
+    title="33. 声音和氛围"
+    href="./sound-and-mood/"
+    description="VRC Spatial Audio Source 的 Near / Far / Volumetric Radius 该怎么填，背景音、环境音、点声源各管什么。"
+  />
+  <LinkCard
+    title="34. UI、提示和反馈"
+    href="./ui-and-feedback/"
+    description="World Space Canvas、Interaction Text、TextMeshPro 与 VR 里能看清的文字大小，给玩家可读的反馈。"
+  />
+  <LinkCard
+    title="35. 传送门和世界之间的连接"
+    href="./portals/"
+    description="VRC Portal Marker 的 Room Id / Search Term，让自己的世界和别人的世界互相通起来。"
+  />
+  <LinkCard
+    title="36. 光"
+    href="./light/"
+    description="实时光的成本、烘焙光照、Light Probe、Reflection Probe，让一面墙真的有重量。"
+  />
+  <LinkCard
+    title="37. 表面和材质"
+    href="./surfaces/"
+    description="PBR 工作流再深一层：Metallic、Smoothness、Normal Map、Detail Map，以及 VRChat 里能用的几种 Shader。"
+  />
+  <LinkCard
+    title="38. 性能，跑得动才是好"
+    href="./performance/"
+    description="Stats 窗口、Profiler、Draw Call、Occlusion Culling、镜子开销，怎么在不糊脸的情况下让世界跑起来。"
+  />
+  <LinkCard
+    title="39. PC 和 Quest"
+    href="./pc-and-quest/"
+    description="跨平台构建、Android Shader 白名单、纹理 1K 上限、Quest 100 MB 包体，以及怎么不让两个版本变成两个工程。"
+  />
+</CardGrid>
+
+读完这一部，能拿到的：一份从「场景做完了」到「能稳定开放给陌生玩家」的全清单。出生点、空间尺度、声音、UI、传送、光、材质各自有一套可执行的检查项，性能稳定在 Excellent / Good 这一档，PC 和 Quest 两个版本都跑得起来。
+
+:::note[这一部不再从零讲组件]
+第二部铺过 Material、Light、Audio Source 的基本面，这一部跳过那些第一次接触的步骤，直接进入「同一组件在 VRChat 多人空间里要怎么调」的层面。新名字（Light Probe、Reflection Probe、Lightmap、PBR Detail Map、Occlusion Culling、URP 等）会在第一次出现时给一句括注。
+:::

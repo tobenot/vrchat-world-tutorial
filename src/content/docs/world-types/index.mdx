@@ -1,0 +1,85 @@
+---
+title: 第五部 · 你想做什么样的世界？
+description: 基础交互做完了，但 VRChat 世界类型差别巨大。八个章节聊八种类型的核心体验、典型坑点和优先补什么技术，回答一个问题：接下来这一段要把时间砸在哪。
+template: splash
+hero:
+  tagline: 先想清楚自己要做的是哪一种，再回头看后面几部该怎么挑着读。
+  actions:
+    - text: 从第 18 章 Chill World 开始
+      link: ./chill-world/
+      icon: right-arrow
+      variant: primary
+    - text: 已经知道方向？跳到对应类型
+      link: ./game-world/
+      variant: minimal
+sidebar:
+  label: 第五部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+到第四部为止，按钮、Trigger、Pickup、椅子、镜子、传送、门，这些「积木」都做过一遍。手里这套基本款够搭一个能跑的小世界，但下一步该往哪个方向走，岔路开始多起来。
+
+VRChat 里的世界类型差别巨大。一座让人窝着聊天的小屋，跟一个四人对战的射击地图，技术重心、设计取舍、视觉风格几乎不重合。同样跟食物打交道，自家做顿饭和开一家餐厅需要的能力是两件事。
+
+第五部不教新组件，更像一份**创作者的选课指南**。每一章聊一类世界：核心体验是什么感觉、玩家走进来在期待什么、设计上最容易翻车的坑、技术上要优先补哪块。读完之后能回答一个问题：
+
+「接下来这一段时间，我要把精力砸在哪条线上？」
+
+<CardGrid>
+  <LinkCard
+    title="18. Chill World，让人愿意留下来的房间"
+    href="./chill-world/"
+    description="氛围、声音、空间感优先。机关少而准。让人愿意泡上半小时。"
+  />
+  <LinkCard
+    title="19. Game World，让规则跑起来"
+    href="./game-world/"
+    description="状态机、网络同步、UI 反馈是骨架。美术先用得上的就行。"
+  />
+  <LinkCard
+    title="20. Social Hub，给社群一个家"
+    href="./social-hub/"
+    description="进门动线、座位密度、私聊角落和管理工具。空间是社群结构的容器。"
+  />
+  <LinkCard
+    title="21. Gallery，让作品被看见"
+    href="./gallery/"
+    description="动线、灯光、节奏。空间安静地服务作品，自身不抢戏。"
+  />
+  <LinkCard
+    title="22. Narrative World，让玩家走进一段故事"
+    href="./narrative-world/"
+    description="单人节奏、状态推进、触发与揭示。故事的结构装在空间里。"
+  />
+  <LinkCard
+    title="23. Event World，舞台、活动和聚会"
+    href="./event-world/"
+    description="舞台、灯光控制、音视频源、人群密度。一次性体验，但要顶住短时间高负载。"
+  />
+  <LinkCard
+    title="24. Tool World，做一个好用的工具"
+    href="./tool-world/"
+    description="不为氛围，为效率。Avatar 测试间、动作编辑器、配色实验台。功能优先。"
+  />
+  <LinkCard
+    title="25. Commercial World，商品、赞助和创作者经济"
+    href="./commercial-world/"
+    description="VRChat Creator Economy 的产品 / 订阅 / 商店三件套，以及不显廉价的展示思路。"
+  />
+</CardGrid>
+
+读完这一部能拿到的：一份选路指南。后面几部（多人同步、空间体验、性能、发布）都按相同顺序排，但路不同的人，每一部该重点读哪几章会有差别。每章末尾会给一个「按这条路读后面」的清单。
+
+:::tip[这八类不是互斥的]
+现实里很少有世界只属于一种。一座 Chill 小屋里塞两个小游戏、一座 Gallery 加一个作者本人会出现的舞台、一座 Game World 末尾安排一段叙事彩蛋，都是常见组合。
+
+这八类是为了把「设计取舍的不同优先级」拆开看。一个世界占了哪几类的成分，决定了什么得做扎实、什么够用就行。一开始就想做「全能」的世界容易摊薄到每件事都做不深。先把主类型选准，再考虑混搭。
+:::
+
+先翻第 18 章。Chill 世界是入门门槛最低、对单人本地交互依赖最高的一类，跟前四部已经做过的内容无缝对接。后续章节按需要跳。

@@ -1,0 +1,283 @@
+---
+title: 38. 性能，跑得动才是好
+description: Stats 窗口、Profiler、Draw Call、Batches、Tris、Texture Memory，看清世界的真实开销。Occlusion Culling、Static Batching、GPU Instancing、镜子开关，把开销压下去。
+difficulty: 进阶
+estimatedMinutes: 55
+chapterType: hands-on
+requiresSDK: true
+summary: 测量先于优化。Unity Stats 窗口给出 FPS、Draw Call、Batches 的快速读数；Profiler 给出每帧每个系统的具体耗时。这一章把世界打到 60 FPS 以上的几条主路走一遍：烘焙 Occlusion Culling、合并 Static Batching、用 GPU Instancing、把镜子和视频器锁到开关后面。
+sidebar:
+  order: 8
+---
+
+第 36 章烘了一次光，第 37 章贴了一面砖墙。这时候打开 `Build & Test` 进世界，画面好看了，但帧率掉到 30 FPS。VR 用户会马上觉得晕。
+
+「跑得好」是一种独立的能力，跟「看着好」是两件事。多数 VRChat 世界塌的不是设计塌，是性能塌。Excellent 评级和 Poor 评级的世界，玩家进来会用不同方式对待：前者愿意逛半小时，后者十秒就退。
+
+这一章把性能优化的几条主路一次走完。原则一句话：
+
+> 测量先于猜测。
+
+社区里几乎每一份性能优化文档都把这句话放在第一条，因为最容易犯的错就是「我觉得 X 慢」然后花一下午优化 X，结果真正慢的是 Y。
+
+## 第一节：Stats 窗口
+
+Unity 编辑器最便宜的性能查看工具叫 Stats 窗口。Game 视图右上角有一个 `Stats` 按钮，点一下出现一个浮动小框：
+
+```text
+Statistics
+Audio
+  Level    : -22.4 dB
+CPU
+  Main     : 8.2ms (122 FPS)
+  Render   : 5.1ms
+Graphics
+  340 FPS  (3.0ms CPU + 0.0ms GPU)
+  Batches  : 145
+  Saved by batching : 23
+  Tris     : 234.7k
+  Verts    : 312.4k
+SetPass calls : 89
+Shadow casters : 67
+Visible skinned meshes : 0
+Animation components : 5
+```
+
+每个数对应一种开销。第一次进 Game 视图先扫一眼这一组数：
+
+| 数 | 含义 | VRChat 世界的合理范围（PC） | Quest |
+| :--- | :--- | :--- | :--- |
+| FPS | 每秒帧数 | 90+（VR 顺滑下限） | 72+ |
+| Batches | Draw Call 批次 | < 200 | < 100 |
+| SetPass calls | Shader 切换次数 | < 100 | < 50 |
+| Tris | 三角面数 | < 500k | < 250k |
+| Verts | 顶点数 | < 600k | < 300k |
+| Shadow casters | 投阴影物体数 | < 100 | < 30 |
+
+**FPS** 是最终结果，前面几个是它的成因。FPS 低的时候，看 Batches / SetPass / Tris 哪一项最高，就知道瓶颈在哪。
+
+注意 Stats 显示的是**编辑器里**的数。`Build & Test` 之后真实运行时数会略有不同（编辑器有 overhead）。Stats 里的数当作参考，最终以构建版本为准。
+
+## 第二节：Profiler 找具体瓶颈
+
+Stats 给出的是结果。要看「哪一帧的哪个系统拖慢了帧率」，要用 Profiler。
+
+菜单 `Window` → `Analysis` → `Profiler`。打开后是一组时间轴图。点 `Game` 视图的 `Play`，Profiler 开始记录每帧的耗时。
+
+Profiler 主要看三块：
+
+1. **CPU Usage**：CPU 各类工作（Rendering、Scripts、Physics、Animation、UI）每帧的耗时。
+2. **GPU Usage**：GPU 渲染耗时（编辑器里有时不准，建议在 Build 之后用）。
+3. **Memory**：内存占用，包括纹理、Mesh、Audio。
+
+在 CPU 时间轴里点选某一帧，下方会显示这一帧每个系统的具体耗时和调用栈。
+
+### 几种最常见的瓶颈模式
+
+| 瓶颈 | 表现 | 通常原因 |
+| :--- | :--- | :--- |
+| **Rendering 偏高** | CPU.Rendering 占大头 | Draw Call 太多 / 镜子 / 透明物体过多 |
+| **Scripts 偏高** | CPU.Scripts 占大头 | UdonSharp 脚本里有 `Update` 跑昂贵操作 |
+| **Physics 偏高** | CPU.Physics 占大头 | 太多 Rigidbody / Collider，或者 Pickup 用了网络同步 |
+| **GPU 偏高** | GPU.Render 占大头 | Shader 复杂 / 透明度过多 / Lightmap 分辨率过高 |
+
+VRChat 世界里**最常**遇到的是 Rendering 偏高。优化的主路也多在这一块。
+
+## 第三节：Draw Call 是怎么变多的
+
+每一次 GPU 「画一组带同一材质的物体」叫一个 Draw Call（具体表现为 `Batches` 数）。Draw Call 越多，CPU 准备渲染数据的开销越大，运行时拖累越明显。
+
+Draw Call 增长的几种原因：
+
+1. **物体多**：场景里 100 个不同物体，理论上 100 个 Draw Call。
+2. **材质多**：同一物体有多个材质槽，每个材质算一次 Draw Call。
+3. **Shader 切换**：相邻物体材质用了不同 Shader，强制切 Shader 重新设置渲染状态（SetPass call）。
+4. **透明物体**：透明物体不能跟不透明物体一起批处理，且要按距离排序，单独一份 Draw Call。
+
+降 Draw Call 的几个手段：
+
+### Static Batching（静态批处理）
+
+物体标了 Static、用同一份材质时，Unity 会在构建时把它们合到一份 Mesh 里，运行时只发一个 Draw Call。
+
+打开 `Edit` → `Project Settings` → `Player` → `Other Settings` → `Static Batching`，确认勾上（默认就勾）。
+
+实际上第 36 章把所有不动的物体标 Static 时，已经隐式开启了 Static Batching。Stats 里的 `Saved by batching` 显示节省了多少 Draw Call。
+
+### Dynamic Batching（动态批处理）
+
+不能标 Static 的小物体（顶点 < 300）也能动态合批，但条件比 Static Batching 更严：
+
+- 顶点数限制（Standard Shader 最多 225 个顶点的物体）。
+- 必须用同一份材质实例。
+- 不能用 lightmap。
+- Scale 必须正常（不能负数 / 反转）。
+
+实务上 Dynamic Batching 常常没用上，更稳的是 GPU Instancing。
+
+### GPU Instancing（GPU 实例化）
+
+同一份材质同一份 Mesh 在场景里出现多次（一片树林、一组栏杆、一群石头），勾上材质上的 `Enable GPU Instancing`，Unity 会用一个 Draw Call 画完所有实例。
+
+打开任何 Material，Inspector 底部勾选 `Enable GPU Instancing`。
+
+这是 VRChat 世界优化里**性价比最高**的一步。100 棵相同的树原本是 100 个 Draw Call，开 GPU Instancing 后变成 1 个。
+
+::::tip[材质数量比 Mesh 数量更重要]
+优化时常有人觉得「我把 Mesh 合并就行了」，但 Unity 的批处理是按**材质**分组的。100 个 Mesh 用 1 种材质 = 1 批；1 个 Mesh 但用了 50 种材质 = 50 批。
+
+后者的常见来源：从 Blender 导入一个角色模型时不小心给每个零件一个独立材质。先合材质，再合 Mesh。
+
+工具：Unity 自带的 Asset Bundle 工具能批量合 Material；`Texture Atlas` 工具（社区插件 Polytool 等）能把多张贴图合到一张图集里，从根本上减少材质数量。
+::::
+
+## 第四节：Occlusion Culling 烘焙
+
+被墙挡住的物体仍然在 Draw Call 里被画一次（除非在视锥之外）。Occlusion Culling 解决这件事：预计算「玩家站在每个位置时，哪些物体被挡住」，运行时挡住的物体不画。
+
+### 怎么烘
+
+1. 把所有大型挡光物体（墙、楼、地板）标上 Static（包含 `Occluder Static` 和 `Occludee Static`）。
+2. 菜单 `Window` → `Rendering` → `Occlusion Culling`。
+3. 弹出的面板下方有 `Bake` 按钮。点它。
+4. 等几分钟（取决于场景复杂度）。
+
+烘焙完之后，Game 视图里走动时被墙挡住的物体会自动从渲染列表里剔除。Stats 里的 Batches 数会显著下降（玩家在屋子里时，屋外的所有树和建筑都不画了）。
+
+### 注意
+
+- Occlusion Culling 的烘焙数据存在场景里，单独保存。改场景结构（拆墙、加房间）后要重新烘。
+- 透明物体不能当 Occluder（透明的不挡光）。
+- 极小物体当 Occluder 没意义。把 Occluder Static 留给真的能挡很多东西的大物体（墙、地板、屋顶）。
+
+第 36 章那个清单里把所有 Static 都打上勾过，所以这一步已经隐式做好了。这里只是显式再说一次：必须烘焙 Occlusion Culling，不烘的世界在大场景里 Draw Call 会失控。
+
+## 第五节：镜子和视频播放器是单独算账的
+
+镜子的开销专门拿出来说。一面镜子的工作：
+
+1. 在镜子位置放一个反射相机。
+2. 每帧把整个场景从这个位置再渲一次，输出到一张贴图。
+3. 这张贴图当作镜子表面的纹理。
+
+代价：**多渲一次场景**。Stats 里的 Batches 几乎翻倍。如果开了多个镜子，开销线性叠加。
+
+第 16 章已经讲过：默认关镜子。这一章再加几个镜子优化要点：
+
+- `m_ReflectLayers` 设成只反射 `Player` 层。其他层全部不反射，可以省掉墙壁、家具的二次渲染。
+- `Mirror Resolution` 设到 `Auto` 或更低（`512`、`1024`）。`Unlimited` 在 Quest 上会直接卡死。
+- `m_DisablePixelLights` 勾上，镜中实时灯不算。
+- 玩家关闭镜子（按开关）的脚本不能漏。
+
+视频播放器（VRChat 自带 `VRC AVPro Video Player` 或社区版）的开销跟镜子类似但稍小：每帧要解码视频流、上传纹理、渲染到 quad 上。多个视频播放器不要在同一房间。
+
+## 第六节：透明物体（Alpha）
+
+透明 Shader（带 `Transparent` Render Queue）的渲染开销是不透明的几倍：
+
+1. 不能进入 Static Batching 和大多数 Dynamic Batching。
+2. 必须按距离从远到近排序后再画（CPU 开销）。
+3. **Overdraw**：玩家视角看到的每个像素，可能被多个透明物体连续画好几次。两层重叠的玻璃就是双倍 Fillrate。
+
+实务规矩：
+
+- 玻璃、烟雾、粒子能用 Alpha Cutoff（不透明的 alpha 测试）就用，不用 Transparent。
+- 多层透明叠加（雾 + 玻璃 + 镜面反射）尽量避免。
+- Quest 上几乎完全避免 Transparent，除非世界主题就是透明（如「水族馆」之类）。
+
+::::caution[Alpha 是 Quest GPU 的杀手]
+社区里所有针对 Quest 的优化指南都把「避免透明度」放在前几条。
+
+原因：移动 GPU（Snapdragon 系列）做半透明像素的代价远高于桌面 GPU。一面占满半个屏幕的烟雾贴图能直接把 Quest 帧率从 72 干到 30。
+
+PC 上撑得住的透明效果，到 Quest 上经常要全部去掉，换成不透明替代品。第 39 章会展开。
+::::
+
+## 第七节：阴影投射数量
+
+第 36 章里实时光的阴影开销很贵。Stats 里 `Shadow casters` 显示当前帧有多少物体在产生阴影。
+
+降低阴影开销：
+
+1. 让大部分静态物体的影子靠 Lightmap（已在第 36 章烘了）。
+2. 实时光关掉阴影（`Shadow Type = No Shadows`），保留烘焙阴影。
+3. 把不必要的小物体上 Mesh Renderer 的 `Cast Shadows` 设成 `Off`（装饰小物件不投影没差）。
+
+VRChat 世界里大多数实时灯都不需要投阴影。只有一两盏「核心戏剧化效果灯」开阴影，其他全关。
+
+## 第八节：脚本性能
+
+UdonSharp 脚本本身效率比 Udon Graph 好得多，但仍然有几条要避免：
+
+1. **Update 里做 GetComponent / FindObjectOfType**。这两个调用每次都遍历场景，每帧 60 次的话能直接拖卡。把引用用 `public` 字段在 Inspector 里指定。
+2. **Update 里做 string 拼接 / new Object**。会触发 GC，UdonSharp 的 GC 比标准 C# 慢。
+3. **Update 里做大循环**。100 个物体每帧每个都查一次，性能瓶颈。
+4. **不必要的 Update**。如果脚本只在玩家点击时做事，删掉 Update 里的代码。
+
+`Update` 应该只放每帧必须算的东西。其他的用事件（Interact / OnPlayerTriggerEnter）或定时器（`SendCustomEventDelayedSeconds`）触发。
+
+## 第九节：性能优化的优先级
+
+做优化时常常一上来就深挖某个细节，结果时间花了，效果不明显。VRCreators 优化指南推荐的顺序：
+
+1. **先用 Profiler 找最大瓶颈**。不要凭感觉。
+2. **修最贵的可见物体**：spawn 附近的几何、材质、灯光、镜子。
+3. **烘焙 Occlusion Culling 和 Lightmap**。如果还没做，这两步效果最显著。
+4. **审查镜子、视频器、特效**。每一个都要有「默认关 + 开关」。
+5. **最后才优化材质细节、Shader、贴图压缩**。
+
+按这个顺序走，多数 VRChat 世界从 30 FPS 跑到 80+ FPS 不用花太多时间。
+
+## 第十节：测试一定要在多人 + 真实头像下做
+
+VRCreators 那份优化清单反复强调一句：
+
+> 单人空场景里看着流畅的世界，不代表多人 + 真实头像下也流畅。
+
+原因：玩家头像可能是 100k+ 顶点带粒子带动态骨骼的复杂模型。10 个玩家进世界，光头像就吃掉几万顶点几十个 Draw Call。世界自身的预算要给玩家头像让路。
+
+测试方法：
+
+- 用第二个 VRChat 账号 + 一个常用复杂头像进自己的世界，加上自己一共两人。
+- 邀请 3–5 个朋友各带自己常用头像进来，看 FPS。
+- VRChat 客户端按 `R + Shift + 1` 开 Stats 浮窗（具体快捷键以版本为准），实时看帧率。
+
+如果发现「单人 80 FPS，5 人 30 FPS」，说明世界自身的预算太紧，玩家头像一来就把帧率压垮。需要回头继续压世界开销。
+
+## 自己改两组对比
+
+挑一个或几个改：
+
+- 在 Stats 窗口记下当前 FPS 和 Batches。把场景里所有 Material 上的 `Enable GPU Instancing` 一次勾上，再看 Batches。多数情况下下降明显。
+- 把所有镜子的 `m_ReflectLayers` 从 `Everything` 改成只勾 `Player`（包括 PlayerLocal 和 Player），看 Batches 变化。
+- 关掉所有实时光的阴影投射，对比关之前和关之后的画面差距。如果几乎看不出来，说明阴影投射的 4 盏灯里有 3 盏可以永久关。
+
+::::note[不同世界不同活法]
+- **休闲世界**对帧率敏感（玩家久待，掉帧累）。预算严，每个 Draw Call 都值得抠。
+- **游戏世界**对帧率敏感（影响玩法）。但部分游戏世界有大场景需求，要靠 LOD 和 Occlusion Culling 撑。
+- **展览世界**对画质敏感大于帧率，预算可以稍宽，但仍要保证 60 FPS 起步。
+- **舞台 / Event**人数最多（一场活动几十人），优化反过来要按「玩家 100 人在线」算。这种世界要把镜子和视频器的开关做成「主持人控制」而不是普通玩家。
+::::
+
+## 一份性能发布前清单
+
+- [ ] Stats 显示 FPS 90+（PC）/ 72+（Quest）
+- [ ] Batches < 200（PC）/ < 100（Quest）
+- [ ] 烘焙了 Occlusion Culling
+- [ ] 所有 Material 勾了 GPU Instancing
+- [ ] 镜子默认关，玩家可开关
+- [ ] 视频播放器单空间不超过 1 个
+- [ ] 实时光数量 ≤ 4，多数关阴影
+- [ ] 透明物体最少化，Quest 版几乎为 0
+- [ ] 多人 + 真实头像测试过
+- [ ] Profiler 看过没明显瓶颈
+
+## 本章参考
+
+- [Unity Manual：Profiler Window](https://docs.unity3d.com/Manual/Profiler.html)
+- [Unity Manual：Static / Dynamic Batching](https://docs.unity3d.com/Manual/DrawCallBatching.html)
+- [Unity Manual：GPU Instancing](https://docs.unity3d.com/Manual/GPUInstancing.html)
+- [Unity Manual：Occlusion Culling](https://docs.unity3d.com/Manual/OcclusionCulling.html)
+- [VRChat Creator Docs：Performance Tips for Worlds](https://creators.vrchat.com/worlds/performance-tips/)
+- [VRCreators：World Optimization Guide（2026-05 修订）](https://vrcreators.net/docs/vrchat/optimization)
+- [VRCreators：World Optimization Checklist（2026-05 修订）](https://vrcreators.net/docs/vrchat/world-optimization-checklist)

@@ -1,0 +1,78 @@
+---
+title: 第六部 · 和别人一起
+description: 第四部所有交互都按「单人本地」做。两个人同时进世界时，灯一边亮一边暗、门一边开一边关。这一部把多人同步从最基础的困惑起步讲清楚：状态归谁、变化怎么广播、后加入的人怎么追上。
+template: splash
+hero:
+  tagline: VRChat 世界开发里最让人抓狂、也最不可避免的一段，从一盏「两个人看到不一样」的灯开始。
+  actions:
+    - text: 从第 26 章开始
+      link: ./you-see-others-dont/
+      icon: right-arrow
+      variant: primary
+    - text: 直接跳到「同步开关」实战
+      link: ./tell-everyone/
+      variant: minimal
+sidebar:
+  label: 第六部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第四部走完，房间会回应人了：按按钮灯亮、走过去音乐响、抓起小球扔出去。但所有这些反应只发生在按按钮那个人自己的客户端上。
+
+拉一个朋友进同一个世界，按一下开关：自己这边灯灭了，朋友那边灯还亮着。再让朋友抓那个小球：朋友手里的小球到自己这边没动过。世界看起来「撕裂」成了两份。
+
+这是 VRChat 网络模型的默认行为。每台客户端各跑各的脚本，状态变化不会自动广播给其他人。要让所有玩家看到同一件事发生，得显式地告诉 VRChat：这个变化要广播、谁是这件事的主人、后加入的人也要看到。
+
+第六部就讲这件事。从最基础的现象观察起步，一步一步把所有权、同步变量、网络事件、Late Joiner 几件事拆清楚。最后一章用前面的全部知识做一个能跑起来的多人小游戏。
+
+<CardGrid>
+  <LinkCard
+    title="26. 你看到的，别人不一定看到"
+    href="./you-see-others-dont/"
+    description="把第 13 章那盏灯放进多人测试，亲眼看见两个客户端状态不一致。理解 VRChat 网络模型的默认行为：脚本在每台客户端独立跑。"
+  />
+  <LinkCard
+    title="27. 谁说了算，Ownership"
+    href="./ownership/"
+    description="每个网络对象同一时刻只有一个 Owner，只有 Owner 改的值才会传出去。Pickup 自动转移所有权，门和按钮要自己 SetOwner。"
+  />
+  <LinkCard
+    title="28. 告诉别人发生了什么"
+    href="./tell-everyone/"
+    description="给灯加 [UdonSynced]、加 RequestSerialization、写 OnDeserialization。两个人的灯第一次同步亮起来。再用 SendCustomNetworkEvent 做一次性广播。"
+  />
+  <LinkCard
+    title="29. 后来的人怎么办"
+    href="./late-joiners/"
+    description="第三个玩家迟到加入，门已经开了一半。同步变量自动追状态，一次性事件会丢，OnPlayerJoined 是补救点。"
+  />
+  <LinkCard
+    title="30. 做一个多人小游戏"
+    href="./multiplayer-mini-game/"
+    description="把前四章的知识拼起来：四人能一起玩的「按按钮抢分」小游戏。计分板同步、按钮抢点、回合切换、迟到玩家也能看到当前比分。"
+  />
+</CardGrid>
+
+读完这一部，能拿到的：一份清晰的网络同步心智模型；一组能直接复用的同步组件骨架（同步开关、同步状态机、同步计分板）；一个真正能拉朋友一起玩的小项目。
+
+::::tip[这一部值得花时间]
+这一部是全书最难的之一。多人同步的概念有不少坑，且大部分坑光看代码看不出问题，要真的拉两个客户端一起测才会暴露。
+
+可以承担的进度：一周做完五章。每一章都先单人 Build & Test 通过，再 Build & Publish 到非公开实例（Friends 或 Friends+），用第二个 VRChat 账号或拉一个朋友进来对照。手机上开个语音通话，让对方报「现在你那边看到什么」，比自己反复猜要快十倍。
+::::
+
+::::caution[需要第二个测试账号]
+这一部多数练习要两个客户端同时在线。常见的几种安排：
+
+- 拉一位朋友帮忙，约半小时一起测。
+- 自己有第二个 VRChat 账号，开两个 VRChat 客户端同时登录（PC 同时跑两份 VRChat 是允许的）。
+- 借家里另一台设备（手机端 VRChat、Quest 头显）登第二个账号。
+
+ClientSim 也能模拟「Remote Player」加入，但同步行为跟真实多客户端有差距。学概念时 ClientSim 够用，验收时还是要真的两个客户端开起来对一遍。
+::::
