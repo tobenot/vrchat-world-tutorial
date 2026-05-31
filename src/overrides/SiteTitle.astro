@@ -66,13 +66,26 @@ const showPart = !isSplash && !!partLabel;
 </a>
 
 <style>
-  /* 容器：允许子元素被压缩，自带 gap，避免 margin 重复堆叠 */
+  /* 容器：本身是 <a>，但所有可见文字都在子 <span> 里，
+     子 span 各自有显式 color，所以让 <a> 自身 color: inherit 即可。
+     这样：
+       1. 浏览器不会给 <a> 套默认链接色（含 :visited 紫色）；
+       2. :visited 只能改 color/background-color 等少数属性、且只作用于当前
+          元素，不会传染给子元素 —— 子 span 的显式 color 永远胜出；
+       3. 不需要 !important 大锤，未来要做 hover 变青绿等花活也很自由。 */
   .site-title {
+    color: inherit;
+    text-decoration: none;
     min-width: 0;
     gap: 0.45rem;
     /* 防止 flex 子在 nowrap 下溢出父容器、把右侧图标顶出去 */
     max-width: 100%;
     align-items: center;
+  }
+
+  /* 书名：默认颜色（暗色用白，亮色由 Starlight 主题接管） */
+  .site-title__book {
+    color: var(--sl-color-white);
   }
 
   /* 通用文本省略：所有可能变长的子元素都需要 min-width:0 才能正确截断 */

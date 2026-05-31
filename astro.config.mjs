@@ -25,6 +25,10 @@ export default defineConfig({
     starlight({
       title: bookTitle,
       description: bookDescription,
+      // 关掉 Starlight 内置的 /404 路由，改用我们自己写的 src/pages/404.astro。
+      // 不关的话两条静态路由会撞车（router collision），现在 Astro 只是 WARN，
+      // 但下个大版本会变 hard error，所以提前修掉。
+      disable404Route: true,
       // 单语言中文站点：用 Starlight 的 root locale，URL 不带 /zh-CN/ 前缀，
       // 但 <html lang="zh-CN"> 正确，Pagefind 会按中文分词。
       // 注意：不要再在顶层 defineConfig 写 Astro 的 i18n 字段——那会让 Starlight
