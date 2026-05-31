@@ -123,7 +123,7 @@ else
 
 在调用之前加一行 `!= null` 检查，能把这类空引用挡在事件中断之前。
 
-### 不要按普通 C# 的数据类思路设计
+### 普通 C# 的数据类思路在这里走不通
 
 普通 C# 里很常见的写法，是先写一个纯数据类，再 `new` 出许多个对象：
 
@@ -237,7 +237,7 @@ public override void OnPlayerJoined(VRCPlayerApi player) { ... }
 otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 ```
 
-「哪些写 override、哪些不写」这条规则是新手最容易混的：**Unity 自己的生命周期方法不写 override，VRChat 专属事件写 override**。看到老的代码风格不一样很正常，这本书里统一用上面这套。
+「哪些写 override、哪些不写」这条规则最容易混：**Unity 自己的生命周期方法不写 override，VRChat 专属事件写 override**。看到老的代码风格不一样很正常，这本书里统一用上面这套。
 
 ## 性能不是最后才管的事
 
@@ -313,4 +313,4 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 - 知道 UdonSharp 不是普通 C#，遇到「怎么不行」时大致能猜到方向。
 - 撞墙时不慌，知道按上面那份顺序排查。
 
-这一章里那份「白名单 / 编译器特性 / 工程化约束」三类清单不需要背。撞上具体怪现象时知道大概去哪一类里翻，比记住每一条都重要。
+这一章里那份「白名单 / 编译器特性 / 工程化约束」三类清单是当字典用的。撞上具体怪现象时，知道大概去哪一类里翻，比把条目逐字记下来管用。
