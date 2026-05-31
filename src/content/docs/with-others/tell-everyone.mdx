@@ -24,8 +24,8 @@ sidebar:
 
 1. **`[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`**：写在脚本类上方，告诉 UdonSharp 这个脚本走「手动同步」模式。
 2. **`[UdonSynced]`**：写在要同步的字段上方，标记它是「需要广播给所有人」的字段。
-3. **`RequestSerialization()`**：在 Owner 改完字段后调用一次，告诉 VRChat「现在打包发出去」。
-4. **`public override void OnDeserialization()`**：远端客户端收到打包过来的字段后，VRChat 会调一次这个方法，让脚本根据新字段更新本地表现。
+3. **`RequestSerialization()`**：在 Owner 改完字段后调用一次，告诉 VRChat「现在打包发出去」。serialization 中文叫「序列化」，意思是把字段值打包成网络数据。
+4. **`public override void OnDeserialization()`**：远端客户端收到打包过来的字段后，VRChat 会调一次这个方法，让脚本根据新字段更新本地表现。deserialization 是「反序列化」，把网络数据解包还原回字段值。
 
 四件凑齐了字段才能跨客户端同步。少一件就有具体的失败模式：
 
@@ -258,7 +258,7 @@ public class DoorController : UdonSharpBehaviour
 | 数值 | `sbyte` / `byte` / `short` / `ushort` / `int` / `uint` / `long` / `ulong` / `float` / `double` | 都行 |
 | 布尔 | `bool` | 一个字节 |
 | 字符 | `char` / `string` | string 可同步但有长度上限，避免装大段文本 |
-| Unity 数学 | `Vector2` / `Vector3` / `Vector4` / `Quaternion` / `Color` / `Color32` | 可补间，能加 `UdonSyncMode.Linear` 平滑插值 |
+| Unity 数学 | `Vector2` / `Vector3` / `Vector4` / `Quaternion` / `Color` / `Color32` | 可补间，能加 `UdonSyncMode.Linear` 平滑插值（让数值在两次同步之间平滑过渡，不瞬跳） |
 | URL | `VRCUrl` | VRChat 的视频 / 图片 URL 类型 |
 | 数组 | 上面这些类型的一维数组 | 多维数组不行 |
 

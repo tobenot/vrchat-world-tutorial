@@ -20,10 +20,10 @@ VRChat 玩家进一个世界时，眼睛比耳朵慢。视觉得等头像加载�
 
 在 Unity 里给一个物体加 `Audio Source`，它就是普通 Unity 项目里的 3D 音源：用 Unity 的滚降曲线，按距离衰减。
 
-但 VRChat 客户端做了一件事：所有 Unity Audio Source 进入运行时之后会被 VRChat 接管，**统一通过 VRC Spatializer**（VRChat 的空间化算法）来播放。这一层接管包括两件事：
+但 VRChat 客户端做了一件事：所有 Unity Audio Source 进入运行时之后会被 VRChat 接管，**统一通过 VRC Spatializer**（VRChat 的空间化算法，按声源相对玩家的 3D 位置算左右耳音量与方向，让声音听起来真的从某个方向传来）来播放。这一层接管包括两件事：
 
 1. 默认套用一个反平方衰减曲线（更接近现实物理，比 Unity 默认对数曲线稍有不同）。
-2. 给世界 Audio Source 默认加 `+10 dB` 的增益（Avatar Audio Source 没有这个加成）。
+2. 给世界 Audio Source 默认加 `+10 dB` 的增益（dB 是音量的对数刻度，每 +10 dB 听感大约翻倍；增益就是「比原音量额外加多少 dB」。Avatar Audio Source 没有这个加成）。
 
 所以 VRChat 世界里的声音不能只按 Unity 编辑器里 Play 试听到的来调。最终听感由 VRChat 客户端决定。`VRC Spatial Audio Source` 这个组件存在的意义，是给作者一组对应 VRChat 算法的字段，让最终听感可控。
 

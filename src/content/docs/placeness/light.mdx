@@ -120,7 +120,7 @@ Lighting Settings
 
 ### Lighting Mode 的取舍
 
-`Mixed Lighting` 下的 `Lighting Mode` 有几个选项，影响 Mixed 灯怎么混合烘焙和实时：
+`Mixed Lighting` 下的 `Lighting Mode` 有几个选项，影响 Mixed 灯怎么混合烘焙和实时。先铺三个名词：**直接光**指从光源直射到表面的光；**间接光**指被其他表面反射后才到来的光；**全局光照（Global Illumination / GI）**就是把直接光 + 间接光一起算的总光照系统。
 
 - `Baked Indirect`：直接光实时算，间接光烘焙。运行时仍要算每帧的直接光，性能不省太多。
 - `Shadowmask`：直接光实时（只有动态物体的影子是实时算的，静态物体的影子被烘焙到一张 Shadowmask 贴图里），间接光烘焙。性能与画质平衡好。**VRChat 世界推荐起点**。
@@ -140,7 +140,7 @@ PC 世界：用 `Shadowmask`。Quest 世界：用 `Subtractive`。第 39 章会�
 
 ::::caution[烘焙完看着比之前更糟的几种情况]
 1. **整个场景变得很黑**。检查 `Environment Lighting → Source`：如果是 `Skybox` 但场景里没有合适的 Skybox Material，环境光会变黑。换成 `Color` 模式手动指定一个浅灰底色。
-2. **Lightmap 上有缝（UV 接缝处出现亮线 / 黑线）**。物体的 Lightmap UV 没展开。Project 面板选中模型 fbx，Inspector → `Model` 选项卡 → 勾上 `Generate Lightmap UVs`，重新烘。
+2. **Lightmap 上有缝（UV 接缝处出现亮线 / 黑线）**。物体的 Lightmap UV 没展开（UV 是把 3D 模型表面摊平成 2D 贴图坐标的方式，接缝就是展开时被切开的边）。Project 面板选中模型 fbx，Inspector → `Model` 选项卡 → 勾上 `Generate Lightmap UVs`，重新烘。
 3. **物体表面出现块状亮斑**。`Indirect Samples` 太低。从 `256` 调到 `512` 重烘，亮斑变细。
 4. **某些物体没接受光（依旧用 Realtime 风格的渲染）**。它们没被标 Static。
 5. **第二次烘焙时旧的 Lightmap 还在显示**。Unity 偶尔不会清旧贴图。Lighting 面板下拉 `Generate Lighting` 旁边的小箭头，选 `Clear Baked Data`，再 Generate。

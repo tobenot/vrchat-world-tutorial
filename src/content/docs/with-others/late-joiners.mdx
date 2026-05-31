@@ -65,7 +65,7 @@ public override void OnPlayerLeft(VRCPlayerApi player)
 两个回调都在「玩家加入」时跑，但角色不同：
 
 - `OnPlayerJoined(VRCPlayerApi player)`：每位玩家加入时所有 UdonBehaviour 都触发一次，参数是这位玩家。用来做「有人进来了」的反应：欢迎音效、加进玩家列表、记录加入时间戳。
-- `OnDeserialization()`：本机客户端收到服务器推过来的同步变量更新时触发。新玩家自己加入时是从「全空白」状态收到一份完整快照，所以会触发一次。已经在场的玩家不会因为有人加入而触发 `OnDeserialization`（除非有人改了同步字段）。
+- `OnDeserialization()`：本机客户端收到服务器推过来的同步变量更新时触发。新玩家自己加入时是从「全空白」状态收到一份完整快照（snapshot，某一时刻所有同步字段当前值打包成的初始数据），所以会触发一次。已经在场的玩家不会因为有人加入而触发 `OnDeserialization`（除非有人改了同步字段）。
 
 新玩家加入实例的瞬间，她自己的客户端上：
 - 所有 UdonBehaviour 的 `OnPlayerJoined` 都跑一次，参数是她自己。

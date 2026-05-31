@@ -100,7 +100,7 @@ Game World 的优先级跟 Chill World 几乎相反：先逻辑再美术。
 
 按必须程度排：
 
-- **状态机思维**：第 17 章那扇门是入门款。Game World 经常要管理「全局回合状态」、「每个玩家的角色状态」、「每个道具的拾取状态」三层叠在一起。第 17 章理解章 D 那一节（事件 → 条件 → 动作）是基础。
+- **状态机思维**（用「当前在第几步、按什么条件跳到下一步」描述系统的写法）：第 17 章那扇门是入门款。Game World 经常要管理「全局回合状态」、「每个玩家的角色状态」、「每个道具的拾取状态」三层叠在一起。第 17 章理解章 D 那一节（事件 → 条件 → 动作）是基础。
 - **网络同步**：`[UdonSynced]` 标记字段、`RequestSerialization()` 发包、`OnDeserialization()` 收包、`SendCustomNetworkEvent()` 远程调方法。第 28 章。
 - **Ownership 模型**：`Networking.SetOwner()`、`Networking.IsOwner()`、Master Client 概念。Game World 里几乎每个交互都要先想「这个状态归谁所有」。第 27 章。
 - **Late Joiner 处理**：`OnPlayerJoined` 事件 + 状态重建。第 29 章。

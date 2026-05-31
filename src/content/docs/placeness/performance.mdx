@@ -43,7 +43,9 @@ Visible skinned meshes : 0
 Animation components : 5
 ```
 
-每个数对应一种开销。第一次进 Game 视图先扫一眼这一组数：
+每个数对应一种开销。下面表里有几个生词先铺一下：**Draw Call** 是 GPU 一次「画一批物体」的命令；**Batches** 是 Stats 显示的实际 Draw Call 数（同材质的物体会被合到一批，所以 Batches ≤ 物体数）；**SetPass call** 是切换 Shader 的次数。三个数都是「越少越好」的同步指标，第三节会展开它们怎么变多、怎么压下去。
+
+第一次进 Game 视图先扫一眼这一组数：
 
 | 数 | 含义 | VRChat 世界的合理范围（PC） | Quest |
 | :--- | :--- | :--- | :--- |

@@ -99,7 +99,7 @@ Chill 世界里这样做基本是反效果。机关密度过高时玩家会进�
 
 Chill 世界的取舍很明确。同步、状态机、UI 这些先放一边，把心力先砸在下面这条线上。
 
-- **光照系统**：Lightmap 烘焙、Light Probe、Reflection Probe。Realtime Light 在 Quest 上代价高，Chill 世界的静态光大半应该用烘焙的。第七部第 36 章会展开。
+- **光照系统**：Lightmap 烘焙（把光预先算成贴图，运行时不再算）、Light Probe（撒一组小球记录环境光，给玩家头像等动态物体用）、Reflection Probe（某个点四周的环境快照，给金属反射用）。Realtime Light 在 Quest 上代价高，Chill 世界的静态光大半应该用烘焙的。第七部第 36 章会展开。
 - **空间音频**：`VRC Spatial Audio Source` 的 Min/Max Distance、Spatial Blend、Volume Curve。让声音随位置变化。第七部第 33 章。
 - **空间比例**：天花板高度、家具尺度、走廊宽度。VR 里 1 米跟桌面里 1 米感受差别巨大。第七部第 32 章。
 - **PBR 材质**：墙看起来像石头还是像塑料，由 Albedo / Metallic / Smoothness / Normal 这几样决定。Chill 世界对材质的容忍度低。第七部第 37 章。
