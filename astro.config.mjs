@@ -141,6 +141,16 @@ export default defineConfig({
           autogenerate: { directory: 'placeness' },
         },
         {
+          label: '第八部：做着做着会撞上的事',
+          collapsed: false,
+          autogenerate: { directory: 'surviving' },
+        },
+        {
+          label: '第九部：发出去，然后继续走',
+          collapsed: false,
+          autogenerate: { directory: 'publishing' },
+        },
+        {
           label: '附录 · 速查与参考',
           collapsed: true,
           autogenerate: { directory: 'appendix' },

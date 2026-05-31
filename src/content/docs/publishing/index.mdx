@@ -1,0 +1,61 @@
+---
+title: 第九部 · 发出去，然后继续走
+description: 第八部把项目活下来这件事讲完了。这一部把世界推到 VRChat 公网上：上传到 Community Labs、应付头几周的 bug 和反馈、可选地接上 Creator Economy、再回答「这本书读完之后接下来去哪」。
+template: splash
+hero:
+  tagline: 发布是另一段路的开头。世界出现在列表里之后，访客会来，反馈会来，第二个版本会来。第二座世界也会来。
+  actions:
+    - text: 从第 44 章开始
+      link: ./submit-your-world/
+      icon: right-arrow
+      variant: primary
+    - text: 直接看 Creator Economy
+      link: ./creator-economy/
+      variant: minimal
+sidebar:
+  label: 第九部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第八部那一组「调试、测试、版本管理、素材合规」是为了让项目能撑过开发阶段。这一部接力，把世界推过最后一道门：上传，让陌生玩家能进来。
+
+「上传」按下去那一秒看着像终点，实际上更像起点。世界进 Community Labs 之后会被 opt-in 用户挑出来逛一圈；有人留下收藏，有人开 bug 反馈贴；过一段时间它自动晋升 Public，第一波热度过去之后日访问量会回落；这时候才是创作者真正要做选择的时刻：要不要继续更新、要不要接 Creator Economy、下一座世界做什么。
+
+四章按这条时间线走。
+
+<CardGrid>
+  <LinkCard
+    title="44. 发布你的世界"
+    href="./submit-your-world/"
+    description="上传前的硬性检查清单、VRC Scene Descriptor 的容量与出生点、Build & Publish 的填报字段、Community Labs 的 7 天间隔与晋升机制。"
+  />
+  <LinkCard
+    title="45. 赞助、商品和创作者经济"
+    href="./creator-economy/"
+    description="VRChat Creator Economy 的 Products / Listings / Subscriptions / Stores 四件套、Tilia 提现门槛、Udon 集成 API，以及跟 Booth / Patreon 这些外部平台怎么搭配。"
+  />
+  <LinkCard
+    title="46. 维护一个世界"
+    href="./maintaining-a-world/"
+    description="头一周的 bug 浪、反馈渠道、不破坏收藏的版本更新策略、何时停更，以及怎么避免一座世界成为「上传后再无人问津」的废墟。"
+  />
+  <LinkCard
+    title="47. 继续学习"
+    href="./keep-learning/"
+    description="官方文档、社区资源、AI 协作、下一座世界。书读完之后这条路怎么自己往下走。"
+  />
+</CardGrid>
+
+读完这一部，能拿到的：一份从「点 Build & Publish」到「世界稳定运行半年」的完整路径表，以及一份在书结束之后还能继续用的资源地图。
+
+:::note[这一部跟前面节奏不同]
+前八部最终的产物都是 Unity 工程里某一段可见的成果。这一部的产物分布在 VRChat 网站、Tilia 后台、世界访客的反馈里，编辑器内能改的不多。
+
+写法上也相应换挡：第 44 章仍是动手章，第 45 到第 47 偏经验谈和导航，给方向不给逐步骤。前面章节里反复练过的操作（打开面板、新建组件、改 Inspector 字段）这一部不再细写。
+:::

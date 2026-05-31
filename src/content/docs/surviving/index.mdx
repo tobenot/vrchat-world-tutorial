@@ -1,0 +1,61 @@
+---
+title: 第八部 · 做着做着会撞上的事
+description: 前七部讲怎么把世界做出来。这一部讲做着做着会遇到什么意外：脚本悄悄报错、改一处坏一处、两天的活被手滑删掉、Booth 上看到一份素材却拿不准能不能放进自己世界。四件事撑过去，工程才能继续走下去。
+template: splash
+hero:
+  tagline: 第一个世界做出来之后，下一道坎多半是工程小事：「上次能跑现在不能跑」「找不到那条报错」「项目越来越乱」「这素材到底能不能用」。
+  actions:
+    - text: 从第 40 章开始
+      link: ./debugging-mindset/
+      icon: right-arrow
+      variant: primary
+    - text: 直接看版权那一章
+      link: ./assets-and-licenses/
+      variant: minimal
+sidebar:
+  label: 第八部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第七部把世界打磨成一个地方，第六部把多人通起来。这时候手里这份工程已经不是当初那个空房间了：几十个 Prefab、几百份资源、两三个 UdonSharp 脚本、一段烘焙好的光照、若干外包的素材。再做下去，撞到的不是新功能问题，是工程问题。
+
+按按钮没反应，Console 翻一遍找不到红字。改了一处材质，发现整面墙颜色都跟着变了。两天前那个能跑的版本现在打开报错。从 Booth 下载的小道具不知道作者写的「商用 OK」算不算 VRChat 公开世界的「商用」。
+
+这一部专门处理这四件事。它们不是「新功能」，是工程纪律。
+
+<CardGrid>
+  <LinkCard
+    title="40. 坏了怎么办，调试的思路"
+    href="./debugging-mindset/"
+    description="Console 怎么读、Debug.Log 放在哪几个位置、怎么用 halted 关键字找 Udon 异常、怎么在 VRChat 客户端里实时看日志。"
+  />
+  <LinkCard
+    title="41. 测试你的世界"
+    href="./testing-your-world/"
+    description="ClientSim、Build & Test、Friends 实例三层测试各自能验出什么、不能验出什么。多客户端用 Number of Clients 还是 --profile 参数。Quest 单独测一遍。"
+  />
+  <LinkCard
+    title="42. 版本管理和备份"
+    href="./version-control/"
+    description="给 Unity 项目配一份合适的 .gitignore、把 Asset Serialization 改成 Force Text、.meta 文件不能漏、大文件走 Git LFS、场景冲突用 UnityYAMLMerge 解。"
+  />
+  <LinkCard
+    title="43. 素材、插件和版权"
+    href="./assets-and-licenses/"
+    description="Booth、Unity Asset Store、Creative Commons 几类许可证读法。VRChat 服务条款里关于第三方内容的硬规定。一份给项目随手维护的素材清单模板。"
+  />
+</CardGrid>
+
+读完这一部，能拿到的：一套查 bug 的三段式（Reproduce → Narrow Down → Fix）；一份分层测试清单；一个能放心 `git push` 的 Unity 项目；一份每件素材都能写出来源和许可证的资源台账。
+
+::::note[这一部不教新功能]
+40 到 43 章里没有新的 VRChat 组件、没有新的 UdonSharp 写法。它们是工程类内容：当世界从「能跑通」走向「能持续维护」时建立的纪律。
+
+可以挑着读：第一个世界刚发布之前先看 41 章和 43 章；第二次合作开发之前回头看 42 章；第一次撞上「按钮按了没反应」可以从 40 章入手。其他时候这一部当字典用，遇到对应问题再翻。
+::::

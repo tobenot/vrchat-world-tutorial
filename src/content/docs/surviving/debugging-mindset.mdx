@@ -1,0 +1,291 @@
+---
+title: 40. 坏了怎么办，调试的思路
+description: 一份给 VRChat 世界开发用的调试清单。读 Console、放 Debug.Log、搜 halted、在 VRChat 客户端开 Debug GUI 看实时日志，以及一套从「按钮按了没反应」到「精确定位哪一行炸了」的三段式排错法。
+difficulty: 进阶
+estimatedMinutes: 45
+chapterType: hands-on
+requiresSDK: true
+summary: 第一个世界跑顺之后，下一个常见状态是「按按钮没反应、画面没变、Console 看不见红字、心里很慌」。这一章把 VRChat 世界开发的调试通路一条条铺开：Unity Console 的过滤、Debug.Log 的三种典型位置、Udon 异常自停时打的 halted 提示、用启动参数让 VRChat 客户端把日志写到屏幕上。再用 Reproduce → Narrow Down → Fix 三段式把单次排错走完一遍。
+sidebar:
+  order: 1
+---
+
+第七部那间打磨好的世界，进 `Build & Test` 走一圈，发现一扇门按下去没反应。再按一下，还是没反应。退到 Unity 编辑器，按钮挂着脚本、引用都填了、Animator 也在那儿。所有东西看上去都对。
+
+这是 VRChat 世界开发里最高频的一种状态：表面上一切正常，实际上某条链路上断了一根线。脑子里第一反应通常是「Unity 出 bug 了」「VRChat SDK 出问题了」。多数情况下是脚本本身在某一行悄悄抛了空引用异常，整段事件中断，没继续往下走。
+
+这一章只做一件事：把「悄悄断掉」翻译成「看得见的红字」。再把这条红字一路追到具体哪一行。
+
+## 第一节：Console 是免费的，但要会读
+
+Unity 编辑器底部那个 `Console` 窗口（菜单 `Window` → `General` → `Console`，或快捷键 `Ctrl+Shift+C`）是项目里所有日志、警告、错误的集散地。多数情况下「按钮没反应」的真相已经在那里写着了。
+
+打开 Console，右上角有三个图标：
+
+- 左边带感叹号的图标：信息日志（Log）
+- 中间的黄色三角：警告（Warning）
+- 右边的红色叉：错误（Error）
+
+每个图标后面跟着一个数字，显示当前条数。三个图标可以单独开关，用来过滤当前关心哪一类。排错时优先看红色那一类，绿色信息可以暂时关掉减少噪音。
+
+第一次打开 Console 通常已经堆了几十条历史消息。点 `Clear`（左上角）清空，再去重现那个「按钮按了没反应」的动作，然后回到 Console 看新冒出来的几条。
+
+::::tip[为什么是这样？]
+Console 默认会把同一条错误折叠成一行（标题旁边显示 `(N)` 表示重复了 N 次）。这在脚本每帧都报同一个错的时候很有用，能避免几千条同样的红字把窗口刷爆。
+
+折叠开关在 Console 右上角的 `Collapse` 按钮。排查偶发问题时打开（看清每次发生的时间），排查每帧重复问题时关掉（看清重复了多少次）。
+::::
+
+红字一般长这样：
+
+```text
+NullReferenceException: Object reference not set to an instance of an object
+DoorController.Interact () (at Assets/Scripts/DoorController.cs:18)
+```
+
+第一行是异常类型和概要消息，第二行带 `(at ...)` 是行号定位。点击这条红字，Console 下半部分会展开调用栈；双击它，Unity 会把对应的 `.cs` 文件打开并跳到那一行。
+
+`NullReferenceException`（缩写 NRE，空引用异常）在 VRChat 世界脚本里出现的频率高得不像话。它的意思永远是同一句：「试图调用某个变量，但那个变量是 `null`，没指向任何对象」。看到 NRE 通常是两种情况之一：
+
+1. Inspector 里某个 `public` 字段没拖引用（最常见）。
+2. 代码里调了一个返回 `null` 的方法（如 `GetComponent<X>()` 没找到 X 组件），没判空就接着用。
+
+[第 12 章](/programming/udonsharp-personality/)讲过：UdonSharp 不支持 `try-catch`。NRE 一发生，当前事件直接中断，后面的代码全部不再执行。所以「按钮按了没反应」往往就是 `Interact` 方法第三行就 NRE 了，第四行的 `SetBool` 根本没机会跑。
+
+## 第二节：Debug.Log 放在三个位置
+
+Console 上没看到红字，但行为还是不对，那就需要主动让脚本说话。
+
+`Debug.Log()` 是 Unity 自带的日志输出方法，写法极简：
+
+```cs
+Debug.Log("Interact 被触发");
+Debug.Log($"当前 isOpen = {isOpen}");
+```
+
+第二种用了 C# 字符串内插（`$"..."` 里 `{变量}` 会被替换成变量当前值），UdonSharp 当前版本支持。
+
+排错时把 `Debug.Log` 放在三个典型位置：
+
+```cs title="DoorController.cs（带调试日志的版本）"
+public override void Interact()
+{
+    Debug.Log("[Door] Interact 被触发");
+
+    if (doorAnimator == null)
+    {
+        Debug.Log("[Door] doorAnimator 是 null");
+        return;
+    }
+
+    isOpen = !isOpen;
+    Debug.Log($"[Door] isOpen 翻转为 {isOpen}");
+
+    doorAnimator.SetBool("IsOpen", isOpen);
+    Debug.Log("[Door] SetBool 已调用");
+}
+```
+
+三个位置对应三种问题：
+
+| 位置 | 验证什么 |
+| :--- | :--- |
+| 方法开头 | 这个方法到底有没有被触发 |
+| 关键变量赋值后 | 变量的值是不是预期的 |
+| 关键调用前后 | 是否走到这一行、有没有抛异常打断 |
+
+每条日志加一个统一前缀（这里用 `[Door]`）的好处是 Console 里搜索时一搜就出来一组，跟其他无关日志区分开。脚本多了之后这一招很省事。
+
+排错完成后，可以删掉这些日志，也可以保留少数关键的留作以后排查。Console 里大量信息日志在多人测试时会拖性能（Udon 写日志是有开销的），所以正式发布前要做一次清理。
+
+::::caution[踩坑预警]
+`Debug.Log` 在 Unity 编辑器里输出到 `Console` 窗口；在 VRChat 客户端运行时，输出到本机日志文件，**默认不显示在屏幕上**。
+
+也就是说，`Build & Test` 之后进 VRChat 客户端发现按钮不响，光看屏幕看不到 `Debug.Log` 的输出。要看实时输出，要么留在 Unity 编辑器里用 ClientSim（下一章讲），要么按本章后面那节讲的方法启动 VRChat 客户端的 Debug GUI 调出日志窗口。
+::::
+
+## 第三节：Udon 异常自停，找「halted」
+
+Console 上有时不会按上面 NRE 那种格式直接报「DoorController.cs:18」，而是冒出这样一段：
+
+```text
+Error - [UdonBehaviour] An exception occurred during Udon execution,
+this UdonBehaviour will be halted.
+VRC.Udon.VM.UdonVMException: An exception occurred during EXTERN to
+'VRCSDK3VideoComponentsBaseBaseVRCVideoPlayer.__GetTime__SystemSingle'.
+---> System.NullReferenceException: Object reference not set to an instance of an object.
+```
+
+这是 VRChat Udon 虚拟机抛出的异常。关键短语：**`this UdonBehaviour will be halted`**。意思是这一份 UdonBehaviour 出了一次没接住的异常，整个脚本被 Udon 直接停掉，从这一刻起这个对象上的所有事件都不会再触发，直到玩家重新进入世界。
+
+「按一次有反应、再按一次没反应」「门第一下能开、第二下不动」这类「时灵时不灵」的问题，多半都是中间发生过一次 halted。看上去像「脚本累了」，实际上是脚本被 Udon 强制熄火了。
+
+打开 Console，右上角搜索框输入 `halted`，能把所有这类异常一网打尽。每条日志的下方堆栈信息会指出炸在哪个 EXTERN 调用上（EXTERN 是 Udon 字节码里调用外部 API 的指令名），结合调用上下文就能找到具体哪一行的引用是 `null`。
+
+::::tip[halted 的含义和应对]
+普通 .NET 程序遇到未捕获异常时通常崩溃整个进程。Udon 的处理方式是「只熄火当事 UdonBehaviour，不影响其他玩家、其他世界、其他脚本」。这套设计配合沙箱模型保证了一个写崩了的世界不会拖垮整个 VRChat 客户端。
+
+代价是写脚本的人要主动判空。第 12 章讲过，UdonSharp 没有 `try-catch`。所以日常写法是：调用之前先 `if (target != null)` 兜一下，能挡掉九成会触发 halted 的 NRE。
+::::
+
+## 第四节：在 VRChat 客户端里看日志
+
+退出 Unity 编辑器、单独启动 VRChat 客户端进自己的世界排查时（典型场景：上传到 Friends 实例后多人测试），需要在客户端开 Debug GUI 才能实时看日志。
+
+按 VRChat 官方文档（[Debugging Udon Projects](https://creators.vrchat.com/worlds/udon/debugging-udon-projects/)）的做法，最稳的是给 VRChat 准备一个调试启动脚本。
+
+在 VRChat 安装目录下（默认 `C:\Program Files (x86)\Steam\steamapps\common\VRChat\`），新建文件 `debug.bat`，内容：
+
+```bat
+VRChat.exe --no-vr --enable-debug-gui --enable-sdk-log-levels --enable-udon-debug-logging
+```
+
+四个参数各管一件事：
+
+| 参数 | 作用 |
+| :--- | :--- |
+| `--no-vr` | 强制桌面模式启动，不进 VR | 
+| `--enable-debug-gui` | 解锁 Debug GUI（按 `RShift + ` ` ` + 数字 1-9 切换） |
+| `--enable-sdk-log-levels` | 让 SDK 详细日志写到屏幕浮窗 |
+| `--enable-udon-debug-logging` | 让 Udon 的 `Debug.Log` 输出可见 |
+
+双击 `debug.bat` 启动 VRChat。进世界后按 `RShift + ` ` ` + `3`（右 Shift + 反引号 + 主键盘数字 3，不能用小键盘）调出实时日志窗口。脚本里的 `Debug.Log` 现在直接打在屏幕上。
+
+不想用 `bat` 的也可以走 Steam → 右键 VRChat → 属性 → 启动选项里塞这几个参数。但这样调试用启动方式和正常启动方式就分不开了。Steam 启动只用于偶尔排查，写 bat 适合长期开发。
+
+日志文件路径（启不启动 Debug GUI 都会写）：
+
+```text
+C:\Users\<你的用户名>\AppData\LocalLow\VRChat\VRChat\
+```
+
+文件名形如 `output_log_HH-MM-SS.txt`，每次启动 VRChat 客户端会生成一个新文件。VRChat 客户端崩溃后想看「最后写了什么」，去这里翻最新那个 txt。
+
+## 第五节：三段式排错法
+
+工具铺到这里。光有工具还不够，还要有顺序。多数情况下「按按钮没反应」的排查不该是「打开脚本盯着看」，应该是：
+
+```text
+1. Reproduce  → 把问题稳定地复现一次
+2. Narrow Down → 把可疑范围一刀刀切小
+3. Fix         → 改一行，再复现一次确认
+```
+
+这三步顺序很重要。跳过任何一步排查时间都会拉长。
+
+### Reproduce
+
+bug 必须能稳定复现才能调。复现不出来的「偶尔出现」是最难调的，时间会主要花在「让它再出一次」上而不是「修它」。
+
+先尝试用最少操作复现：
+
+- 单人 Build & Test 时也出现吗？还是只在多人？
+- 进世界第一次按就出，还是要按某个顺序触发？
+- 重启 Unity 编辑器后还在吗？
+
+把复现路径写下来，三句话以内。这一步做好了，后面排错效率翻倍。
+
+### Narrow Down
+
+复现路径定下来后，用 `Debug.Log` 沿着脚本执行链路一段段切。常用切法：
+
+- **二分法**：脚本中段加一条日志，复现一次。日志出现了，bug 在它之后；没出现，bug 在它之前。把没出现的那一半再二分。
+- **逐步剥离**：把可疑的那块功能临时禁用（`[SerializeField] private bool enableXXX = false;` 配 `if` 包起来），看 bug 是不是消失。消失了说明问题在那块。
+- **最小复现**：把场景里其他无关物体临时全部 SetActive(false) 或拖出场景，只留出问题的那一组。bug 还在就是那组有问题，不在就是相互干扰。
+
+二分法在脚本超过三十行时特别有用。两次二分基本就能锁定到具体哪一段。
+
+### Fix
+
+定位到具体哪一行之后，改之前先想清楚一句：
+
+> 这一行为什么会变成现在这样？
+
+直接改成「能跑」很容易。但如果不理解原因，下次还会以另一种形式撞回来。常见的几种根因：
+
+- 引用没拖：Inspector 里加上引用。
+- 引用拖错对象：把脚本挂在 ButtonA 上但引用了 ButtonB 的 Animator。
+- 调用了返回 `null` 的 API：加 `!= null` 判断。
+- 触发顺序假设错了：[第 17 章](/come-alive/doors-and-states/) 那个 `Has Exit Time` 的坑就是典型。
+- 脚本挂错对象：脚本期望的 Collider 在父物体上，但脚本挂在子物体上。
+
+改完之后**回到 Reproduce 那条三句话路径**，复现一次，看 bug 是不是真的消失。八成时间是真消失了。剩下两成会发现「按钮反应了，但状态又变怪了」，这是修旧引新，再走一遍三段式。
+
+## 第六节：常见错误的速读表
+
+以下几条在 VRChat 世界开发里出现频次最高，看到关键短语先按这张表对：
+
+| Console 消息片段 | 通常原因 | 第一步看哪 |
+| :--- | :--- | :--- |
+| `NullReferenceException` | 某个变量是 null | 双击日志跳到对应行，看那一行用了哪个变量；回到 Inspector 检查对应字段是否拖了引用 |
+| `UdonBehaviour will be halted` | Udon 虚拟机抛了未捕获异常 | 找 `--->` 后面的 `InnerException`，定位真实根因（多数仍是 NRE） |
+| `MissingReferenceException` | 引用的对象已经被销毁 | 检查代码里有没有 `Destroy()` 之后又用同一个引用 |
+| `Cannot find method ... on UdonBehaviour` | `SendCustomEvent` 写错方法名 | 把字符串方法名换成 `nameof(MethodName)` |
+| `[UdonSharp] xxx is not exposed in Udon` | 调了不在白名单里的 API | 见 [第 12 章](/programming/udonsharp-personality/) 的 Class Exposure Tree 检查 |
+| `script class cannot be found` | 脚本编译失败 / GUID 失效 | Console 上方还有红字编译错，先修编译错；Library 损坏时关闭 Unity 删 `Library/ScriptAssemblies` 重开 |
+
+排查时先按这张表对一眼，能省掉一大半「我从来没见过这种错」的反应时间。
+
+## 第七节：先学会判空，少一半的事
+
+UdonSharp 没有 `try-catch`，所以避免 halted 的最稳办法是写之前判空。VRChat 世界脚本里几乎所有 `public` 字段都有可能在 Inspector 里没填，写代码时按这个默认假设处理。
+
+判空的几条惯例：
+
+```cs
+// 用之前判，最常见
+if (doorAnimator != null)
+{
+    doorAnimator.SetBool("IsOpen", isOpen);
+}
+
+// 提前 return，让主流程平铺
+if (doorAnimator == null)
+{
+    Debug.Log("[Door] doorAnimator 没填，跳过");
+    return;
+}
+doorAnimator.SetBool("IsOpen", isOpen);
+
+// GetComponent 也要判，没找到组件时返回 null
+var rb = GetComponent<Rigidbody>();
+if (rb != null)
+{
+    rb.AddForce(Vector3.up);
+}
+```
+
+第二种「提前 return」在多个判空叠加时特别清楚。三条 `if-else` 能压缩成「不满足就早退」，剩下的代码自然平铺，不用一层套一层。
+
+`Networking.LocalPlayer` 也建议判空。世界刚加载、玩家还没完全初始化时，它可能短暂为 `null`。
+
+## 自己改一遍流程
+
+挑一个练手：
+
+- 故意把 [第 17 章](/come-alive/doors-and-states/) 那扇门的 `doorAnimator` 引用从 Inspector 里**清空**（点字段右边的 `o` 圆圈，选 None）。`Build & Test` 进世界，按门一次，看 Console 里出来什么。再按一次，看 halted 是不是真的发生。
+- 把 `Debug.Log("[Door] doorAnimator 是 null"); return;` 加在 `Interact` 开头，再次复现，对比 Console 输出从「红字」变成「平静的信息日志」。
+- 启动 `debug.bat` 进世界，按 `RShift + ` ` ` + `3`，看相同的日志在 VRChat 客户端屏幕上是不是也出现。
+
+走完这三个之后，「Console 搜 halted」会成为这一类问题的第一动作，不再走「Unity 又抽风了」这条死路。
+
+## 一份可以贴墙的排错清单
+
+按按钮没反应、画面没动、状态不对的时候，按顺序问这几句：
+
+1. Console 里有红字吗？没看到？过滤器里 Error 那个图标点亮了吗？
+2. 红字说哪个文件哪一行？双击跳过去看那一行用了什么。
+3. 是 NRE 吗？那是哪个变量是 null？Inspector 里那个字段拖了引用吗？
+4. 没红字？`Debug.Log` 放在方法开头，看事件到底有没有触发。
+5. 触发了，但中途没继续？再放一条 `Debug.Log` 在中段，二分定位。
+6. 多人才出问题？切到下一章，用 ClientSim 复现并区分本地 vs 网络 bug。
+
+这六句覆盖 VRChat 世界开发里大多数 bug 的入口。
+
+## 本章参考
+
+- [VRChat Creator Docs：Debugging Udon Projects](https://creators.vrchat.com/worlds/udon/debugging-udon-projects/)
+- [VRChat Creator Docs：World Debug Views](https://creators.vrchat.com/worlds/udon/world-debug-views/)
+- [Unity Manual：Console Window](https://docs.unity3d.com/Manual/Console.html)
+- [Unity Scripting API：Debug.Log](https://docs.unity3d.com/ScriptReference/Debug.Log.html)
+- [UhiyamaLab：Debugging and Testing Basics（2025-12 修订）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-debugging-testing/)

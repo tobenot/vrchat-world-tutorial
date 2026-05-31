@@ -1,0 +1,382 @@
+---
+title: 42. 版本管理和备份
+description: 给 Unity 项目配一份合适的 .gitignore、把 Asset Serialization 改成 Force Text、可见 .meta 文件不能漏、二进制走 Git LFS、场景冲突用 UnityYAMLMerge 解。一份能让人安心 git push 的 VRChat 工程基线。
+difficulty: 进阶
+estimatedMinutes: 50
+chapterType: hands-on
+requiresSDK: true
+summary: Unity 项目结构跟纯代码项目不一样：除了 .cs 文件，还有 Scene、Prefab、Material、Animator 等大量编辑器序列化文件，再加上 Library/ 这种几个 GB 的纯缓存目录。直接 git init 然后 add 全部 = 仓库瞬间几个 GB、第一次 push 就失败。这一章铺一份给 VRChat / Unity 项目用的最小工程化基线：序列化模式、.gitignore、.meta 文件、Git LFS、Smart Merge，以及为什么每一项都不能省。
+sidebar:
+  order: 3
+---
+
+第一个 VRChat 世界做了一个月，文件夹已经从最初几十 MB 长到了几个 GB。某天打开项目，Unity 报「场景文件损坏」。前一晚上烘焙光照时电源跳了一次。今天才发现。
+
+或者：上周改的某版同步逻辑能跑，今天改完抢分逻辑发现门又坏了。想回到上周那版，找不到「上周的版本」是哪个状态。`Ctrl+Z` 撤销不动，Unity 重启后所有撤销栈都丢了。
+
+或者：项目下一步要拉一位朋友合作。两个人改同一个 Scene，怎么合并？
+
+这三件事，纯靠手动复制粘贴文件夹解决不了。版本控制就是为这件事设计的。但 Unity 项目的版本控制有几个坑必须先填，否则会出现「仓库 5 GB，第一次 push 就被 GitHub 拒绝」「合并冲突全是天书无法手动解决」「打开项目所有引用都丢了」这类典型事故。
+
+这一章把一份 VRChat / Unity 工程化基线一次铺好。完成之后这个项目能放心 `git push`，能跨机器同步，能两个人合作开发。
+
+## 第一节：先调两个 Unity 设置
+
+在 `git init` 之前先改两件 Unity 项目设置。这两件不改，后面 `.gitignore` 和合并工具的工作都白做。
+
+### Asset Serialization Mode = Force Text
+
+打开菜单 `Edit` → `Project Settings` → `Editor`，找到 `Asset Serialization` 一栏，把 `Mode` 改成 `Force Text`。
+
+```text
+Editor 设置（Project Settings → Editor）
+
+Asset Serialization
+  Mode      Force Text   ← 必须改成这个
+```
+
+这告诉 Unity：所有项目资源（Scene、Prefab、Material、Animator 等）一律以 YAML 文本格式存储，而不是二进制。
+
+为什么这件事是头号大事：
+
+- **二进制文件 Git 几乎用不了**：两个版本之间的差异显示为「整个文件改了」，没法看具体改了什么。三个人协作时，三份二进制场景文件几乎必然冲突且无法合并。
+- **YAML 文本可读、可 diff、可合并**：Smart Merge（下面讲）才能在 YAML 上跑。
+- **VRChat 模板默认是 Force Text**：用 VCC 创建的世界项目通常已经是这个设置，但合作开发时拉到的别人项目不一定。开始之前确认一遍。
+
+::::tip[为什么 Force Text 不是默认]
+Unity 历史上默认是 Mixed（部分文本部分二进制）甚至 Binary，那是单机时代的默认值，二进制读写更快、文件更小。
+
+但只要项目要进版本控制、要多人协作，文本格式都比二进制划算。VRChat 世界开发里几乎所有上规模的项目都需要版本控制以备灾难恢复，所以这一项是硬要求。
+::::
+
+### Version Control Mode = Visible Meta Files
+
+同一个 `Editor` 设置面板里：
+
+```text
+Version Control
+  Mode      Visible Meta Files   ← 默认就是这个，确认一下
+```
+
+Unity 给每个资源（每张图、每段音频、每个 `.cs` 脚本、每个 Prefab）都配了一份同名的 `.meta` 文件。`.meta` 文件存了这个资源的 GUID（全局唯一标识）和 import 配置（图的压缩格式、模型的导入选项、脚本的执行顺序等）。
+
+GUID 是 Unity 内部用来在场景里互相引用的地址。`Hierarchy` 里某个 Prefab 引用了 `MyMaterial.mat`，引用的不是文件路径，是 `MyMaterial.mat.meta` 里的 GUID。
+
+`.meta` 必须跟资源文件一起提交到版本控制。漏一个，引用就断了。
+
+::::caution[踩坑预警]
+最常见的「一拉项目所有引用都变成 None」的故障源就是 `.meta` 文件没提交。
+
+具体表现：另一台机器或者另一个合作者拉下项目打开，Inspector 里一堆字段变成红色 `Missing`，材质灰一片，脚本里的 `public` 字段全变 None。
+
+原因：Git 仓库里只有 `MyMaterial.mat`，没有 `MyMaterial.mat.meta`。Unity 打开项目时给这个材质重新生成一个 `.meta`，新的 GUID 跟原来场景里引用的对不上，引用直接断。
+
+防止这件事的关键规则：**资源文件和它的 `.meta` 文件一起提交、一起删除**。`.gitignore` 不要把 `*.meta` 包进去；Finder / 资源管理器里删资源时在 Unity 编辑器里删（Unity 会同步删 `.meta`），手动删的容易漏 `.meta`。
+::::
+
+## 第二节：写一份 Unity .gitignore
+
+`Asset Serialization` 改完之后，下一件事是告诉 Git 哪些目录**不要**进版本控制。Unity 项目根目录下有一些纯缓存目录，加起来动辄几个 GB，每次打开项目都重新生成。这些不能进仓库。
+
+GitHub 官方维护的 [Unity.gitignore](https://github.com/github/gitignore/blob/main/Unity.gitignore) 是社区共识基线。在项目根目录新建 `.gitignore`，复制这份模板进去，再补几条 VRChat 相关的：
+
+```bash title=".gitignore"
+# ===== Unity 自动生成的目录（必须忽略）=====
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.log
+
+# ===== IDE / 自动生成的解决方案文件 =====
+.vs/
+.idea/
+.gradle/
+ExportedObj/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+
+# ===== Unity 构建产物 =====
+*.apk
+*.aab
+*.app
+*.unitypackage
+*.unitypackage.meta
+
+# ===== Crashlytics / 测试 / Addressables =====
+crashlytics-build.properties
+sysinfo.txt
+mono_crash.*
+InitTestScene*.unity*
+/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+/ServerData/
+/[Aa]ssets/StreamingAssets/aa*
+
+# ===== VRChat / UdonSharp 自动生成 =====
+/[Aa]ssets/Resources/SerializedUdonPrograms/
+/[Aa]ssets/Resources/SerializedUdonPrograms.meta
+*.asset.bytes
+
+# ===== Blender 备份 =====
+*.blend1
+*.blend1.meta
+```
+
+每段对应一种「这玩意 Unity 自己会生成，进仓库只会让仓库变大」的情况：
+
+| 目录 | 是什么 | 为什么不进仓库 |
+| :--- | :--- | :--- |
+| `Library/` | Unity 项目缓存（导入的资源、生成的 .NET 程序集） | 几 GB，且换台机器打开项目会自动重建 |
+| `Temp/` | 当次 Unity 启动的临时文件 | Unity 关闭就该删的 |
+| `Obj/` | 脚本编译中间产物 | 编译完就不需要了 |
+| `Logs/` | Editor 日志 | 跟开发本身无关 |
+| `Builds/` | 本地构建产物 | 几百 MB，不该进版本控制 |
+| `*.csproj` / `*.sln` | IDE 自动生成的解决方案 | 每次打开项目重新生成 |
+| `SerializedUdonPrograms/` | UdonSharp 编译产物 | 每次脚本变化时重新生成 |
+
+留下来要进版本控制的核心是 `Assets/`、`Packages/`、`ProjectSettings/` 三份目录，外加一个 `Packages/manifest.json`（VCC 的依赖清单）。这几样合起来就是 Unity 项目可以被精确重建的所有信息。
+
+::::tip[为什么 Library/ 不进仓库还能跨机器同步]
+Unity 设计上把「源数据」（`Assets/` 里的原始资源 + `.meta`）和「派生数据」（`Library/` 里的导入缓存）分开。源数据决定一切，派生数据可以从源数据完全重建。
+
+新机器拉下项目，Unity 第一次打开时会扫描 `Assets/`，按 `.meta` 里的 GUID 重新生成 `Library/`。这个过程几分钟到几十分钟（视项目大小），完成之后跟原机器的 `Library/` 内容一致（虽然字节不一定相同，但功能等价）。
+
+所以 `Library/` 是设计上「该被重建」的目录，不是「该被同步」的目录。
+::::
+
+## 第三节：第一次 git init
+
+设置和 `.gitignore` 都准备好之后，在项目根目录开仓库：
+
+```powershell
+cd f:\GMPU\VRC\YourWorldProject
+git init
+git add .gitignore
+git commit -m "chore: add unity gitignore"
+
+git add .
+git commit -m "init: vrchat world project baseline"
+```
+
+第一个 commit 单独提交 `.gitignore` 是为了防止「忘了加 ignore 直接 add 全部」把 `Library/` 一起塞进去。装好 ignore 再 `git add .` 时，被忽略的目录就不会进仓库。
+
+第一次 `git status` 看到的应该是 `Assets/` 下的全部文件、`Packages/manifest.json`、`ProjectSettings/` 里十几份 `.asset` 文件。`Library/`、`Temp/`、`Builds/` 不该出现。如果出现，说明 `.gitignore` 路径写错了或者已经被 Git 跟踪过（要 `git rm --cached -r Library/` 一次后再提交）。
+
+::::caution[踩坑预警]
+第一次提交后查 `.git/` 目录大小：
+
+```powershell
+Get-ChildItem .git -Recurse | Measure-Object -Property Length -Sum
+```
+
+合理范围是几十 MB 到几百 MB（取决于资源量）。如果发现 `.git/` 已经几个 GB，说明 `Library/` 或 `Builds/` 可能被错误提交进去了。
+
+GitHub 推荐单仓库保持在 1 GB 以下、超过 5 GB 后会更严格地限制（来源：GitHub Docs · Repository limits）；单文件 100 MB 是硬上限，超过就会被拒绝推送。一次错把 Library 进去，远端 push 会被服务端拒绝，且本地仓库历史里这些大文件已经存在，需要 `git filter-repo` 或 BFG Cleaner 清理才能恢复。
+
+防止这件事的最稳办法：先 `.gitignore`，再 `git add .`。顺序错了第一次很难改。
+::::
+
+## 第四节：Git LFS 给大二进制文件
+
+Unity 项目即便排除了缓存，仍然有不少大文件：FBX 模型可能上百 MB、PSD 源文件、烘焙的 Lightmap、长音频、视频。这些文件 Git 处理起来效率很低（每改一次会保存整份），仓库会快速膨胀。
+
+Git LFS（Large File Storage）是 Git 的扩展，把大文件存到独立的对象存储里，仓库本身只保留一个指针。每次 clone 时按需下载实际文件。
+
+VRChat 项目里典型要走 LFS 的文件类型：
+
+```bash title=".gitattributes"
+# 模型
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.obj filter=lfs diff=lfs merge=lfs -text
+*.blend filter=lfs diff=lfs merge=lfs -text
+
+# 纹理
+*.psd filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.tif filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+
+# 音频
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+
+# 视频
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+
+# 烘焙数据
+*.unity3d filter=lfs diff=lfs merge=lfs -text
+```
+
+启用 LFS：
+
+```powershell
+git lfs install
+git add .gitattributes
+git commit -m "chore: enable git lfs for large binaries"
+```
+
+注意 LFS 要在文件**第一次提交之前**配置好。已经用普通 Git 提交过的大文件需要用 `git lfs migrate` 迁移历史。先配 LFS 再开始正式提交，最省事。
+
+GitHub 免费账号的 LFS 配额是每月 1 GB 存储 + 1 GB 流量。VRChat 世界项目里素材量大的容易超额。超了之后可以买 GitHub LFS 配额、或者自托管 Gitea / 用 Cloudflare R2 做 LFS 存储后端。
+
+不想用 LFS 的简单替代方案：把大尺寸源文件（PSD、Blend）放到云盘（OneDrive / Google Drive / 坚果云），仓库里只保留导出后的 `.png` / `.fbx` 缩小版。代价是源文件不在版本控制里，回滚不到。
+
+## 第五节：场景文件冲突用 UnityYAMLMerge
+
+两个人合作时最怕的不是脚本冲突，是场景冲突。`MyWorld.unity` 是一份大文本文件，里面是 Unity 自己的 YAML 序列化，一个 GameObject 涉及十几行 fileID / GUID 引用。Git 默认的合并算法对这种文件没辙。
+
+Unity 自带一个 Smart Merge 工具：`UnityYAMLMerge`。它能理解 Unity YAML 的语义结构（GameObject、Component、Reference），按对象级别合并而不是按文本行。
+
+打开 Git 配置文件（项目根目录下的 `.git/config`，或全局 `~/.gitconfig`）加上：
+
+```ini
+[merge]
+    tool = unityyamlmerge
+[mergetool "unityyamlmerge"]
+    trustExitCode = false
+    cmd = '<UNITY_PATH>/Editor/Data/Tools/UnityYAMLMerge.exe' merge -p "$BASE" "$REMOTE" "$LOCAL" "$MERGED"
+```
+
+`<UNITY_PATH>` 是当前用的 Unity 安装目录，常见路径如 `C:/Program Files/Unity/Hub/Editor/2022.3.22f1/Editor/Data/...`（VRChat 当前 SDK 用的 Unity 版本以 [VCC 推荐版本](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) 为准）。
+
+配合 `.gitattributes` 里指明这几类文件用 yamlmerge 处理：
+
+```bash
+*.unity merge=unityyamlmerge eol=lf
+*.prefab merge=unityyamlmerge eol=lf
+*.asset merge=unityyamlmerge eol=lf
+*.meta merge=unityyamlmerge eol=lf
+*.controller merge=unityyamlmerge eol=lf
+*.mat merge=unityyamlmerge eol=lf
+```
+
+碰到冲突时先 `git mergetool`，UnityYAMLMerge 会尝试自动合并大部分变更。仍有冲突的少量地方它会调出可视化对比让你手动选。
+
+::::tip[为什么场景的合并是个独立问题]
+普通文本文件的合并算法（行级 diff）假设每一行有独立含义，不同行之间互不干涉。Unity 场景文件不是这样：一个 GameObject 用十几行表示，组件用 fileID 互相引用，删一行可能让其它对象的引用变成悬空。
+
+Smart Merge 知道「这十几行合起来是一个 GameObject」，能按对象单元合并；冲突也按对象级别报，让人能看懂「冲突的是 ButtonA 这个对象」而不是「冲突的是第 3047 行」。
+
+场景文件冲突在 Unity 项目里几乎不可避免（两个人各加了一个对象，行号上撞了）。配好 Smart Merge 之后多数能自动解，剩下少数也可读；不配，靠肉眼合并几乎只能选「保留我的版本，丢弃对方的」。
+::::
+
+## 第六节：VRChat / VCC 特殊事项
+
+VRChat 项目用 VCC（Creator Companion）管理依赖。这给版本控制带来几个特殊点：
+
+**`Packages/` 目录**：里面有 `manifest.json`、`vpm-manifest.json` 等。这些 JSON **要进版本控制**，记录了项目依赖哪些 SDK 版本、哪些社区包。
+
+**`Packages/com.xxx/` 子目录**：VCC 解压的 SDK 实际内容（VRC SDK Worlds / UdonSharp 等）。这些是大文件，但因为它们被 `vpm-manifest.json` 锁死了版本，**可以选择忽略**：另一台机器拉下项目后用 VCC `Open Project` 会自动按 manifest 还原。社区两种做法都有：
+
+- **进版本控制**（保险）：拉项目就能直接打开，不依赖 VCC 网络。
+- **不进版本控制**（仓库小）：只提交 manifest，每次新机器打开靠 VCC 重新拉。
+
+新手推荐第一种（进版本控制）。手动添加 `.gitignore` 规则把第二种排除掉的话，可以加：
+
+```bash
+# 选择性：让 VCC 在新机器上重新解包 SDK
+# /Packages/com.vrchat.*/
+# /Packages/com.vrchat.*.meta
+```
+
+**UdonSharp 自动生成产物**：UdonSharp 编译时会在 `Assets/Resources/SerializedUdonPrograms/` 下生成一堆 `.asset` 文件，这些是 Udon 字节码缓存，每次脚本变化时重新生成。它们可以被 ignore（上面那份 `.gitignore` 模板已经包含），但要小心 `.asset` 这个后缀也用于其它合法 ScriptableObject。如果项目里没有别的 `.asset` 文件冲突，按上面那份模板照写就行。
+
+## 第七节：远端备份
+
+本地 `git init` 解决「能回退到上周」的问题。但本地仓库只在这台机器上，硬盘坏了就一起没。远端备份是另一件事。
+
+最常见的 VRChat 个人项目远端方案：
+
+| 方案 | 上手难度 | 隐私 | 成本 |
+| :--- | :--- | :--- | :--- |
+| **GitHub Private 仓库** | 低 | 私密（需 GitHub 账号） | 免费（个人无限私库），LFS 超 1 GB 要付费 |
+| **Gitee Private 仓库** | 低 | 私密 | 免费（中国大陆访问稳定），文件 100 MB 上限 |
+| **GitLab Private 仓库** | 中 | 私密 | 免费（含较多 LFS 配额） |
+| **自建 Gitea** | 高 | 完全私密 | 免费 + 服务器成本 |
+
+`GitHub` 仓库设为 `Private`，仓库内容只有自己（和被邀请的合作者）能看，世界源码不会被外人看到。
+
+新仓库建好后：
+
+```powershell
+git remote add origin git@github.com:你的账号/你的世界.git
+git branch -M main
+git push -u origin main
+```
+
+之后每写完一段：
+
+```powershell
+git add .
+git commit -m "feat: 加了第二盏灯的同步逻辑"
+git push
+```
+
+push 后远端就有了一份。本地硬盘坏了用别的机器 `git clone` 拉回来，从最近一次 `push` 那个时间点继续。
+
+::::tip[Commit 消息怎么写]
+每次 commit 写一行能让自己半年后看懂的描述。VRChat 世界项目里典型的几种类型：
+
+- `feat: 加了同步开关` ← 新功能
+- `fix: 修了门按一下没反应的 NRE` ← bug 修复
+- `art: 替换主厅墙面材质` ← 美术改动
+- `chore: 升级 SDK 到 3.9.x` ← 工程性变动
+- `refactor: 把 DoorController 拆成两段` ← 代码重构
+
+前缀是社区惯例（叫 Conventional Commits），不写也行。重点是能让自己回头查时一眼定位「上周大改光照是哪一次」。
+::::
+
+## 第八节：备份不止是 git push
+
+版本控制是「能回退到任何过去版本」。但它不是万能保险。几种值得叠加的备份手段：
+
+**云盘整目录定期同步**：OneDrive / 坚果云 / Google Drive 把项目根目录设为同步目录（注意 `Library/` 这种动态目录会让云盘频繁同步，可以单独排除）。云盘的好处是版本之外还有「整盘镜像」，万一仓库损坏也能恢复。
+
+**Unity 内置的 `Asset Database` 备份**：Unity 启动时会自检 `Library/` 一致性。损坏时尝试 `Reimport All`（菜单 `Assets` → `Reimport All`）能修复多数情况。
+
+**外部硬盘月度全量**：每月一次把整个项目（包括 `Library/`）打包到外接硬盘。频率不高但能扛住灾难性事故。
+
+**重要里程碑打 tag**：`git tag v0.1` / `git tag publish-1.0`，让关键版本能直接通过名字而不是 hash 找回来。
+
+```powershell
+git tag publish-1.0 -m "首次公开发布版本"
+git push origin publish-1.0
+```
+
+世界发布前打一个 tag，发布后再做大改时若发现新版本翻车，能直接 `git checkout publish-1.0` 回到那个稳定点重新发。
+
+## 自己改三组操作
+
+挑一个或几个练手：
+
+- 当前项目里检查 `Editor` 设置里 `Asset Serialization` 是不是 `Force Text`、`Version Control` 是不是 `Visible Meta Files`。两项都对了之后再 `git init`，第一次 commit 之前看 `git status` 是不是只有 `Assets/` `Packages/` `ProjectSettings/` 三个目录。
+- 复制一份当前世界场景（Project 面板 `Ctrl+D`），命名 `MyWorld_Backup.unity`，打开新场景随手挪一两个对象、提交。再回到原场景挪几个对象、提交。然后试着用 `git merge` 把两个分支合一下，看 UnityYAMLMerge 能不能自动处理。
+- 把当前项目 `git push` 到 GitHub Private 仓库，到另一台机器（或者新建一个临时目录）`git clone` 下来，用 VCC 打开看场景能不能正常加载。这一步走通了，跨机器协作的基础就有了。
+
+走完之后这个项目就具备了「能回退、能跨机器、能多人合作」的工程基础。
+
+## 本章参考
+
+- [GitHub 官方 Unity .gitignore 模板](https://github.com/github/gitignore/blob/main/Unity.gitignore)
+- [Unity Manual：Smart Merge（YAMLMerge）](https://docs.unity3d.com/Manual/SmartMerge.html)
+- [Unity Manual：Version Control Systems](https://docs.unity3d.com/Manual/Versioncontrolintegration.html)
+- [Git LFS 官方站](https://git-lfs.com/)
+- [Conventional Commits 规范](https://www.conventionalcommits.org/zh-hans/v1.0.0/)
+- [VRChat Creator Docs：Recommended Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/)
