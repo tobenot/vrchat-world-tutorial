@@ -69,9 +69,10 @@ const showPart = !isSplash && !!partLabel;
   /* 容器：允许子元素被压缩，自带 gap，避免 margin 重复堆叠 */
   .site-title {
     min-width: 0;
-    gap: 0.5rem;
+    gap: 0.45rem;
     /* 防止 flex 子在 nowrap 下溢出父容器、把右侧图标顶出去 */
     max-width: 100%;
+    align-items: center;
   }
 
   /* 通用文本省略：所有可能变长的子元素都需要 min-width:0 才能正确截断 */
@@ -84,77 +85,131 @@ const showPart = !isSplash && !!partLabel;
     min-width: 0;
     /* 不继承父链接的 underline 行为，这些段落视觉上是文本不是链接 */
     text-decoration: none;
+    transition: color 0.2s ease;
   }
 
-  /* 分隔符：低对比度，不抢戏，不会被压缩 */
+  /* 分隔符：低对比度青绿系，不抢戏，不会被压缩 */
   .site-title__sep {
-    color: var(--sl-color-gray-3);
-    font-weight: 400;
+    color: var(--vrc-cyan);
+    opacity: 0.45;
+    font-weight: 500;
     user-select: none;
     flex-shrink: 0;
   }
-
-  /* 「第X部 / 附录」：作为面包屑中段，用主题色描边的小 chip。
-     这样和左右两段的纯文本视觉拉开层级，截图时一眼能识别。 */
-  .site-title__part {
-    flex-shrink: 0;
-    font-size: 0.85rem;
-    font-weight: 500;
-    line-height: 1;
-    padding: 0.2em 0.55em;
-    border: 1px solid var(--sl-color-accent-low, var(--sl-color-gray-4));
-    border-radius: 999px;
-    color: var(--sl-color-accent-high, var(--sl-color-gray-1));
-    background: transparent;
+  :root[data-theme="light"] .site-title__sep {
+    color: #0a8f83;
+    opacity: 0.45;
   }
 
-  /* 章节标题：稍亮、稍粗。
-     注意：custom.css 里 .site-title { font-weight: 800 !important } 是作用在
-     <a> 上的，子元素的独立选择器仍能覆盖（!important 不会传染给子元素的
-     自有规则）——所以这里 600 会生效。 */
+  /* 「第X部 / 附录」：作为面包屑中段，用统一青绿色背景描边的小 chip */
+  .site-title__part {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.22em 0.55em;
+    border: 1px solid rgba(31, 210, 196, 0.25);
+    border-radius: 999px;
+    color: var(--vrc-cyan);
+    background: rgba(31, 210, 196, 0.06);
+  }
+  :root[data-theme="light"] .site-title__part {
+    border-color: rgba(10, 143, 131, 0.25);
+    color: #0a8f83;
+    background: rgba(10, 143, 131, 0.06);
+  }
+
+  /* 章节标题：高亮、加粗 */
   .site-title__chapter {
-    color: var(--sl-color-gray-1);
+    color: var(--sl-color-white);
     font-weight: 600;
     font-size: inherit;
     line-height: inherit;
   }
 
+  /* 整体 hover 时章节和 chip 进行优雅的亮色提升 */
+  .site-title:hover .site-title__chapter {
+    color: var(--vrc-cyan);
+  }
+  :root[data-theme="light"] .site-title:hover .site-title__chapter {
+    color: #0a8f83;
+  }
+
   /* —— 断点策略 —— */
 
-  /* ≥72rem（宽屏 / 桌面）：默认即可，三段尽量完整显示 */
+  /* ≥72rem（宽屏 / 桌面）：默认即可，三段尽量完整显示，但加安全截断 */
+  .site-title__book { max-width: 32ch; }
+  .site-title__chapter { max-width: 24ch; }
 
-  /* 中等屏（≤72rem，含小桌面 / 横屏平板）：先压书名 */
+  /* 中等屏（≤72rem，含小桌面 / 横屏平板）：优雅压缩 */
   @media (max-width: 72rem) {
     .site-title__book { max-width: 14ch; }
-    .site-title__chapter { max-width: 24ch; }
+    .site-title__chapter { max-width: 16ch; }
   }
 
   /* 平板竖屏 / 大手机（≤50rem）：
-     Starlight 在这个断点切到移动布局，
-     左边汉堡 + 右边搜索/主题切换会吃掉相当宽度。
-     隐藏书名和它后面的分隔符，保留「部 chip · 章节」。 */
+     不隐藏书名！而是采用高度自适应的双行面包屑布局，
+     第一行精致小字显示书名，第二行显示「部 chip · 章节」。
+     这样读者手机截屏分享时，一眼就能看清完整的书名和章节名。 */
   @media (max-width: 50rem) {
-    .site-title__book,
+    .site-title {
+      flex-wrap: wrap;
+      gap: 0.12rem 0.35rem;
+      max-width: calc(100vw - 130px); /* 留足右侧按钮空间 */
+      line-height: 1.15;
+    }
+    .site-title__book {
+      flex: 0 0 100%; /* 强行在第一行独占 */
+      font-size: 0.72rem;
+      color: var(--sl-color-gray-2);
+      max-width: 22ch; /* 即使书名长，也有极大的显示空间 */
+    }
     .site-title__sep--book {
-      display: none;
+      display: none; /* 第一行书名末尾分隔符换行后不需要，予以隐藏 */
     }
     .site-title__chapter {
-      /* 不再用固定字符宽度，让它跟随 flex 容器收缩 */
-      max-width: none;
-      flex: 1 1 auto;
+      font-size: 0.8rem;
+      max-width: 13ch; /* 约 13 个汉字，在双行下面非常宽裕 */
+      flex: 0 1 auto;
+    }
+    .site-title__part {
+      font-size: 0.7rem;
+      padding: 0.12em 0.45em;
+    }
+  }
+
+  /* 小手机 / 窄屏（≤36rem）：
+     进一步缩微，确保在超窄屏下也安全共存 */
+  @media (max-width: 36rem) {
+    .site-title {
+      max-width: calc(100vw - 110px);
+      gap: 0.1rem 0.3rem;
+    }
+    .site-title__book {
+      font-size: 0.68rem;
+      max-width: 18ch;
+    }
+    .site-title__chapter {
+      font-size: 0.76rem;
+      max-width: 11ch;
+    }
+    .site-title__part {
+      font-size: 0.66rem;
+      padding: 0.1em 0.4em;
     }
   }
 
   /* 极窄屏（≤30rem，老安卓 / 折叠屏外屏）：
-     再隐藏「部 chip」和它后面的分隔符，只留章节标题。
-     给章节标题保底字号，避免被搜索图标挤到 0 宽度。 */
+     保底截断，极窄屏下仍旧并存 */
   @media (max-width: 30rem) {
-    .site-title__part,
-    .site-title__sep--part {
-      display: none;
+    .site-title {
+      max-width: calc(100vw - 85px);
+    }
+    .site-title__book {
+      max-width: 14ch;
     }
     .site-title__chapter {
-      font-size: 0.95rem;
+      max-width: 9ch;
     }
   }
 </style>

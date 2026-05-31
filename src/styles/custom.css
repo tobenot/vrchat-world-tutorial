@@ -92,7 +92,7 @@ body {
   background-color: var(--vrc-bg);
   background-image:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(31, 210, 196, 0.08), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(255, 42, 133, 0.04), transparent);
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(31, 210, 196, 0.02), transparent);
   min-height: 100vh;
   transition: background-color 0.4s ease;
 }
@@ -100,7 +100,7 @@ body {
 :root[data-theme="light"] body {
   background-image:
     radial-gradient(ellipse 70% 50% at 50% -10%, rgba(31, 210, 196, 0.09), transparent),
-    radial-gradient(ellipse 50% 30% at 90% 0%, rgba(255, 42, 133, 0.04), transparent);
+    radial-gradient(ellipse 50% 30% at 90% 0%, rgba(31, 210, 196, 0.02), transparent);
 }
 
 ::selection {
@@ -270,7 +270,7 @@ nav.sidebar-pane,
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--vrc-cyan), var(--vrc-magenta), transparent 80%);
+  background: linear-gradient(90deg, var(--vrc-cyan), rgba(31, 210, 196, 0.3), transparent 80%);
   border-radius: 3px 3px 0 0;
 }
 
@@ -327,7 +327,7 @@ nav.sidebar-pane,
   margin-bottom: 0.9rem;
   border-radius: 50%;
   border: 1.5px solid var(--vrc-border-strong);
-  background: linear-gradient(135deg, rgba(31, 210, 196, 0.15), rgba(255, 42, 133, 0.08));
+  background: linear-gradient(135deg, rgba(31, 210, 196, 0.15), rgba(31, 210, 196, 0.03));
   color: var(--vrc-cyan);
   font-weight: 800;
   font-size: 1rem;
@@ -649,4 +649,21 @@ nav.sidebar-pane,
   margin-top: 0.5rem;
   font-size: 0.85rem;
   color: var(--sl-color-gray-2);
+}
+
+
+/* ═══════════════ 11. Custom Badge Customization ═══════════════ */
+
+/* 全局覆盖 Starlight 默认的紫红色/紫色 Badge (tip 变体)，统一样式为青绿系 */
+.sl-badge.tip,
+:root .sl-badge.tip {
+  background-color: rgba(31, 210, 196, 0.12) !important;
+  color: var(--vrc-cyan) !important;
+  border-color: rgba(31, 210, 196, 0.28) !important;
+}
+
+:root[data-theme="light"] .sl-badge.tip {
+  background-color: rgba(10, 143, 131, 0.08) !important;
+  color: #0a8f83 !important;
+  border-color: rgba(10, 143, 131, 0.22) !important;
 }

@@ -173,9 +173,14 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
     border-color: rgba(255, 170, 60, 0.3);
   }
   .vrc-meta__chip--diff-硬核 {
-    background: rgba(255, 42, 133, 0.08);
-    color: var(--vrc-magenta);
-    border-color: var(--vrc-magenta-dim);
+    background: rgba(16, 185, 129, 0.08);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+  :root[data-theme="light"] .vrc-meta__chip--diff-硬核 {
+    background: rgba(16, 185, 129, 0.06);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.2);
   }
 
   /* —— 反馈条 —— */
