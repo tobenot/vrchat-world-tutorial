@@ -304,7 +304,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class GameButton : UdonSharpBehaviour
 {
     public GameManager manager;
@@ -334,7 +334,8 @@ public class GameButton : UdonSharpBehaviour
 
 很短：
 
-- `[UdonBehaviourSyncMode(BehaviourSyncMode.None)]` 明示这个脚本不存任何同步状态。`isGlowing` 是本地缓存，由 Manager 在 `UpdateUI` 里调 `SetGlowing` 更新。
+- `[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]` 明示这个脚本不存任何同步状态。`isGlowing` 是本地缓存，由 Manager 在 `UpdateUI` 里调 `SetGlowing` 更新。
+- 注意不要写成 `BehaviourSyncMode.None`：那是「完全禁用网络」，连 `SendCustomNetworkEvent` 都不能用。`NoVariableSync` 只禁同步变量，本地脚本之间互相调方法、被 Manager 通过引用调用都正常（第 28 章末尾那段 caution 讲过）。
 - `Interact` 检查 `isGlowing`：按了不发光的按钮直接忽略。VRChat 的 `Interaction Text` 可以在 Inspector 里填空字符串让按钮看起来「不能按」，但这里更简单的做法是脚本内部判一下。
 - 调用 `manager.OnButtonHit(buttonIndex)`：把「按到了」这件事告诉 Manager，让 Manager 处理同步状态。
 
@@ -355,7 +356,7 @@ public class GameButton : UdonSharpBehaviour
 using UdonSharp;
 using UnityEngine;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class ResetButton : UdonSharpBehaviour
 {
     public GameManager manager;

@@ -23,7 +23,7 @@ VRChat 给的答案是：每个网络对象同一时刻**只有一个 Owner**，
 Owner 是一名玩家。具体规则：
 
 - 一个网络物体一开始的 Owner 是**实例的第一个进来的玩家**（业内常叫 Master）。
-- Owner 离开实例时，所有权会自动转给当前实例里最早加入的另一名玩家。
+- Owner 离开实例时，所有权会自动转给当前实例里的下一位玩家——通常是当前在场的最早加入者，本质是 VRChat 内部把 Master 角色重选给了下一位。这件事由 SDK 自动处理，不需要作者管。
 - 任何在场玩家都可以通过 `Networking.SetOwner(player, gameObject)` 主动接管所有权（前提是脚本不拒绝，下面 `OnOwnershipRequest` 会讲）。
 - 同一时刻，Owner 只有一位。
 
@@ -261,7 +261,8 @@ VRChat 给的工具是 `OnOwnershipRequest`。在脚本里重写它，返回 `bo
 public override bool OnOwnershipRequest(VRCPlayerApi requestingPlayer, VRCPlayerApi requestedOwner)
 {
     // requestingPlayer：发起请求的玩家（多数情况下就是想成为新 Owner 的那个）
-    // requestedOwner：请求把所有权转给谁
+    // requestedOwner：请求把所有权转给谁（即将成为新 Owner 的人）
+    // 官方文档里这两个参数叫 requester / newOwner，含义一致。
     // 返回 true：允许；返回 false：拒绝
     return true;
 }
@@ -283,7 +284,7 @@ public override bool OnOwnershipRequest(VRCPlayerApi requestingPlayer, VRCPlayer
 }
 ```
 
-`OnOwnershipRequest` 在**当前 Owner**的客户端上跑。意思是：B 想抢 A 的所有权，VRChat 先发请求到 A 的客户端，A 客户端的脚本来判断要不要批准。批准了，转移流程才会真的开始。
+`OnOwnershipRequest` 在**请求方**和**当前 Owner** 两台客户端上都会跑一次。意思是：B 想抢 A 的所有权，B 自己客户端的脚本先评估一遍（可以在这里挡掉本地不想发的请求），然后 VRChat 把请求发到 A 的客户端，A 客户端的脚本再判断要不要批准。**任一端 return false 就会中止**，两端都返回 true 转移流程才会真的开始。
 
 ::::tip[OnOwnershipRequest 适合保护「私有状态」]
 门、灯、按按钮这种「谁按谁来管」的开放机关，默认 `return true` 就够了。任何人按都能接管。

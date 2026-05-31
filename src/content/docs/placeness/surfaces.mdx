@@ -16,6 +16,15 @@ sidebar:
 
 PBR（Physically Based Rendering，基于物理的渲染）通过几张配合的贴图把这些细节表达出来。这一章把 PBR 的几个通道一次铺开。
 
+::::tip[本章新名词]
+- **Normal Map**：用贴图假装表面有凹凸，几何本身不变。
+- **Occlusion / AO**：把缝隙和凹陷处压暗，让表面不发平。
+- **Detail Map**：近距离叠加的小细节贴图，防止贴脸看糊。
+- **sRGB / Linear**：颜色图用 sRGB，物理量贴图用 Linear。
+- **ORM**：把 Occlusion、Roughness、Metallic 三张图塞进 RGB 三个通道。
+- **Mip Maps**：同一贴图的多级缩小版，远处自动用小图减少闪烁。
+::::
+
 ## PBR 的几张贴图
 
 一份完整的 PBR 材质通常包含 5–6 张贴图，每张管一件事：

@@ -20,6 +20,16 @@ sidebar:
 
 社区里几乎每一份性能优化文档都把这句话放在第一条，因为最容易犯的错就是「我觉得 X 慢」然后花一下午优化 X，结果真正慢的是 Y。
 
+::::tip[本章新名词]
+- **FPS**：每秒画多少帧；VR 里太低会直接让人晕。
+- **Draw Call / Batches / SetPass call**：CPU 让 GPU 画东西的几类指令数，通常越少越好。
+- **Profiler**：Unity 的逐帧性能分析器，用来找真正慢在哪。
+- **Batching / GPU Instancing**：把很多物体合成更少绘制指令的办法。
+- **Occlusion Culling**：预先算好「被墙挡住的物体不用画」。
+- **Overdraw / Fillrate**：同一个像素被反复画、GPU 填像素填到吃力。
+- **GC**：垃圾回收，脚本临时对象太多时会卡一下。
+::::
+
 ## 第一节：Stats 窗口
 
 Unity 编辑器最便宜的性能查看工具叫 Stats 窗口。Game 视图右上角有一个 `Stats` 按钮，点一下出现一个浮动小框：
@@ -166,9 +176,9 @@ Draw Call 增长的几种原因：
 
 第 16 章已经讲过：默认关镜子。这一章再加几个镜子优化要点：
 
-- `m_ReflectLayers` 设成只反射 `Player` 层。其他层全部不反射，可以省掉墙壁、家具的二次渲染。
+- `Reflect Layers` 设成只反射 `Player` 层。其他层全部不反射，可以省掉墙壁、家具的二次渲染。
 - `Mirror Resolution` 设到 `Auto` 或更低（`512`、`1024`）。`Unlimited` 在 Quest 上会直接卡死。
-- `m_DisablePixelLights` 勾上，镜中实时灯不算。
+- `Disable Pixel Lights` 勾上，镜中实时灯不算。
 - 玩家关闭镜子（按开关）的脚本不能漏。
 
 视频播放器（VRChat 自带 `VRC AVPro Video Player` 或社区版）的开销跟镜子类似但稍小：每帧要解码视频流、上传纹理、渲染到 quad 上。多个视频播放器不要在同一房间。
@@ -251,7 +261,7 @@ VRCreators 那份优化清单反复强调一句：
 挑一个或几个改：
 
 - 在 Stats 窗口记下当前 FPS 和 Batches。把场景里所有 Material 上的 `Enable GPU Instancing` 一次勾上，再看 Batches。多数情况下下降明显。
-- 把所有镜子的 `m_ReflectLayers` 从 `Everything` 改成只勾 `Player`（包括 PlayerLocal 和 Player），看 Batches 变化。
+- 把所有镜子的 `Reflect Layers` 从 `Everything` 改成只勾 `Player`（包括 PlayerLocal 和 Player），看 Batches 变化。
 - 关掉所有实时光的阴影投射，对比关之前和关之后的画面差距。如果几乎看不出来，说明阴影投射的 4 盏灯里有 3 盏可以永久关。
 
 ::::note[不同世界不同活法]

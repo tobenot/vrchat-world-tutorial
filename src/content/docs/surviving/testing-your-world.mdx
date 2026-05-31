@@ -34,8 +34,8 @@ ClientSim 是 VRChat 官方的客户端模拟器，作为 Worlds SDK 的一部�
 - **`VRC Station`**（座椅）：进站、出站。
 - **World Space UI**：Canvas 上的按钮、Toggle、Slider 都能点。
 - **简单的 Udon 变量变化**：能在 Inspector 里实时看到 `[UdonSynced]` 字段当前值。
-- **PlayerData / PlayerObject**：3.7.4+ 的玩家持久化，ClientSim 也能模拟存读。
-- **`OnPlayerJoined` / `OnPlayerLeft`** 等本地事件：可以在 ClientSim 设置面板里手动加入或移除一个 Remote Player。
+- **PlayerData / PlayerObject**：可以做初步观察和逻辑检查，但真实保存、回访恢复、不同玩家隔离和多人生命周期仍要在 VRChat 客户端里验证。
+- **本地玩家事件的初步检查**：ClientSim 可用于检查部分玩家状态和本地事件，但不能把它当成真实多人网络环境。
 
 它不能替代真实环境验的：
 
@@ -82,7 +82,7 @@ ClientSim 之后下一层是 `Build & Test`。这是 VRChat SDK 提供的一键�
 Build & Test 跟编辑器内的 ClientSim 比，区别核心是「跑的是真正的 VRChat 客户端」：
 
 - Shader 走真实 VRChat 渲染管线，纹理、光照、Skybox 显示效果跟发布后一致。
-- 网络同步走本地局域网回环，但用的是真实的 VRChat 网络协议。Master / Guest 行为、Late Joiner 加入流程、所有权转移，跟正式发布后的世界几乎一模一样。
+- 网络同步走本地局域网回环，但用的是真实的 VRChat 客户端和本地测试流程。Master / Guest 行为、同步变量、网络事件和所有权转移，比 ClientSim 更接近真实环境，但仍不能替代私密上传后的公网测试。
 - 性能数据是真实数据。FPS、Draw Call、显存占用都准（[第 38 章](/placeness/performance/) 里 Stats 提到「编辑器有 overhead」，Build & Test 没这层 overhead）。
 
 它不能模拟的：跨平台（Android / Quest 必须切平台单独构建测）、外部 VRChat 网络的延迟和丢包（公网走的不止本地环回）、真实陌生玩家的乱按。

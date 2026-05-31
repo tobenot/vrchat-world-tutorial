@@ -234,7 +234,7 @@ git commit -m "chore: enable git lfs for large binaries"
 
 注意 LFS 要在文件**第一次提交之前**配置好。已经用普通 Git 提交过的大文件需要用 `git lfs migrate` 迁移历史。先配 LFS 再开始正式提交，最省事。
 
-GitHub 免费账号的 LFS 配额是每月 1 GB 存储 + 1 GB 流量。VRChat 世界项目里素材量大的容易超额。超了之后可以买 GitHub LFS 配额、或者自托管 Gitea / 用 Cloudflare R2 做 LFS 存储后端。
+GitHub 免费账号包含一定量 Git LFS 存储和带宽配额；截至 2026 年，GitHub Free / Pro 账号是 10 GiB 存储 + 10 GiB 带宽。VRChat 世界项目里素材量大的仍然容易超额。具体额度可能变化，写作时以 GitHub Docs 为准；超了之后可以买 GitHub LFS 配额、或者自托管 Gitea / 用 Cloudflare R2 做 LFS 存储后端。
 
 不想用 LFS 的简单替代方案：把大尺寸源文件（PSD、Blend）放到云盘（OneDrive / Google Drive / 坚果云），仓库里只保留导出后的 `.png` / `.fbx` 缩小版。代价是源文件不在版本控制里，回滚不到。
 
@@ -243,6 +243,8 @@ GitHub 免费账号的 LFS 配额是每月 1 GB 存储 + 1 GB 流量。VRChat �
 两个人合作时最怕的不是脚本冲突，是场景冲突。`MyWorld.unity` 是一份大文本文件，里面是 Unity 自己的 YAML 序列化，一个 GameObject 涉及十几行 fileID / GUID 引用。Git 默认的合并算法对这种文件没辙。
 
 Unity 自带一个 Smart Merge 工具：`UnityYAMLMerge`。它能理解 Unity YAML 的语义结构（GameObject、Component、Reference），按对象级别合并而不是按文本行。
+
+Unity 官方文档给的是 **Git mergetool** 配置。它不会在普通 `git merge` 时自动接管所有 `.unity` / `.prefab` 文件，而是在发生冲突后，你运行 `git mergetool` 时调用 UnityYAMLMerge。
 
 打开 Git 配置文件（项目根目录下的 `.git/config`，或全局 `~/.gitconfig`）加上：
 
@@ -256,18 +258,19 @@ Unity 自带一个 Smart Merge 工具：`UnityYAMLMerge`。它能理解 Unity YA
 
 `<UNITY_PATH>` 是当前用的 Unity 安装目录，常见路径如 `C:/Program Files/Unity/Hub/Editor/2022.3.22f1/Editor/Data/...`（VRChat 当前 SDK 用的 Unity 版本以 [VCC 推荐版本](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) 为准）。
 
-配合 `.gitattributes` 里指明这几类文件用 yamlmerge 处理：
+碰到场景或 Prefab 冲突时先 `git status` 看冲突文件，再运行：
 
-```bash
-*.unity merge=unityyamlmerge eol=lf
-*.prefab merge=unityyamlmerge eol=lf
-*.asset merge=unityyamlmerge eol=lf
-*.meta merge=unityyamlmerge eol=lf
-*.controller merge=unityyamlmerge eol=lf
-*.mat merge=unityyamlmerge eol=lf
+```powershell
+git mergetool
 ```
 
-碰到冲突时先 `git mergetool`，UnityYAMLMerge 会尝试自动合并大部分变更。仍有冲突的少量地方它会调出可视化对比让你手动选。
+UnityYAMLMerge 会尝试自动合并大部分变更。仍有冲突的地方，它会按 `mergespecfile.txt` 里配置的后备合并工具继续处理。
+
+:::::tip[不要把 mergetool 和 merge driver 混在一起]
+`.gitattributes` 里的 `*.unity merge=unityyamlmerge` 属于 Git **merge driver** 机制，需要额外配置 `[merge "unityyamlmerge"] driver = ...`。Unity 官方 Smart Merge 文档给的是 `git mergetool` 配置，不是 merge driver 配置。
+
+新手先按官方 `git mergetool` 方案来，足够覆盖多数场景冲突。等真的需要自动接管 `git merge` 过程，再单独研究 merge driver。
+:::::
 
 ::::tip[为什么场景的合并是个独立问题]
 普通文本文件的合并算法（行级 diff）假设每一行有独立含义，不同行之间互不干涉。Unity 场景文件不是这样：一个 GameObject 用十几行表示，组件用 fileID 互相引用，删一行可能让其它对象的引用变成悬空。

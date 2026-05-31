@@ -23,10 +23,14 @@ Meta Quest 系列基于 Qualcomm Snapdragon XR2 系列芯片：
 | 设备 | 芯片 | GPU | 上市年份 |
 | :--- | :--- | :--- | :--- |
 | Quest 2 | Snapdragon XR2 | Adreno 650 | 2020 |
-| Quest 3 | Snapdragon XR2 Gen 2 | Adreno 740 | 2023 |
-| Quest 3S | Snapdragon XR2 Gen 2 | Adreno 740 | 2024 |
+| Quest 3 | Snapdragon XR2 Gen 2 | Adreno 740（推断）| 2023 |
+| Quest 3S | Snapdragon XR2 Gen 2 | Adreno 740（推断）| 2024 |
 
-XR2 Gen 2 大约相当于一台中端手机的算力。VRChat 在 Quest 上跑双眼 90Hz 渲染，每只眼睛 1832×1920 起步。GPU 分到每帧的预算非常少。
+XR2 Gen 2 大约相当于一台中端手机的算力。VRChat 在 Quest 上跑双眼 90Hz 渲染，每只眼睛 1832×1920 起步（实际渲染分辨率会受 Render Scale / 动态分辨率影响）。GPU 分到每帧的预算非常少。
+
+:::note[Adreno 740 的"推断"是怎么回事]
+Qualcomm 官方从未公开 XR2 Gen 2 内置 Adreno GPU 的具体子型号。XR2 Gen 2 跟手机端的 Snapdragon 8 Gen 2（GPU 是 Adreno 740）出自同一代架构，社区根据驱动字符串和性能特征普遍按 Adreno 740 描述，本书沿用这个习惯说法。
+:::
 
 Quest 设备运行的是定制版 Android。VRChat Quest 版本就是一个 Android 应用包（apk）。所有东西要按 Android 规则走：用 ASTC 纹理压缩、不能用 PC 专用 Shader、不能用 .NET 桌面专用 API。
 
@@ -46,7 +50,7 @@ VRChat SDK Control Panel（菜单 `VRChat SDK` → `Show Control Panel`）的 `B
 Platform Target
 ├─ ● Windows           （PC 构建）
 ├─ ○ Android           （Quest 构建）
-└─ ○ iOS               （iOS 构建，2025 年新增的）
+└─ ○ iOS               （iOS 构建，2025 年 10 月正式上线，需要 SDK 3.7.6 或更高）
 ```
 
 切换平台时 Unity 会重新导入所有资源（贴图按目标平台压缩、Shader 按目标平台编译）。这一步在大型项目里能花十几分钟到一小时，第一次切换时尤其慢。第二次切换（已经导入过）会快得多，Unity 会缓存平台特定的资源。
@@ -70,11 +74,13 @@ VRChat 在 Quest 版本上**强制限制 Shader**。允许的范围：
 - `VRChat/Mobile/Bumped Mapped Specular`：加高光（不推荐，移动 GPU 上贵）。
 - `VRChat/Mobile/Lightmapped`：专为烘焙世界设计，性能最好。配合 Lighting Mode = Subtractive 用。
 - `VRChat/Mobile/Standard Lite`：简化版 PBR。
+- `VRChat/Mobile/MatCap Lit`：卡通 / Anime 风常用，靠一张 MatCap 贴图模拟光照。
+- `VRChat/Mobile/Toon Lit`：纯色调 Toon，最便宜的卡通着色。
 - `VRChat/Mobile/Skybox`：天空盒。
-- `VRChat/Mobile/Particles/...`：粒子系统专用。
-- 几个 Toon 子分支。
+- `VRChat/Mobile/Supersampled UI`：World Space UI 专用（第 34 章那种 Canvas），抗锯齿优于普通 UI Shader。
+- `VRChat/Mobile/Particles/Additive`、`VRChat/Mobile/Particles/Multiply`：粒子系统专用，分别对应加法 / 乘法混合。
 
-世界 Shader 没有像 Avatar 那样的硬性白名单（PC 版可以自定义 Shader），但 Quest 版本上自定义 Shader 性能往往跑不动。**实务上世界也按 Mobile 系列走**。
+世界 Shader 在 Quest 上**技术上**允许自定义（不像 Avatar 有硬性白名单 fallback），但性能和兼容性风险全在作者，自定义 Shader 在移动 GPU 上往往跑不动。**实务上世界也按 Mobile 系列走**。
 
 ### 给 Quest 版做一份独立 Material
 
@@ -182,7 +188,7 @@ Quest 玩家打开 VRChat 主菜单浏览世界时，世界缩略图角落会显
 - 只 PC：旁边一个红色 X，进不去。
 - 只 Quest：可以进（PC 玩家也能进 Quest 版世界，反过来不行）。
 
-发布世界时，VRChat 网站会显示这个世界已经构建过哪些平台。第一次发布是 PC 版，要再发一次 Android 版（第 44 章会展开发布流程）。两次发布的是**同一个世界**（同一个 Room Id），客户端按玩家所在平台自动选。
+发布世界时，VRChat 网站会显示这个世界已经构建过哪些平台。第一次发布是 PC 版，要再切到 Android 平台发一次 Quest 版（第 44 章会展开发布流程）。如果还要支持 iOS（VRChat iOS 客户端 2025 年 10 月正式上线），再切到 iOS 平台发一次。三次发布的是**同一个世界**（同一个 Room Id，绑定同一个 Blueprint），客户端按玩家所在平台自动选对应版本。
 
 ## 第七节：维护一份工程做两个版本
 

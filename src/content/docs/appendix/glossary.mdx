@@ -8,7 +8,7 @@ pagefind: true
 
 正文按教学顺序展开，所以同一个术语可能直到下一章才被命名。这一份按主题分类，方便读到一半回来查。
 
-每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖的是第 1 部和第 2 部。
+每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖第 1–2 部基础词，以及第 5–7 部新增门槛词。
 
 未覆盖的术语，[`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 里逐章登记了"等哪一章写完就该补什么"。
 
@@ -504,10 +504,190 @@ VRChat 2017 年 2 月在 Steam 上线时使用的发布模式。
 
 ---
 
+## 交互与多人同步（第 5–6 部）
+
+**状态机**（State Machine）  
+用「当前处于哪个状态、满足什么条件跳到下一个状态」来描述系统的写法。门的开 / 关、回合的等待 / 游戏中 / 结算都适合用状态机。  
+首次出现：[第 17 章 · 门、机关和状态](/come-alive/doors-and-states/)。
+
+**序列化**（Serialization）  
+把脚本字段打包成网络能发送的数据。VRChat 里 Owner 改完 `[UdonSynced]` 字段后，调 `RequestSerialization()` 请求打包发送。  
+首次出现：[第 28 章 · 告诉别人发生了什么](/with-others/tell-everyone/)。
+
+**反序列化**（Deserialization）  
+把收到的网络数据解包，还原成本机脚本里的字段值。VRChat 解包完成后会调用 `OnDeserialization()`。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**插值**（Interpolation）  
+让数值在两次同步之间平滑过渡，避免远端物体或颜色突然跳变。`UdonSyncMode.Linear` 就是线性插值。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**快照**（Snapshot）  
+某一时刻所有同步字段当前值打包成的一份初始状态。Late Joiner 加入实例时会收到当前同步字段的快照。  
+首次出现：[第 29 章 · 后来的人怎么办](/with-others/late-joiners/)。
+
+---
+
+## VR 舒适与音频（第 7 部）
+
+**晕动症**（Motion Sickness）  
+视觉看到的运动和身体平衡感对不上时产生的恶心、头晕、冒汗等不适。VR 世界里强制移动镜头最容易触发。  
+首次出现：[第 32 章 · 空间、比例和舒适](/placeness/space-and-comfort/)。
+
+**前庭系统**（Vestibular System）  
+耳内感知头部加速度和旋转的平衡系统。VR 里视觉在动、前庭却没感到对应运动时，人会很快晕。  
+首次出现：[第 32 章](/placeness/space-and-comfort/)。
+
+**`VRC Spatializer`** / **空间化**（Spatialization）  
+VRChat 的空间音频算法，按声源相对玩家的 3D 位置计算左右耳音量、方向和衰减，让声音听起来来自某个方向。  
+首次出现：[第 33 章 · 声音和氛围](/placeness/sound-and-mood/)。
+
+**`dB`**（Decibel，分贝）  
+音量的对数刻度，不是普通线性百分比。音频里常用 `-12 dB`、`+10 dB` 这类值描述响度变化。  
+首次出现：[第 33 章](/placeness/sound-and-mood/)。
+
+**增益**（Gain）  
+在原始音量之上额外加或减多少 dB。VRChat 世界 Audio Source 默认有 `+10 dB` 增益，所以素材本身太响时要降。  
+首次出现：[第 33 章](/placeness/sound-and-mood/)。
+
+---
+
+## 渲染：光照（进阶）
+
+**`Reflection Probe`**  
+在某个位置捕捉四周环境的一张 Cube Map，让附近金属、玻璃等高反射材质反射房间本身，而不是默认天空。  
+首次出现：[第 18 章 · Chill World，先让人想留下](/world-types/chill-world/)。详细见 [第 36 章 · 光](/placeness/light/)。
+
+**全局光照**（Global Illumination / GI）  
+把直接光和间接光一起算进去的总光照系统。烘焙光照主要就是把 GI 预先算好存起来。  
+首次出现：[第 36 章 · 光](/placeness/light/)。
+
+**直接光 / 间接光**（Direct / Indirect Light）  
+直接光是从光源直射到表面的光；间接光是光打到别的表面后反弹过来的光。间接光决定房间有没有「被环境包住」的感觉。  
+首次出现：[第 36 章](/placeness/light/)。
+
+**`UV`**  
+把 3D 模型表面摊平成 2D 贴图坐标的展开方式。贴图、Lightmap、法线贴图都靠 UV 知道该贴到模型哪里。  
+首次出现：[第 36 章](/placeness/light/)。
+
+**`Lightmap UV`**  
+专门给烘焙光贴图使用的 UV。模型 Lightmap UV 没展开好，会出现亮线、黑线、漏光等烘焙问题。  
+首次出现：[第 36 章](/placeness/light/)。
+
+**`Shadowmask`**  
+Mixed Lighting 的一种模式：静态物体的阴影烘焙进贴图，动态物体仍能接收实时阴影。PC 世界常用的画质 / 性能平衡点。  
+首次出现：[第 36 章](/placeness/light/)。
+
+**`Subtractive`**  
+Mixed Lighting 的一种省性能模式：大部分光照都烘焙，动态物体只保留粗略实时影子。Quest 版本常用。  
+首次出现：[第 36 章](/placeness/light/)。
+
+---
+
+## 渲染：材质与贴图（进阶）
+
+**`Normal Map`**（法线贴图）  
+记录表面每一点朝向的贴图，让平面在光照下看起来有凹凸；模型几何本身并没有真的变形。  
+首次出现：[第 37 章 · 表面和材质](/placeness/surfaces/)。
+
+**`Occlusion` / `AO`**（Ambient Occlusion，环境光遮蔽）  
+让模型缝隙、凹陷和接触处自动变暗的贴图或效果。没有 AO 的材质容易显得平。  
+首次出现：[第 37 章](/placeness/surfaces/)。
+
+**`Detail Map`**  
+叠在主贴图上的高频细节贴图，常用来让墙、地板在贴脸观看时不糊。  
+首次出现：[第 37 章](/placeness/surfaces/)。
+
+**`sRGB`**  
+按人眼感知校正过的颜色存储空间，适合 Albedo / Base Color 这类「颜色图」。  
+首次出现：[第 37 章](/placeness/surfaces/)。
+
+**`Linear` / 线性空间**  
+按物理量线性存储的颜色空间，适合 Metallic、Smoothness、Normal、AO 这类「不是颜色」的贴图。  
+首次出现：[第 37 章](/placeness/surfaces/)。
+
+**`ORM`**  
+把 Occlusion、Roughness、Metallic 三张灰度图分别塞进 RGB 三个通道的一张打包贴图。Unity Standard Shader 不直接支持，需要拆通道或换支持它的 Shader。  
+首次出现：[第 37 章](/placeness/surfaces/)。
+
+**`Mip Maps`**  
+同一张贴图的多级缩小副本。物体离远时自动使用小图，减少闪烁和采样开销，代价是多占一点内存。  
+首次出现：[第 37 章](/placeness/surfaces/)。
+
+---
+
+## 渲染：性能（第 38 章）
+
+**`FPS`**（Frames Per Second）  
+每秒渲染帧数。VR 里 FPS 太低会让玩家明显不适；PC VR 通常希望 90+，Quest 至少 72+。  
+首次出现：[第 38 章 · 性能，跑得动才是好](/placeness/performance/)。
+
+**`Stats` 窗口**  
+Unity Game 视图右上角的快速性能读数窗口，能看到 FPS、Batches、Tris、SetPass calls 等粗略指标。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`Profiler`**  
+Unity 的逐帧性能分析器，用来查看 CPU、GPU、内存、脚本、物理等系统每帧花了多少时间。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`Draw Call`**  
+CPU 命令 GPU 画一批物体的一次绘制请求。Draw Call 越多，CPU 准备渲染数据的开销越大。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`Batches`**  
+Stats 里显示的绘制批次数，通常可以理解成当前帧实际发出的 Draw Call 数。材质和批处理会影响它。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`SetPass call`**  
+切换 Shader / 材质渲染状态的次数。SetPass call 高通常意味着材质种类太多或 Shader 切换太频繁。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`Static Batching` / `Dynamic Batching`**  
+Unity 把多个物体合成更少 Draw Call 的两类批处理。Static Batching 适合不会动的物体，Dynamic Batching 适合少量小动态物体。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`GPU Instancing`**  
+同一份 Mesh + 同一份 Material 出现很多次时，用更少 Draw Call 批量绘制。树、石头、栏杆这类重复物体最适合。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`Occlusion Culling`**  
+预计算「玩家站在某个区域时哪些物体被墙挡住」，运行时挡住的物体不画。大房间、多房间世界收益很高。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`Overdraw` / `Fillrate`**  
+Overdraw 是同一个像素被多个透明物体反复画；Fillrate 是 GPU 每秒能填多少像素。透明烟雾、玻璃叠多了会把 Fillrate 吃满。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+**`GC`**（Garbage Collection，垃圾回收）  
+运行时清理临时对象的机制。脚本每帧制造太多临时对象时，GC 会突然卡一下。  
+首次出现：[第 38 章](/placeness/performance/)。
+
+---
+
+## Quest 与跨平台（第 39 章）
+
+**`APK`**（Android Package）  
+Android 应用安装包格式。VRChat 的 Quest 版世界构建，本质上按 Android 平台规则打包。  
+首次出现：[第 39 章 · PC 和 Quest](/placeness/pc-and-quest/)。
+
+**`Post Processing`**（后处理）  
+一帧画面渲染完之后再叠的屏幕效果，如 Bloom、Color Grading、Vignette。Quest / Android 版不支持或代价过高，通常必须为 0。  
+首次出现：[第 39 章](/placeness/pc-and-quest/)。
+
+**`Cloth`**  
+Unity 的布料模拟组件，让布按物理规则飘动或下垂。移动 GPU 和 CPU 预算承受不起，Quest 世界里必须避免。  
+首次出现：[第 39 章](/placeness/pc-and-quest/)。
+
+**`ASTC`**  
+Android / Quest 常用的现代纹理压缩格式。Unity 在 Android 标签下常用 `ASTC 6x6` 作为贴图压缩起点。  
+首次出现：[第 39 章](/placeness/pc-and-quest/)。
+
+---
+
 ## 关于这份术语表
 
 以下三件事现在还没完成：
 
 1. **章节锚点（`#xxx`）**：上面所有引用章节中某节的链接，都基于 Starlight 自动从中文 h2 标题转出的 slug。如果将来有章节标题改了，这里链接需要同步更新。本文件里所有锚点都是按写本文件时的章节标题手工生成的。
-2. **未写章节的术语**：第三部之后所有词条都是 ⏳ 占位，等对应章节写出来再补。规划见 [`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 第 2 节。
+2. **后续章节术语**：部分章节的术语仍未系统补齐，等对应正文写完或校订完再补。规划见 [`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 第 2 节。
 3. **版本注**：受 SDK 版本影响的词条统一加 `适用 SDK3.x / Unity 2022.3.22f1`。SDK 升级时按 `encyclopedia-plan.md` 第 5.2 节流程走。

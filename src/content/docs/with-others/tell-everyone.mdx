@@ -273,7 +273,12 @@ public class DoorController : UdonSharpBehaviour
 要同步复杂结构，多数情况下能拆成几个基础类型字段。第 30 章会演示：四人计分板用 `int[] scores` 一个数组同步所有人的分数。
 
 ::::caution[同步带宽不是无限的]
-VRChat 对每个 UdonBehaviour 单次序列化的数据量有限制。具体上限文档里给的是几 KB 量级，实战中遇到「同步行为正常但瞬间漏一次」的情况，常常是因为单次打包过大被网络层丢了。
+VRChat 对每个 UdonBehaviour 单次序列化的数据量有限制。官方 *Network Specs and Tips* 给出的数字大致是：
+
+- **Manual 模式**单次序列化上限约 **49 KB**。
+- **Continuous 模式**单次约 **200 字节**——所以 Continuous 字符串大概只能装 126 个字符。
+- 整个客户端**总发送速率**约 **11 KB/s**。Manual 模式发得越多，下次允许发的间隔会被自动拉长。
+- 超限时这次同步会被丢弃，Console 里会有报错日志，但脚本逻辑本身仍会继续跑（一种不容易发现的 silent fail）。
 
 实用做法：
 
@@ -301,7 +306,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon.Common.Interfaces;
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class ExplosionButton : UdonSharpBehaviour
 {
     public AudioSource explosionSound;
@@ -329,11 +334,20 @@ public class ExplosionButton : UdonSharpBehaviour
 
 值得停一下的几件事：
 
-- 类上面是 `[UdonBehaviourSyncMode(BehaviourSyncMode.None)]`，因为这个脚本没有 `[UdonSynced]` 字段，明确声明「不需要同步变量」。
+- 类上面是 `[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]`，因为这个脚本没有 `[UdonSynced]` 字段，明确声明「不需要同步变量」。
 - `using VRC.Udon.Common.Interfaces;` 是 `NetworkEventTarget` 这个枚举的命名空间。第一次写时常会被编辑器红线提醒，加上就好。
 - `SendCustomNetworkEvent(NetworkEventTarget.All, nameof(PlayExplosion))`：让所有客户端都调 `PlayExplosion()` 方法。
 - `PlayExplosion` 必须声明为 `public`。VRChat 网络事件只能调 `public` 方法，跟第 17 章 `SendCustomEventDelayedSeconds` 一样的规则。
 - 这个脚本不需要 `Networking.SetOwner`：网络事件不需要 Owner，任何客户端都可以发起。
+
+::::caution[别用 BehaviourSyncMode.None]
+`BehaviourSyncMode` 这个枚举有两个长得像「不同步」的值，只差一个字，行为却差很远：
+
+- **`None`**：完全禁用，**`SendCustomNetworkEvent` 在这种脚本上不会工作**（官方原话：*Nothing is synced and SendCustomNetworkEvent will not work on the behaviour*）。这种模式适合纯本地的 UI 控件、装饰物。
+- **`NoVariableSync`**：禁用同步变量但允许网络事件，且能与同 GameObject 上其他模式的 UdonBehaviour 共存。
+
+「没有同步变量但要发网络事件」的脚本（像这个 `ExplosionButton`）必须用 `NoVariableSync`。挑成 `None` 的话脚本里写的 `SendCustomNetworkEvent` 会安静地什么都不发，调试半天找不到原因。
+::::
 
 `NetworkEventTarget` 有两个值：
 
@@ -366,7 +380,7 @@ public void RegisterPlayer()
 
 这是「让 Owner 替我改全局状态」的标准模式。不写 Owner 模式时也能用 `All` 加 `IsOwner` 检查实现，但 Owner 模式更省一点带宽。
 
-不过 `RegisterPlayer` 里有一个新问题：B 的客户端跑的是 B 的代码，怎么知道是 A 申请加入的？老版本 SDK 这件事得靠预先同步 `requestingPlayer` 字段绕一圈。新版 SDK（3.5+）的 `SendCustomNetworkEvent` 支持参数，能直接把发起者带过去。第 30 章做小游戏时会展开。
+不过 `RegisterPlayer` 里有一个新问题：B 的客户端跑的是 B 的代码，怎么知道是 A 申请加入的？老版本 SDK 这件事得靠预先同步 `requestingPlayer` 字段绕一圈。Worlds SDK 3.8.1+ 的 `SendCustomNetworkEvent` 直接支持参数：被调用的方法上加 `[NetworkCallable]` 属性，把发起者一并传过去。最多 8 个参数，类型大致跟同步变量一致；带 `[NetworkCallable]` 的方法不能用方法重载或默认参数。第 30 章做小游戏时会展开。
 ::::
 
 ## 哪个用同步变量、哪个用网络事件

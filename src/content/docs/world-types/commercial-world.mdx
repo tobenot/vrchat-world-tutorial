@@ -4,12 +4,12 @@ description: VRChat Creator Economy 让创作者能从世界里直接收钱：Li
 difficulty: 进阶
 estimatedMinutes: 25
 chapterType: concept
-summary: 2024 年起 VRChat 推出 Creator Economy，世界开发者可以通过订阅、商品、付费角色获得 VRChat Credits 收益。这一章讲清楚这套经济系统的组件、规则、抽成比例，并讨论怎么把商业元素融进世界而不让它显得廉价。
+summary: 2023 年底起 VRChat 分阶段推出 Creator Economy（首发 Paid Subscriptions），2024–2025 年逐步铺开 Avatar Marketplace 等模块。世界开发者可以通过订阅、商品、付费角色获得 VRChat Credits 收益。这一章讲清楚这套经济系统的组件、规则、抽成比例，并讨论怎么把商业元素融进世界而不让它显得廉价。
 sidebar:
   order: 8
 ---
 
-VRChat Creator Economy（VRChat 创作者经济）2024 年正式上线，2025 年起逐步铺开。它解决的是一件长期被讨论的事：在 VRChat 里让创作有可持续的回报路径，而非永远只能算兴趣。
+VRChat Creator Economy（VRChat 创作者经济）2023 年 12 月起分阶段上线（首发 Paid Subscriptions），2024–2025 年逐步铺开 Avatar Marketplace 等模块。它解决的是一件长期被讨论的事：在 VRChat 里让创作有可持续的回报路径，而非永远只能算兴趣。
 
 这一章把 Commercial World（含商业元素的空间）这一类拎出来。需要先说明的是：「商业世界」并不是单独的一类，更像是给前面 18 到 24 章的任意类型「叠加一层」。一个 Chill 世界可以加订阅会员只能进的 VIP 房；一个 Game 世界可以加付费解锁的特殊角色；一个 Gallery 可以让访客直接在画作旁边购买数字版。这一章主要讲两件事：经济系统怎么用、商业元素怎么不破坏体验。
 
@@ -32,12 +32,12 @@ VRChat Creator Economy（VRChat 创作者经济）2024 年正式上线，2025 �
 
 | 组件 | 作用 | 用在哪 |
 | :--- | :--- | :--- |
-| **Products（产品）** | 用户最终买到的东西 | 分两类：Udon Products（世界内功能 / 内容解锁）、Subscription Role Products（群组特殊角色和权限） |
-| **Listings（一次性购买）** | 把一个或多个 Products 打包售卖 | 三种持续期：Instant 即时一次性 / Temporary 限时 / Permanent 永久 |
-| **Subscriptions（订阅）** | 周期性付费维持福利 | 含 Subscription Role Product，自动加入群组并获得指定角色 |
+| **Products（产品）** | 用户最终买到的东西 | 主要分两类：Udon Products（世界内功能 / 内容解锁）、Subscription Role Products（群组特殊角色和权限） |
+| **Listings（上架）** | 把一个或多个 Products 打包售卖 | 分两类：One-Time Listings（一次性购买，永久持有）和 Subscription Listings（订阅，周期续费） |
+| **Subscriptions（订阅）** | 周期性付费维持福利 | 通过 Subscription Listings 实现，自动加入群组并获得指定角色 |
 | **Stores（商店）** | 发现 + 购买入口 | World Stores 关联世界，Group Stores 关联群组 |
 
-收入分成大致：平台（Steam/Meta）30%、创作者 50%、VRChat + 支付处理方 20%。提现门槛 30,000 VRChat Credits（约 150 美元），通过 Tilia 走 PayPal。
+收入分成大致：平台（Steam/Meta）30%、VRChat 与支付处理方约 20%、创作者约 50%。提现门槛 30,000 VRChat Credits（约 150 美元），通过 Tilia 走 PayPal。Credits 兑换上有两个视角：用户购买价约 1 USD ≈ 120 Credits（即 100 Credits ≈ 0.83 USD），卖家提现价约 200 Credits ≈ 1 USD（含约 50% 综合抽成）。
 
 这套体系是 VRChat 官方的内置变现系统，跟 Booth、Gumroad 这些外部平台并行。世界开发者可以选用任意组合。
 :::
@@ -78,9 +78,9 @@ Commercial 是一组叠加方式，而非一种独立的世界类型。列几种
 
 演出 Event 可以做「门票」：
 
-- **永久 Listing**：买了之后任何时间进 VIP 区都行（演唱会的 SVIP 票）。
-- **临时 Listing**：买了之后限定时间内有效（一场限时活动的入场券）。
-- **订阅**：定期举办活动的常驻 VIP 通道。
+- **One-Time Listing（一次性购买）**：买了之后永久持有，进 VIP 区任何时间都行（演唱会的 SVIP 票）。
+- **Subscription Listing（订阅）**：定期举办活动的常驻 VIP 通道，按月续费。
+- 限时活动类需求可以通过限时上架（控制 Listing 的可购买窗口）+ 一次性购买实现。
 
 技术实现：跟前面几种类似，用 Listings 和 Udon Products。
 
@@ -104,17 +104,17 @@ Commercial 是一组叠加方式，而非一种独立的世界类型。列几种
 
 ### 价格定得太高 / 太低
 
-VRChat Credits 大约 200 Credits = 1 美元。Listings 最低 100 Credits（约 0.5 美元）。订阅价格通常 200 到 1000 Credits / 月。
+VRChat Credits 有两个视角的兑换比：**用户购买价**约 1 USD ≈ 120 Credits（即 100 Credits ≈ 0.83 USD）；**卖家提现价**约 200 Credits ≈ 1 USD（含约 50% 综合抽成后到手）。Listings 最低价 100 Credits 时，用户付约 0.83 USD，扣完抽成后卖家到手约 0.5 USD。订阅价格通常 200 到 1000 Credits / 月。
 
 价格定得太高（一个 Pickup 物品 1000 Credits）：根本没人买。
 
-价格定得太低（订阅 100 Credits / 月）：抽成之后到手太少（200 \* 0.5 = 100 → 减 30% 平台 → 减 20% VRChat = 30 Credits 到手），不划算。
+价格定得太低（订阅 100 Credits / 月）：扣完约 50% 综合抽成后到手大约 50 Credits（约 0.25 USD），不划算。
 
-参考社区里的常见定价：
+参考社区里的常见定价（按用户购买价）：
 
-- 一次性 Listing：100 到 500 Credits（0.5 到 2.5 美元）。
-- 月度订阅：500 到 1500 Credits（2.5 到 7.5 美元）。
-- 大型主题包 Listing：1000 到 5000 Credits（5 到 25 美元）。
+- 一次性 Listing：100 到 500 Credits（约 0.8 到 4 美元）。
+- 月度订阅：500 到 1500 Credits（约 4 到 12 美元）。
+- 大型主题包 Listing：1000 到 5000 Credits（约 8 到 40 美元）。
 
 具体定价要参考自己服务的社群消费力。
 
@@ -190,7 +190,7 @@ VRChat Creator Economy 不是唯一的变现方式。常见的几种平台对比
 | 平台 | 抽成 | 提现门槛 | 优势 | 劣势 |
 | :--- | :--- | :--- | :--- | :--- |
 | **VRChat Creator Economy** | 约 50%（Steam/Meta + VRChat 共拿 50%） | 30,000 Credits（约 150 美元） | 在世界内直接买，体验流畅；自动处理订阅 | 抽成高，提现门槛高 |
-| **Booth.pm**（日本主流） | 约 5% | 低 | 抽成低，VRChat 圈子核心 | 需要导出资源到外部 |
+| **Booth.pm**（日本主流） | 约 5.6% + 22 日元/单 | 低 | 抽成低，VRChat 圈子核心 | 需要导出资源到外部 |
 | **Gumroad**（英文圈主流） | 约 10% | 低 | 灵活，支持订阅 | 跟 VRChat 体验不连续 |
 | **Patreon** | 约 8% | 低 | 长期赞助型粉丝可控 | 跟具体世界关联弱 |
 | **VRChat Group Boost**（间接） | — | — | 社群积分激励 | 不直接产生 Credits |
@@ -270,7 +270,7 @@ AI 在「找出可能让玩家反感的设计」上有用。但 VRChat 具体的
 走 Commercial World 这条路要带走的：
 
 - Commercial 是叠加层，不构成单独类型。基础世界类型先做扎实。
-- VRChat Creator Economy 由 Products / Listings / Subscriptions / Stores 四块组成，抽成约 50%，提现门槛 30,000 Credits。
+- VRChat Creator Economy 由 Products / Listings（One-Time / Subscription）/ Stores 组成，综合抽成约 50%，提现门槛 30,000 Credits。
 - 商业元素要让免费用户拿到完整核心体验，付费部分是锦上添花。
 - 价值要超过价格，付费提示不在主流程。
 - 跟外部平台（Booth / Gumroad / Patreon）组合使用更灵活。
