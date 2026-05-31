@@ -4,12 +4,12 @@ description: UdonSharp 不是一门新语言，但也不完全等于 C#。一份
 difficulty: 进阶
 chapterType: hands-on
 estimatedMinutes: 45
-summary: UdonSharp 把 C# 翻译成 Udon 字节码，跑在 VRChat 自己的虚拟机里。这套链条带来三类约束：白名单只放过一部分 .NET API、一些 C# 高级特性根本不支持、UdonSharp 编译器自己也有几个已知 bug。这一章把这些内容铺开，并附上一份从真实项目里收集的踩坑实录。
+summary: UdonSharp 把 C# 翻译成 Udon 字节码，跑在 VRChat 自己的虚拟机里。这套链条带来三类约束：白名单只放过一部分 .NET API、一些 C# 高级特性根本不支持、还有几条工程化层面的写法约束。这一章把这些内容铺开，并附上一份从真实项目里收集的踩坑实录。
 sidebar:
   order: 3
 ---
 
-第 10 章学的 C# 语法是标准的，能在任何 C# 项目里通用。但放进 VRChat 世界项目里，就会遇到一些奇怪现象：明明照着 C# 教程写的，编译报错；明明写法跟普通 Unity 项目一样，运行时行为不一样；明明只是一个简单的递增，最后数组里第一个槽位莫名其妙是空的。
+第 11 章学的 C# 语法是标准的，能在任何 C# 项目里通用。但放进 VRChat 世界项目里，就会遇到一些奇怪现象：明明照着 C# 教程写的，编译报错；明明写法跟普通 Unity 项目一样，运行时行为不一样；明明项目里其它人都这么写过的工具方法，这里就是塞不进去。
 
 这些不是读者的错，是 UdonSharp 自己的脾气。这一章把已知的脾气一条条摊开，写脚本时少一份惊吓。
 
@@ -17,17 +17,17 @@ sidebar:
 
 [第 2 章](/getting-started/about-vrchat/)铺过沙箱的来历：VRChat 客户端要执行陌生人写的代码，必须把可调用的 API 限制在一个白名单上，否则任何一个公开世界里都可能藏着木马。
 
-这个白名单叫 **Class Exposure Tree**。写下的 C# 不是直接编成 IL 跑在 .NET 运行时上，而是先被 UdonSharp 编译器翻译成 **Udon Assembly**（一种字节码），再交给 VRChat 自己写的 Udon 虚拟机执行。这条路上每多一道转换，就多一些「这段普通 C# 写不通」的原因。
+这个白名单叫 **Class Exposure Tree**。写下的 C# 不是直接编成 IL（.NET 的中间字节码）跑在 .NET 运行时上，而是先被 UdonSharp 编译器翻译成 **Udon Assembly**（一种字节码），再交给 VRChat 自己写的 Udon 虚拟机执行。这条路上每多一道转换，就多一些「这段普通 C# 写不通」的原因。
 
 理解这条流水线之后，下面三类限制就有头绪了：
 
 ```text
 1. .NET / Unity 的某些 API 不在白名单 → 调不到
 2. UdonSharp 编译器还没支持某些 C# 特性 → 编译报错
-3. UdonSharp 编译器自己的 bug → 编译过了但运行结果不对
+3. 工程化层面的几条额外约束 → 写法上要绕一下
 ```
 
-第 3 类最坑，写脚本看不出问题，跑起来才发现行为不对。下面分别拆。
+下面分别拆。
 
 ## 第一类：白名单里没有的 API
 
@@ -82,66 +82,15 @@ VRChat 世界要做「等一秒之后做某事」，常用的写法是 `SendCust
 SendCustomEventDelayedSeconds(nameof(OnTimerFinished), 1f);
 ```
 
-这是 UdonSharpBehaviour 自己提供的方法，绕开了 .NET 的 Task / Coroutine 体系，在 Udon 虚拟机里实现「过 N 秒之后调你这个方法」。功能上等价于 Coroutine，写法不同。
+这是 UdonSharpBehaviour 自己提供的方法，绕开了 .NET 的 Task / Coroutine 体系，在 Udon 虚拟机里实现「过 N 秒之后调你这个方法」。功能上等价于 Coroutine（普通 Unity 项目里写异步等待用的协程），写法不同。
 
 :::caution[踩坑预警]
 看到一篇普通 Unity 教程让你写 `IEnumerator MyCoroutine()` + `yield return new WaitForSeconds(1f)` + `StartCoroutine(MyCoroutine())`，**这套在 UdonSharp 里不能用**。不是写法不对，是 UdonSharp 不支持 `yield`。把它翻译成 `SendCustomEventDelayedSeconds` 才行。
 :::
 
-## 第三类：UdonSharp 编译器的已知 bug
+## 第三类：工程化层面的几条额外约束
 
-最隐蔽的一类。代码看着没问题，编译过了，但运行结果跟预期不符。下面几条是社区反复踩过的，到本书写作时（SDK 3.10.x）仍然存在。
-
-### 后缀自增在赋值表达式里行为异常
-
-写 C# 经常见到这种写法：
-
-```cs
-int i = count++;
-```
-
-按标准 C# 语义，`count++` 是「先取 count 当前值，然后再把 count 加 1」。所以 `i` 应该等于自增**前**的值，count 自增之后比 i 大 1。
-
-UdonSharp 在这里跟标准 C# 不一致。在很多场合 `int i = count++;` 的实际行为等同于 `int i = ++count;`，i 拿到的是自增**后**的值。
-
-这听起来像小事，但它会导致一类非常隐蔽的 bug：往数组里写入时第一个槽位永远被跳过。
-
-```cs
-// 写法 1：触发 bug
-int slot = decorations.decorCount++;
-decorations.items[slot] = newItem;
-// 实际执行后 slot 是 1（不是 0），items[0] 永远没被填上
-```
-
-修复方法：拆成两条独立语句。
-
-```cs
-// 写法 2：安全
-int slot = decorations.decorCount;
-decorations.items[slot] = newItem;
-decorations.decorCount = slot + 1;
-```
-
-社区里实证过的触发模式：
-
-```text
-风险：int i = X++;                       含成员访问 obj.field++ 也算
-风险：return X++;
-风险：func(X++);
-风险：if (X++ < n) { ... }
-风险：arr[obj.field++] = val;
-经验证安全：arr[localInt++] = val;        local 变量做 indexer 的同源场景
-经验证安全：count++ 单独成句
-经验证安全：for (int i = 0; i < n; i++) { ... } 循环控制变量
-```
-
-最稳的做法：能拆就拆，避免在赋值或表达式里读后缀自增的返回值。需要保留 `arr[localInt++]` 这种已经验证过的写法时，写一行注释说明这里被刻意保留，方便后人维护。
-
-:::caution[踩坑预警]
-这条 bug 真实出现过。一个名为 VoidScavengers 的 VRChat 项目里，前后两次因为同一类 bug 卡过：第一次是楼层走廊数组里出现「幽灵走廊」（slot 0 没填，渲染出空气墙），第二次是装饰物 spawn 时把宝箱钥匙放进了史莱姆房间。每次都查了几个小时，最后追到这条编译器行为。
-
-后来这个项目在 Editor 里加了一份静态检查脚本，每次脚本编译完成自动扫一遍，命中高危模式就直接 LogError，把这类问题挡在写代码这一步。在自己项目里如果反复栽跟头，可以参考这种思路加一个 lint。
-:::
+下面这几条不是语法报错，也不是白名单拦截，而是 UdonSharp 把 C# 文件组织进 Udon 程序资产时的工作流约束。第一次撞上会让人懵，知道之后绕开就好。
 
 ### 纯静态类必须放在 Plugins/ 文件夹
 
@@ -238,8 +187,8 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 5. 看是否撞上 UdonSharp 的特性限制（async/yield/泛型/static/...）。
    撞上了换 SendCustomEventDelayedSeconds 等替代写法。
 
-6. 看是否触发了已知 bug（postfix++ 是头号嫌疑）。
-   把 X++ 拆成两行，多数怪行为会消失。
+6. 看是否撞上工程化层面的约束（纯静态类没放在 Plugins/、运行时 AddComponent 等）。
+   按本章第三节的写法绕开。
 
 7. 都不是的话，加 Debug.Log 把变量值打出来。
    `Debug.Log("到这了，值是 " + score);`
@@ -249,11 +198,11 @@ otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
 
 ## 这一章在脑子里留下来什么
 
-第 9 到 11 章铺完之后，应该能拿到的：
+第 10 到 12 章铺完之后，应该能拿到的：
 
 - 知道程序是按顺序执行的指令、由变量、判断、循环、函数、类组合而成。
 - 能看懂一段 UdonSharp 脚本：哪里是字段、哪里是方法、哪里在调用别的物体、什么时候会被执行。
 - 知道 UdonSharp 不是普通 C#，遇到「怎么不行」时大致能猜到方向。
-- 撞上 bug 时不慌，知道按上面那份顺序排查。
+- 撞墙时不慌，知道按上面那份顺序排查。
 
-这一章里那份「白名单 / 编译器限制 / 已知 bug」三类清单不需要背。撞上具体怪现象时知道大概去哪一类里翻，比记住每条都重要。
+这一章里那份「白名单 / 编译器特性 / 工程化约束」三类清单不需要背。撞上具体怪现象时知道大概去哪一类里翻，比记住每条都重要。
