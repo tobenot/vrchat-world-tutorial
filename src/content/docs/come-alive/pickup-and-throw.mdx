@@ -1,0 +1,275 @@
+---
+title: 15. 拿起来，丢出去
+description: 用 VRC Pickup + Rigidbody 让物体能被拿起，捏 OnPickup / OnDrop / OnPickupUseDown 三个事件做基础玩具，用 VRC Object Sync 给后面的多人同步留一个口子。
+difficulty: 新手
+estimatedMinutes: 40
+chapterType: hands-on
+requiresSDK: true
+summary: 第 13 章按按钮，第 14 章走进区域，这一章伸手抓东西。三件套（Collider + Rigidbody + VRC Pickup）凑齐物体就能被拿起来，OnPickup / OnDrop / OnPickupUseDown 三个事件做出「抓起来发光、放下熄灭、按 Use 切颜色」的基础玩具。
+sidebar:
+  order: 3
+---
+
+VR 玩家进了别人世界，第一件事常常是伸手抓东西。桌上一个杯子、一支荧光棒、一把小剑，能拿起来挥几下、扔出去看会不会摔，整个空间立刻不一样。桌面玩家瞄准物体按一下 V，照样能抓。
+
+这一章把第二部那颗 `GlowBall` 改造成一个能拿起来的小球：抓起来时灯加亮、放下时变暗、按 Use（VR 里是扳机、桌面是鼠标左键）时切颜色。
+
+## 让物体可被抓取的三件套
+
+VRChat 不需要写任何代码就能让一个物体可拿起。组合三个组件：
+
+1. **Collider**：决定玩家手能不能「碰」到它。Box / Sphere / Capsule 都行。
+2. **Rigidbody**：让它有物理表现。重力下坠、丢出去带初速度、撞到墙会反弹。
+3. **VRC Pickup**：告诉 VRChat「这个物体可以被抓」。
+
+三件齐了，物体就具备被拿的资格。要在拿起、放下、按 Use 那一刻做点别的，再加一段 UdonSharp 监听对应事件。
+
+::::tip[为什么是这样？]
+拆成三件而不是一个组件搞定，是 Unity 的「组合优于继承」在 VRChat 工具上的延伸：
+
+- Collider 还可以单独用来挡人 / 做 Trigger，不必跟 Pickup 绑死。
+- Rigidbody 是 Unity 标准物理组件，第二部讲过的所有刚体行为这里都通用。
+- VRC Pickup 只补「能不能被抓」这一件 VRChat 特定的事。
+
+不这样的话每加一个 VRChat 特性都要复刻一份 Unity 已有的功能，工具箱会变得又大又重复。
+::::
+
+## 第一步：从 GlowBall 复制一个 PickupBall
+
+打开第二部那间小屋。
+
+第二部把 `GlowBall` 做成了 Prefab。直接抓 Prefab 改不太合适，那会影响所有原始光球。第 8 章提过一个解法：
+
+选中场景里的一个 `GlowBall` Prefab Instance，右键 `Prefab` → `Unpack Prefab`。它的名字从蓝色变回普通颜色，跟磁盘上那份模具断开了。改它不会影响其他实例。
+
+把这个 Unpack 之后的物体重命名为 `PickupBall`，位置摆在桌面上方一点（没桌子就放半空中，比如 `0, 1.2, 0`）。它身上现在已经有 `Sphere`、`Mesh Filter`、`Mesh Renderer`、`Sphere Collider`、`Light`，缺 `Rigidbody` 和 `VRC Pickup`。
+
+## 第二步：加 Rigidbody 和 VRC Pickup
+
+选中 `PickupBall`：
+
+1. `Add Component` → 搜 `Rigidbody`，加上。`Use Gravity` 默认勾选。
+2. `Add Component` → 搜 `VRC Pickup`，加上。
+
+加 `VRC Pickup` 时如果物体上还没 `Rigidbody`，VRChat 会主动补一个。提前手工加是为了让物理行为更可控，比如关掉重力做「漂浮的发光体」。
+
+`VRC Pickup` Inspector 里几个常看的字段（左侧是 Inspector 显示名）：
+
+```text
+Interaction Text     Hold        # 鼠标对准时头顶提示
+Use Text             Use         # 拿在手里时显示的提示
+Pickupable           True        # 是否允许被抓（false 暂时锁住）
+Proximity            2           # 可被触及的最大距离（米）
+```
+
+```text
+Orientation          Any         # 持握朝向：Any（不强制）/ Grip / Gun
+Exact Gun            None        # Orientation = Gun 时手心对齐这个 Transform
+Exact Grip           None        # Orientation = Grip 时手心对齐这个 Transform
+Auto Hold            Auto Detect # 松开抓取键后是否仍持握：Auto Detect / Yes / No
+                                 # 只对 Desktop、Vive 这种没有独立 Use 输入的方案生效
+Allow Manipulation When Equipped  False
+                                 # VR 里允许玩家在手里旋转物体
+Disallow Theft       False       # 别人能不能从你手里抢走
+```
+
+`Orientation` 和 `Auto Hold` 留默认值就好。要做手枪、手电筒、剑这种「必须握在手里特定角度」的物体，把 `Orientation` 改成 `Gun` 或 `Grip`，再在物体上做一个空 GameObject 当锚点，拖进 `Exact Gun` 或 `Exact Grip` 槽，VRChat 就会用这个锚点对齐玩家手心。
+
+`Sphere Collider` 这一章可能比 `GlowBall` 自带的稍小，建议把 Radius 调成 0.4，让玩家容易「对准」小球。第 13 章那条规则在这里也成立：抓不准多半是 Collider 太小。
+
+::::caution[Collider 是 IsTrigger 的物体抓不起来]
+`VRC Pickup` 要求物体身上的 Collider 是非 Trigger 的实体 Collider。如果在第 14 章给它打过 `Is Trigger` 之后没改回来，物体会「没有触感」，VR 玩家手伸过去什么也抓不到。
+
+抓不起来时优先检查这条：选中物体看 `Sphere Collider`（或别的 Collider），`Is Trigger` 必须**不勾选**。
+::::
+
+## 第三步：先 Build & Test 一次
+
+不写一行代码，先跑一次。`Build & Test` 进世界。
+
+桌面玩家：走到 `PickupBall` 附近，光标对准，头顶提示 `Hold`。按 `V` 拿起，球贴在视角中心。再按 `V` 放下，球受重力下坠。
+
+VR 玩家：手伸到球上，按 Grip 抓住，松手扔出去，球带着初速度飞出去再撞地。
+
+不到半分钟，世界里多了一个能玩的物理小球。这就是为什么 Pickup 是 VRChat 世界最让人愿意试的交互之一：它不靠界面、不靠脚本，伸手抓就行，符合人在真实空间的直觉。
+
+桌面下扔球的初速度跟鼠标视角晃动的快慢相关。VR 下扔球的初速度跟手的实际挥动速度相关。`Rigidbody` 物理表现完全交给 Unity 标准物理引擎，不需要写一行代码。
+
+## 第四步：用三个事件让球更有个性
+
+光是能抓起来已经不错。再加点反馈：
+
+- 拿起时灯亮一档。
+- 放下时灯回原来亮度。
+- 拿在手里按 Use（桌面左键 / VR 扳机）时切换颜色。
+
+`Assets/Scripts/` 下新建 `PickupGlow.cs`：
+
+```cs title="PickupGlow.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class PickupGlow : UdonSharpBehaviour
+{
+    public Light targetLight;
+
+    [Tooltip("待机和被抓起时的两档亮度")]
+    public float restIntensity = 1.0f;
+    public float heldIntensity = 3.5f;
+
+    [Tooltip("Use 键按下后会循环切换的几种颜色")]
+    public Color[] colors;
+
+    private int colorIndex = 0;
+
+    private void Start()
+    {
+        if (targetLight != null)
+        {
+            targetLight.intensity = restIntensity;
+        }
+    }
+
+    public override void OnPickup()
+    {
+        if (targetLight != null)
+        {
+            targetLight.intensity = heldIntensity;
+        }
+    }
+
+    public override void OnDrop()
+    {
+        if (targetLight != null)
+        {
+            targetLight.intensity = restIntensity;
+        }
+    }
+
+    public override void OnPickupUseDown()
+    {
+        if (colors == null || colors.Length == 0) return;
+        if (targetLight == null) return;
+
+        colorIndex = (colorIndex + 1) % colors.Length;
+        targetLight.color = colors[colorIndex];
+    }
+}
+```
+
+把它挂到 `PickupBall` 上，把 `PickupBall` 自身的 `Light` 组件拖到 `Target Light` 槽里。
+
+`Colors` 数组需要手工填几条。Inspector 里点开 `Colors` → `Size` 改成 3 → 三条颜色分别填：
+
+- `Element 0`：橙黄（`#FFB347`）
+- `Element 1`：青蓝（`#6EE7F9`）
+- `Element 2`：粉紫（`#F472B6`）
+
+存盘，重新 `Build & Test`。
+
+抓起来：球更亮了。  
+放下：球回原色亮度。  
+拿在手里按 Use（左键 / 扳机）：球颜色循环切换。
+
+四个事件，每一个 VRChat 都给了名字：
+
+```text
+OnPickup            被拿起的瞬间，调一次
+OnDrop              被放下的瞬间，调一次
+OnPickupUseDown     拿在手里按下 Use 的瞬间，调一次
+OnPickupUseUp       拿在手里松开 Use 的瞬间，调一次
+```
+
+跟第 13 章 `Interact` 一样，这些事件方法都得写 `public override`。漏 `override` 是不会报错但行为消失的沉默错误。
+
+::::tip[为什么 OnPickupUseDown 不直接用 Interact]
+`Interact` 要靠近物体才能按。物体被拿起后已经在玩家手里，「靠近」这件事就没意义了。VRChat 给手里物体单独发了一组 `OnPickupUseXxx` 事件，让「持有时按一下」变成另一个独立动作。
+
+实战里常这么用：手枪被抓起后按 Use 是开火、手电筒被抓起后按 Use 是开关、荧光棒被抓起后按 Use 切颜色。手不在物体上时这些动作都不该被触发，所以 VRChat 把「持有触发」和「靠近触发」做成了两套事件。
+::::
+
+## 处理掉到地下的烦恼
+
+`Rigidbody` 加上重力之后，球扔出去多半会滚到玩家够不着的地方，甚至直接掉出地图。两条常用的解法：
+
+**方案 A：监听物体的 Y 坐标，掉到一定高度自动归位。**
+
+```cs
+public Transform respawnPoint;
+
+private Vector3 spawnPos;
+private Quaternion spawnRot;
+
+private void Start()
+{
+    spawnPos = transform.position;
+    spawnRot = transform.rotation;
+}
+
+private void Update()
+{
+    if (transform.position.y < -10f)
+    {
+        transform.position = spawnPos;
+        transform.rotation = spawnRot;
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+    }
+}
+```
+
+简单粗暴，单人世界够用。
+
+**方案 B：给物体挂 `VRC Object Sync`，用它自带的 Respawn 字段。**
+
+`VRC Object Sync` 这一章先不当主角，原因是它真正发挥作用要等多人同步聊清楚。但它有一个副作用刚好能用：勾选 `Allow Collision Ownership Transfer` 和 `Use Gravity` 之后，它会自动维护一个出生位姿，物体掉到一定高度（默认很低）会被传回生成位置。
+
+挂法：给 `PickupBall` `Add Component` → 搜 `VRC Object Sync` → 加上。其它字段保持默认。
+
+这一章里这两个方案都先选一个就行，第六部《和别人一起》会专门讲 `VRC Object Sync` 的网络同步行为，到时候回头看会更通透。
+
+::::caution[VRC Object Sync 让单人调试看起来「乱了」]
+加上 `VRC Object Sync` 后，物体的位置会被它接管。在 Unity 编辑器里直接拖物体可能不生效（被 Sync 校正回原位）；ClientSim 里也会出现「扔出去就被拽回来」的现象。
+
+不是 bug，是网络同步的预期行为：所有客户端要看到同一份位置。先做最小验证再补 Sync 反而省事，所以这一章把 Sync 当成「未来要加」的口子，不当主角。
+::::
+
+## 给小球做一份 Prefab
+
+第 8 章总结过的判断规则在这里又应了：要做第二个、第三个 Pickup（颜色不同的小球、形状不同的方块），从头配三遍是浪费时间。
+
+把 `PickupBall` 拖进 `Assets/Prefabs/`，做成 Prefab。下次想加一个绿色版，从 Prefabs 拖一份出来，改 Albedo 和 Light 颜色就完事。
+
+VRChat 大多数玩具世界的根基就是这套：一个被反复打磨好的「可拿起物体」 Prefab，再批量做颜色和形状变体。基础物理逻辑和事件接线只调一次。
+
+## 自己改三个版本
+
+把 `PickupGlow` 当骨架，加一点：
+
+- 在 `OnPickup` 里同时播放一个 `Click` 音效。提示：再加一个 `public AudioSource clickSound` 字段，里面调 `Play()`。
+- 让球被丢出去时（`OnDrop`）同时给 `Rigidbody` 加一个向上的力，模拟「自带反弹」。提示：Rigidbody 有一个方法叫 `AddForce`，第 11 章用过类似的「取一个引用 + 调一个方法」的模式。
+- 把循环颜色数组改成两组：白天组（暖色三色）、夜晚组（冷色三色）。再加一个布尔字段控制走哪一组。
+
+第三个会让你顺便练一遍「用 if 选不同数组」。如果脑子里第一反应是「再写一个脚本」，那是把简单事写复杂的征兆，能用变量解决就别加脚本。
+
+## 一段抓取交互的骨架
+
+回头看这一章的结构，跟第 13、14 章惊人地相似：
+
+- 一个 GameObject + 一个 Collider（非 Trigger） + 一个 Rigidbody + 一个 VRC Pickup，决定「能抓」。
+- 一段 UdonSharp，重写 `OnPickup` / `OnDrop` / `OnPickupUseDown`，决定「被抓时干什么」。
+- 通过 `public` 字段引用到的目标对象（这一章是 Light 和颜色数组）。
+- 一组具体动作：改 `Light.intensity`、改 `Light.color`、`Play()` 音效。
+
+主动 `Interact` → 被动 `OnPlayerTriggerEnter` → 抓握 `OnPickup`：第四部到现在已经走过三种触发方式，剩下「坐到上面 / 看到镜子里 / 走过一道传送门」三种常见配件，第 16 章一次拿下。
+
+## 本章参考
+
+- [VRChat Creator Docs：VRC Pickup](https://creators.vrchat.com/worlds/components/vrc_pickup/)
+- [VRChat Creator Docs：VRC Object Sync](https://creators.vrchat.com/worlds/components/vrc_objectsync/)
+- [Unity Manual：Rigidbody](https://docs.unity3d.com/Manual/class-Rigidbody.html)
+- [Introduction to Pickup Objects（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-gimmick-pickup/)

@@ -1,0 +1,74 @@
+---
+title: 第四部 · 让世界活过来
+description: 第三部把代码读懂了。这一部用那点代码做按钮、Trigger、Pickup、椅子、镜子、传送、门，把房间变成会回应人的空间。
+template: splash
+hero:
+  tagline: 五个最常被问到的 VRChat 交互，一个晚上做一个，做完手里有一整盒能复用的小积木。
+  actions:
+    - text: 从第 13 章开始
+      link: ./press-and-light/
+      icon: right-arrow
+      variant: primary
+    - text: 直接看「事件、条件、动作」三段式
+      link: ./event-condition-action/
+      variant: minimal
+sidebar:
+  label: 第四部 · 总览
+  order: 0
+chapterType: part-intro
+tableOfContents: false
+pagefind: false
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+第二部把房间搭起来，第三部把脚本读懂。但房间到这里还是静的：门是装饰，按钮按了没事，球放在桌上不会被拿起来。
+
+第四部专门补这块。每一章只做一件事，一个晚上能做完，做完场景里多一个「会动的」对象。五个动手章 + 一节理解章 + 一节创作者视角。
+
+<CardGrid>
+  <LinkCard
+    title="13. 按一下，灯亮了"
+    href="./press-and-light/"
+    description="VRChat 最基础的交互事件 Interact，做一个开关切换一盏灯。"
+  />
+  <LinkCard
+    title="14. 走进去，事情发生了"
+    href="./trigger-zones/"
+    description="Trigger Collider 加 OnPlayerTriggerEnter，让玩家走进区域时音乐自动响起。"
+  />
+  <LinkCard
+    title="15. 拿起来，丢出去"
+    href="./pickup-and-throw/"
+    description="VRC Pickup + Rigidbody，让桌面用户和 VR 玩家都能抓东西。"
+  />
+  <LinkCard
+    title="16. 坐下来，照镜子，走过去"
+    href="./sit-mirror-teleport/"
+    description="VRCStation、VRCMirrorReflection、TeleportTo，三个常驻配件一次到位。"
+  />
+  <LinkCard
+    title="17. 门、机关和状态"
+    href="./doors-and-states/"
+    description="给一扇门一个状态变量，再让 Animator 把状态变成动作。"
+  />
+  <LinkCard
+    title="理解章 D · 事件、条件、动作"
+    href="./event-condition-action/"
+    description="把前五章拆成同一种三段式，下次看见新交互能自己动手拆。"
+  />
+  <LinkCard
+    title="创作者视角 · 你的世界现在会跟人说话了"
+    href="./world-speaks-back/"
+    description="从静态布景到能回应玩家，这一跨之后心里那个画面变得能落地了。"
+  />
+</CardGrid>
+
+读完这一部，能拿到的：一个有按钮、有触发区域、有可拿起物体、有座椅镜子和传送点、有可开关门的房间；以及一份「事件 → 条件 → 动作」的拆解视角，看任何 VRChat 世界都能猜出大半结构。
+
+读完之后再去第五部选方向，不同类型的世界把这些积木拼出完全不同的东西。
+
+:::note[关于多人同步]
+这一部的所有交互都按「单人本地」做。两个朋友同时进世界时，会出现「你这边灯亮了对方那边没亮」这类现象。这不是 bug，是同步要单独学一遍。第六部专门讲多人同步。先把单人版做扎实，到时候再补同步只是给现成脚本加几行字段。
+:::

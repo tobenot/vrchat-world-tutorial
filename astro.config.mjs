@@ -121,6 +121,11 @@ export default defineConfig({
           autogenerate: { directory: 'programming' },
         },
         {
+          label: '第四部：让世界活过来',
+          collapsed: false,
+          autogenerate: { directory: 'come-alive' },
+        },
+        {
           label: '附录 · 速查与参考',
           collapsed: true,
           autogenerate: { directory: 'appendix' },

@@ -1,0 +1,258 @@
+---
+title: 14. 走进去，事情发生了
+description: 用 Trigger Collider 加 OnPlayerTriggerEnter / OnPlayerTriggerExit，让玩家走进区域时音乐自动响起、走出去时停下。理解 Trigger 与普通 Collider 的本质区别。
+difficulty: 新手
+estimatedMinutes: 35
+chapterType: hands-on
+requiresSDK: true
+summary: 不靠按钮、不靠点击，让交互在玩家「走进区域」时被动触发：在咖啡角放一块隐形 Trigger Collider，挂上 OnPlayerTriggerEnter / OnPlayerTriggerExit，进区域音乐响起、离开区域停下。
+sidebar:
+  order: 2
+---
+
+第 13 章那个开关挺好用：走过去，光标对准，按一下。但有些事情按按钮反而别扭。走进咖啡角，背景音乐自然响起；走出去，音乐淡下来。这里没有按钮可以按，玩家也没有动作要做。
+
+事情该自己发生，靠玩家踏进了一片「区域」。
+
+VRChat 里这一类被动触发依赖一种特别的 Collider：勾选了 `Is Trigger` 之后，它不再挡人，反过来变成一种检测装置。玩家穿过去时，Udon 脚本会收到一个事件通知。
+
+这一章用它做一件事：在房间一角划一块「音乐区」，进去音乐响，出去音乐停。
+
+## Trigger 跟普通 Collider 的区别
+
+第 7 章用过普通 Collider：`Floor` 上挂一个 `Box Collider`，玩家踩上去停在表面。这是它的「实心」版。
+
+`Box Collider` 有一个字段叫 `Is Trigger`。打勾之后，它的物理含义翻了个：
+
+- 普通 Collider：物理实体。玩家撞上去会被挡住，球丢过去会反弹。
+- Trigger：物理透明的检测体。玩家直接穿过去，但穿过的瞬间和离开的瞬间，挂在同一个物体上的脚本会收到事件通知。
+
+形状还是那个形状，差别在「挡不挡人 / 通不通知」。一句话记忆：普通 Collider 管「碰得到」，Trigger 管「知道有人来过」。
+
+::::tip[为什么是这样？]
+分成两种模式是因为这两件事在物理引擎里是两套完全不同的开销。
+
+碰撞检测要算反弹力、摩擦、堆叠稳定，每帧都要跑物理求解。Trigger 只关心物体进出体积，做起来便宜得多，可以做大、做密、铺满整个房间。
+
+如果不分开，要么所有「区域」都得算物理（性能爆炸），要么墙也变成只是通知没法挡人（玩家直接穿墙）。两件事就该用两种 Collider。
+::::
+
+## 第一步：在房间角落划一块音乐区
+
+打开第二部那间小屋。Hierarchy 空白处右键 `Create Empty`，命名 `MusicZone`。位置摆在房间一角，比如：
+
+```text
+Position   2.5,  1.0,   2.5
+Rotation   0,    0,     0
+Scale      1,    1,     1
+```
+
+`MusicZone` 是一个空 GameObject，自身没有形状，得手工给它加一个 Collider。
+
+选中 `MusicZone`，Inspector → `Add Component` → 搜 `Box Collider`，加上。
+
+然后做关键的一步：勾上 `Box Collider` 上的 `Is Trigger`。
+
+`Box Collider` 的 `Size` 调成 `3, 2.2, 3`，意思是一块 3 米见方、2.2 米高、能罩住玩家头顶的长方体区域。Scene 视图里会看到一圈绿色线框，那就是这块「音乐区」的边界。线框只有作者看得见，玩家进游戏后看不到。
+
+::::caution[忘了勾 Is Trigger 是头号沉默错误]
+这一章最常见的坑就是 `Is Trigger` 没勾。不勾的后果是：
+
+- 玩家撞到 `MusicZone` 那块区域被弹开，像隔了一堵隐形玻璃，本人还会一脸蒙。
+- `OnPlayerTriggerEnter` 永远不会被调用，因为引擎压根没把这次接触当 Trigger 处理。
+
+第二件事尤其折磨人：脚本看着对、Console 没报错、玩家也没卡住，但事件就是不触发。检查清单第一条永远是『Is Trigger 勾了吗』。
+::::
+
+## 第二步：放一段背景音乐
+
+`MusicZone` 旁边放一个 `Audio Source` 当声源。
+
+可以选两条路：直接给 `MusicZone` 自己加 `Audio Source`，或者新建一个子物体专门放声音。这一章选简单的那条：
+
+选中 `MusicZone`，Inspector → `Add Component` → 搜 `Audio Source`，加上。
+
+这个组件刚加上是哑的。要给它一段音频。从手头的素材库找一段循环友好的环境音（咖啡馆白噪、雨声、轻爵士都行；时长 30 秒以上就够），拖进 Project 面板的 `Assets/Audio/` 目录下（没这个目录就新建一个）。
+
+把 Project 面板里的音频文件拖到 Inspector 上 `Audio Source` 的 `AudioClip` 字段。
+
+下面这几个字段调一下：
+
+```text
+AudioClip       MyCafeLoop（拖入的音频文件）
+Play On Awake   勾选关闭
+Loop            勾选开启
+Volume          0.6
+Spatial Blend   1（完全 3D，离得远会变小）
+```
+
+`Play On Awake` 关掉，意思是场景一加载不要立刻播。要等脚本说「现在播」才播。`Loop` 开着，让 30 秒的循环音不至于断成一截。`Spatial Blend` 拉到 1，让远处听不见、走近才听到，配合「走进区域才响」的体感。
+
+## 第三步：写一段触发脚本
+
+`Assets/Scripts/` 下新建一个 U# Script，命名 `MusicZone`。
+
+```cs title="MusicZone.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+public class MusicZone : UdonSharpBehaviour
+{
+    public AudioSource musicSource;
+
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        if (!player.isLocal) return;
+
+        if (musicSource != null && !musicSource.isPlaying)
+        {
+            musicSource.Play();
+        }
+    }
+
+    public override void OnPlayerTriggerExit(VRCPlayerApi player)
+    {
+        if (!player.isLocal) return;
+
+        if (musicSource != null && musicSource.isPlaying)
+        {
+            musicSource.Stop();
+        }
+    }
+}
+```
+
+不到二十行，但比第 13 章那段稍微复杂一点。一个一个看：
+
+- `using VRC.SDKBase;` 引入 `VRCPlayerApi`，第三行的 `player` 参数就是这个类型。
+- `OnPlayerTriggerEnter(VRCPlayerApi player)` 是 VRChat 玩家进入 Trigger 时的事件。`player` 形参代表那个进区域的人。
+- `if (!player.isLocal) return;` 这一行是关键。下面专门讲。
+- `musicSource != null` 是基本的判空保护。第 12 章讲过 UdonSharp 没有 `try-catch`，引用为空会让事件在那一行中断。
+- `Play() / Stop()` 是 Unity `AudioSource` 自带的方法，按字面意思工作。
+- `OnPlayerTriggerExit` 跟 `Enter` 镜像，玩家离开时调用。
+
+挂脚本：把 `MusicZone.cs` 拖到 Hierarchy 里 `MusicZone` 物体上。Inspector 里出现 `Music Source` 字段（`Audio Source` 类型的引用槽），把同一个 `MusicZone` 物体上的 `Audio Source` 组件拖进去（直接拖物体本身也行，Unity 会自动抓出 AudioSource 组件）。
+
+## 为什么要写 `if (!player.isLocal) return;`
+
+`OnPlayerTriggerEnter` 这一类**玩家事件**有一个跟 `Interact` 不一样的特点：实例里只要有玩家进入 Trigger，**所有人客户端**上挂着这个脚本的物体都会被通知一次。
+
+这跟 `Interact` 完全本地的行为不一样。如果不加 `isLocal` 判断，会发生这种事：
+
+- A 走进音乐区。A 客户端调一次 `OnPlayerTriggerEnter`，参数是 A → 调 `Play()`，A 听到音乐。
+- 同一时刻 B 客户端也调一次 `OnPlayerTriggerEnter`，参数还是 A（因为 A 进区域了）→ B 也调了 `Play()`。可 B 根本没进区域。
+- B 听到音乐了。
+
+加上 `if (!player.isLocal) return;` 之后，每个客户端只在「进区域的那个人就是自己」时才执行后面的逻辑。各人触发各人音乐，互不打扰。
+
+::::tip[为什么是这样？]
+所有客户端都收到玩家事件，是 VRChat 故意设计成这样：很多多人逻辑要的是「那边那个人来了，我这边要做点反应」。比如对方靠近时，本地客户端把对方头顶的名牌升起来，这个反应就发生在「不是自己进入区域」的客户端上。
+
+所以默认行为是『所有人都被通知』，需要『只有进入者本人执行』时由作者显式过滤 `isLocal`。先广播再过滤，比反过来灵活。
+::::
+
+桌面玩家自己测的时候没区别，但只要拉朋友进来就会立刻看出 isLocal 的重要。这条 `if` 看起来啰嗦，但漏了的话第二天会撞上「我朋友走进我的房间，我这边音乐自己响了」这种诡异现象。
+
+## 第四步：Build & Test
+
+`Build & Test`，进世界。
+
+走向 `MusicZone` 那块隐形区域，跨过线框那一刻，音乐响起。从远处走近时声音会从小到大，因为 `Spatial Blend = 1` 让 Audio Source 是 3D 衰减的。
+
+走出去，音乐停。再走进，再响。
+
+如果跑一圈下来音乐没响：
+
+- 看 Console 有没有红字。`NullReferenceException` 大概率是 `Music Source` 引用槽是 `None`。回 Inspector 拖一下。
+- 没有红字也没声音 → 检查 `Audio Source` 的 `AudioClip` 是不是 `None`，或者 `Volume` 是不是被拉到 0。
+- 走进区域听不到声音、走得很近才有 → `Spatial Blend = 1` 加上 Audio Source 的 `Min Distance / Max Distance` 太小。可以把 `Min Distance` 调到 1.5、`Max Distance` 调到 8 试试。
+
+## 不只能播音乐：进区域可以做任何事
+
+`MusicZone` 只是把 Trigger 和 `AudioSource.Play()` 接了起来。换上别的字段，`OnPlayerTriggerEnter` 里同样的几行结构能做完全不同的事：
+
+```cs
+public Light areaLight;
+public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+{
+    if (!player.isLocal) return;
+    areaLight.enabled = true;     // 进入区域才点亮
+}
+```
+
+```cs
+public GameObject hint;
+public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+{
+    if (!player.isLocal) return;
+    hint.SetActive(true);         // 进入区域弹出 UI 提示
+}
+```
+
+```cs
+public Transform respawnPoint;
+public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+{
+    if (!player.isLocal) return;
+    Networking.LocalPlayer.TeleportTo(respawnPoint.position, respawnPoint.rotation);
+    // 掉进虚空 → 自动传回安全点。第 16 章会专门讲 TeleportTo
+}
+```
+
+骨架是同一份：玩家进入 → 检查是不是本地玩家 → 改一个状态 / 调一个方法。后面三章会反复用到这套结构。
+
+::::note[不同世界不同活法]
+休闲世界用 Trigger 多半是为了气氛切换：进吧台音乐换成轻爵士、进露台环境音变成虫鸣、进大厅突然安静下来。
+
+游戏世界用 Trigger 多半是为了规则边界：踏进禁区扣血、踩到金币加分、跨过终点线计时停。
+
+展览世界用 Trigger 多半是为了讲解触发：走到展品前自动播一段语音介绍。
+
+同样几行代码，配上不同字段，做的就是不同世界的不同事。
+::::
+
+## OnPlayerTriggerStay 和 OnPlayerCollisionEnter
+
+VRChat 还有几个相关的玩家事件，知道有就行，先不展开：
+
+```text
+OnPlayerTriggerEnter   玩家进入 Trigger 的瞬间
+OnPlayerTriggerExit    玩家离开 Trigger 的瞬间
+OnPlayerTriggerStay    玩家停留在 Trigger 内时，每帧调一次
+OnPlayerCollisionEnter 玩家撞到普通 Collider（非 Trigger）瞬间
+OnPlayerCollisionExit  玩家与普通 Collider 分离瞬间
+OnPlayerCollisionStay  玩家与普通 Collider 接触期间，每帧调一次
+```
+
+`Stay` 系列每帧调一次，性能开销显著高于 `Enter / Exit`。能用 `Enter` 和 `Exit` 解决就别用 `Stay`。比如「在区域内每秒扣 1 点血」用 `Stay` + 计时变量比直接每帧扣一次合理得多，第 12 章讲性能那一节展开过类似的取舍。
+
+普通物体（不是玩家）穿过 Trigger 的事件叫 `OnTriggerEnter / OnTriggerExit`（Unity 标准事件，没有 `Player` 前缀），常用在「球进了得分框 / 钥匙碰到锁」这类场景。这一章按下不表，第 17 章做门时会再碰一面。
+
+## 自己改三个版本
+
+把 `MusicZone` 当骨架，往里加东西：
+
+- 加一个 `public Light areaLight` 字段，进区域音乐响的同时把灯也点亮，离开同时灭。两个动作写在同一对 Enter/Exit 里就行。
+- 把 Trigger 区域的 Box Collider 换成 Sphere Collider，做一个圆形声场，看看边界形状对体验的影响。
+- 加一个 `int playersInside` 字段，`Enter` 时自加、`Exit` 时自减，进 Build & Test 站进站出，在 Inspector 上观察这个数字怎么变。再思考：如果不写 `if (!player.isLocal) return;`，这个数字会变成什么样？
+
+最后一条不必真改，先想再做。这一类「先想再做」的题，比直接抄答案对脑子有用。
+
+## 一段被动交互的骨架
+
+回头看，整个 Trigger 链条同样四件东西：
+
+- 一个 GameObject + 一个 `Box Collider`（勾选 `Is Trigger`），决定区域形状。
+- 一段 UdonSharp，里头有 `OnPlayerTriggerEnter` / `OnPlayerTriggerExit`，加 `if (!player.isLocal) return;` 过滤。
+- 通过 `public` 字段引用到的目标对象（这一章是 AudioSource）。
+- 一个 `Play() / Stop() / SetActive()` 之类的具体动作。
+
+跟第 13 章 Interact 的骨架几乎是同一套。差别只在事件名换了，触发方式从主动按变成被动撞。
+
+## 本章参考
+
+- [VRChat Creator Docs：Players](https://creators.vrchat.com/worlds/udon/players/)
+- [VRChat Creator Docs：Udon Special Variables and Events](https://creators.vrchat.com/worlds/udon/special-variables-and-events/)
+- [Unity Manual：Colliders（含 Is Trigger 行为）](https://docs.unity3d.com/Manual/CollidersOverview.html)
+- [Unity Manual：Audio Source](https://docs.unity3d.com/Manual/class-AudioSource.html)

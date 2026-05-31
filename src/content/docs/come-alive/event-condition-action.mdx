@@ -1,0 +1,171 @@
+---
+title: 理解章 D · 事件、条件、动作
+description: 第四部做过的五种交互，回头看其实是同一种三段式：什么事件触发、要不要满足条件、最后做了什么动作。一旦看出这个模式，新交互就能自己拆解。
+chapterType: concept
+difficulty: 新手
+sidebar:
+  order: 6
+---
+
+第四部从按按钮做到开门，五个动手章看着各做各的事。但回头扫一眼这些脚本骨架：
+
+```cs
+public override void Interact() { ... }                      // 13 章
+public override void OnPlayerTriggerEnter(VRCPlayerApi p) { ... }  // 14 章
+public override void OnPickup() { ... }                       // 15 章
+public override void OnStationEntered(VRCPlayerApi p) { ... } // 16 章
+public override void Interact() { ... }                       // 17 章
+```
+
+骨架几乎一模一样：先有一个**事件方法**，里面通常有一行**条件判断**，再调用一个**具体动作**。
+
+这一节不学新操作，把这条隐线抽出来。看穿它之后，下次见到一个没做过的交互，能自己反推它由什么组成。
+
+## 三段式拆解
+
+把第四部所有交互按同一个三段式拆开：
+
+### 事件：是什么让脚本醒过来
+
+事件回答：「谁触发的，什么时候。」
+
+VRChat 世界里所有自定义逻辑都是被事件唤醒的，没有事件就没有执行。第四部用过的事件大致是这几类：
+
+| 类别 | 典型事件 | 谁触发 |
+| :--- | :--- | :--- |
+| 玩家主动操作 | `Interact` / `OnPickupUseDown` | 当前客户端的玩家 |
+| 玩家位置变化 | `OnPlayerTriggerEnter` / `OnPlayerTriggerExit` / `OnStationEntered` | 任意玩家（事件在所有客户端都跑） |
+| 玩家与物体的接触 | `OnPickup` / `OnDrop` | 抓 / 放物体的那个客户端 |
+| 时间 | `Update` / `SendCustomEventDelayedSeconds` 回调 | Unity 主循环 / VRChat 计时 |
+| 其他脚本 | 通过 `SendCustomEvent` 调来的方法 | 主动调用的那个脚本 |
+
+VRChat 还有更多事件名（`OnPlayerJoined` / `OnPlayerRespawn` / `OnAvatarChanged` / 网络相关的 `OnDeserialization` ...），第六部讲多人同步时会再加进来。这一节不展开，只看现在用过的几种。
+
+每一个事件都有自己的「谁触发」。Interact 是当前客户端的玩家，Trigger 类是任意玩家，OnPickup 是抓这个物体的那个客户端。这件事直接决定了下一段的写法。
+
+### 条件：执行前要不要先过滤
+
+条件回答：「这次触发该不该真的执行。」
+
+第四部反复出现的两种条件：
+
+```cs
+if (!player.isLocal) return;     // 只让进入区域 / 进入 Station 的本人执行
+if (mirrorObject == null) return;  // 引用为空就别动
+if (isAnimating) return;          // 正在播动画，别再触发
+```
+
+这三种条件背后是三件不同的事：
+
+| 条件类型 | 在防什么 | 哪一章见过 |
+| :--- | :--- | :--- |
+| 玩家身份过滤 | 多人事件被所有客户端通知，得过滤「不是自己」 | 14 章 Trigger，16 章 Station |
+| 空引用保护 | UdonSharp 没有 try-catch，访问 null 字段会让事件中断 | 14、15、16 章都有 |
+| 状态锁 | 动画期间不让玩家再触发，防双击 | 17 章门的改进版 |
+
+事件那一段是「自动找上门来的」，作者管不了它什么时候触发。条件这段是作者**主动设的关卡**：决定哪些情况下让逻辑往下走。漏一道关卡，就会出现「朋友走进我房间，我这边音乐自己响」这种诡异现象。
+
+::::tip[条件语句的三层防御]
+按经验排序，写新交互时三道关卡按顺序问自己：
+
+1. **这个事件会被多少客户端通知？**只要不是 Interact / OnPickup 这种「完全本地」的事件，多半要 `if (!player.isLocal) return;`。
+2. **这条逻辑用到的引用，可能是空吗？**Inspector 里的引用槽默认 None。即使忘了拖一次，也不能让整个交互中断。`if (xxx != null)` 是体力活，但是必要的。
+3. **这条逻辑短时间内能否被重复触发？**如果是动画类、计时器类，加一个 `isXxx` 锁。
+
+后面章节会把「网络同步」这道关卡也加进来：状态变更要不要广播给其他人。这一章先记前三道。
+::::
+
+### 动作：最后到底干了什么
+
+动作回答：「条件过了之后，世界上发生什么改变。」
+
+第四部用过的动作大致是这几类：
+
+```text
+开关一个东西：     light.enabled = true / SetActive(true)
+改一个属性：       light.intensity = 3.5 / light.color = Color.red
+调一个内置方法：   audio.Play() / audio.Stop()
+推参数给动画系统： animator.SetBool("IsOpen", true)
+移动玩家：         Networking.LocalPlayer.TeleportTo(...)
+推一个延时事件：   SendCustomEventDelayedSeconds(...)
+```
+
+它们大致有三种风格：
+
+- **直接改字段**：`light.enabled`、`light.intensity`、`light.color`。相当于伸手按一个开关、转一个旋钮。简单粗暴。
+- **调一个方法**：`Play()` / `Stop()` / `SetActive()` / `TeleportTo()`。让现成方法替本脚本完成一件成套的事。
+- **推参数给一个状态机**：`animator.SetBool` 是典型。脚本把「现在的状态」丢出去，由 Animator 自己决定怎么演这段过渡。
+
+复杂一点的动作通常是这三种的组合。第 17 章那扇门里就同时有「翻 isOpen 字段」、「调 SetBool 推动画」、「调 SendCustomEventDelayedSeconds 推延时事件」三件。
+
+::::caution[动作里别堆逻辑]
+「动作」这段最容易膨胀。最初只是 `light.enabled = !light.enabled;`，后来要加音效，再后来要加判断、加循环、加状态。
+
+这时候停下来。如果发现一个事件方法里写到 30 行还停不下来，就该把动作抽成单独的方法（像第 17 章 `ApplyState()`、`OnAnimationFinished()` 那样）。事件方法本身留下「过滤 → 调一个方法」的两层骨架就好。
+
+代码不是越长越能干，是越短越好读。
+::::
+
+## 用三段式回头看第四部
+
+把五个动手章塞进同一张表，看一眼：
+
+| 章 | 事件 | 条件 | 动作 |
+| :--- | :--- | :--- | :--- |
+| 13 按一下，灯亮了 | `Interact` | （Interact 默认本地，不需要 isLocal） | 翻 `light.enabled` |
+| 14 走进区域音乐响 | `OnPlayerTriggerEnter / Exit` | `if (!player.isLocal) return;` + 判空 | 调 `audio.Play() / Stop()` |
+| 15 拿起来丢出去 | `OnPickup / OnDrop / OnPickupUseDown` | 判空 | 改 `light.intensity / color` |
+| 16 坐下、镜子、传送 | `OnStationEntered / Interact / OnPlayerTriggerEnter` | `isLocal` + 判空 | `SetActive` / `TeleportTo` |
+| 17 门和状态机 | `Interact` | `isAnimating` 锁 | 翻 `isOpen` + `SetBool` + 延时 |
+
+不同的「看起来很不一样」的交互，写下来都是这三段。新见到一个交互（「踩在台阶上台阶变色」、「按住按钮三秒装置启动」、「两个人都进入区域才打开门」）尝试照表填一遍：哪个事件、什么条件、做什么动作。三段填得出来，脚本骨架就在那里了。
+
+## VRChat 世界里几乎所有交互都是这个
+
+把视野拉远一点。VRChat 之外，整个游戏开发，整个用户界面编程，几乎都是同一个三段式：
+
+- **网页前端**：用户点击按钮（事件）→ 检查表单填没填全（条件）→ 提交数据（动作）。
+- **手机 App**：通知到达（事件）→ 检查用户偏好设置（条件）→ 弹出横幅（动作）。
+- **Unity 单机游戏**：玩家攻击键按下（事件）→ 角色不在硬直状态（条件）→ 播攻击动画 + 检测命中（动作）。
+
+差别只在事件名字、条件细节、动作 API 不一样。这套思路是事件驱动编程（Event-driven Programming）的基本款。
+
+VRChat 的特殊之处不在于这个模式本身，而在于它把「事件」做了一些 VR 友好的扩展：把「靠近 + 看着 + 按一下」打包成 `Interact`、把「任意玩家进入区域」打包成 `OnPlayerTriggerEnter`、把「被手抓住」打包成 `OnPickup`。这些事件背后其实仍是 Unity 的 Collider / Rigidbody / Trigger 体系，只是 VRChat 替作者把「VR 玩家手在哪里」、「桌面玩家光标对着哪个物体」这些细节处理了。
+
+理解这条之后，看 VRChat 之外的东西不会陌生：Unity 自带的 `OnTriggerEnter`、Web 前端的 `onclick`、移动端的 `onTap`，全都是同一种事件钩子。
+
+## 当三段式不够用时：组合多个机关
+
+最后一件事：单台机器的三段式骨架到一个限度就不够用了。
+
+举一个常见的例子：「只有所有钥匙都拿到，主门才能开」。这件事不是单台机器能解决的：每把钥匙是一台 Pickup，主门是一台 Animator，钥匙跟门之间得通信。
+
+通常的做法是再加一层「协调者」：一个挂在管理物体上的 UdonSharpBehaviour，负责追踪「现在拿到几把钥匙」。每把钥匙的 `OnPickup` 事件里调用 `coordinator.NotifyKeyPicked()`。协调者数到三把，再调 `mainDoor.SetBool("IsOpen", true)`。
+
+```text
+钥匙 A → OnPickup → 通知 Coordinator
+钥匙 B → OnPickup → 通知 Coordinator
+钥匙 C → OnPickup → 通知 Coordinator
+                       ↓
+                  Coordinator 数到 3
+                       ↓
+                  调主门 Animator.SetBool
+                       ↓
+                  门打开
+```
+
+每一台机器仍然是事件 → 条件 → 动作的三段式。新加的是「它们之间靠 SendCustomEvent / 直接引用对方脚本调方法」通信。第 30 章做多人小游戏时会用到一整套这种结构，本质是把好几台三段式机器接在一起。
+
+那是后面的事。第四部到这里能拿到的：单台机器的接线方式已经熟练，多台机器的组合后面慢慢学。
+
+## 这一章在脑子里留下来什么
+
+这一章想留下的就是一个透视的视角：
+
+- 见到一个不熟悉的 VRChat 交互，先问「这是什么事件？」
+- 然后问「哪些情况下不该执行？」
+- 最后问「满足条件后，到底是改了什么？」
+
+三个问题答完，脚本骨架就出现了。剩下的是去文档查 API 名字、去 Inspector 拖引用槽，那些都是体力活。
+
+第四部的最后一节是创作者视角，把这套技术能力跟一开始那个「我想做的世界」重新连起来。然后第五部站在岔路口，看不同类型的世界把这个三段式骨架拼成多么不一样的东西。

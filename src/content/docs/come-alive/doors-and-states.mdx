@@ -1,0 +1,390 @@
+---
+title: 17. 门、机关和状态
+description: 让一扇门记得自己是开还是关。把「按按钮」扩成「按按钮翻状态 + 按状态触发动画」，加一段简单的 Animator，就有了第一台真正的状态机器。
+difficulty: 新手
+estimatedMinutes: 50
+chapterType: hands-on
+requiresSDK: true
+summary: 第四部前几章每次按按钮都「瞬间发生」。这一章给一扇门加一个状态变量 isOpen 和一段 Animator 动画，按按钮翻转状态、Animator 跟着状态滑动门板。脚本第一次需要「记忆」，状态机和动画把记忆翻译成可见的过程。
+sidebar:
+  order: 5
+---
+
+第 13 章那个开关有一个特点：每次按下，灯**瞬间**变状态。第 14 章走进区域、第 15 章拿起来、第 16 章坐下来，全都是即时切换。
+
+但门不是这样。门按一下要花半秒滑开。再按一下要花半秒合上。中间那半秒动画里它处于「开了一半」的状态，不能再被点。门有自己的「现在是哪个状态」，按按钮翻状态，状态变了再触发动画。
+
+这一章做一扇真的门，把这条更长的链路一次走通：状态字段 → 翻转状态 → Animator 演示动画。下次见到机关、电梯、可切换显示模式的展品，骨架都从这里来。
+
+## 三件原本独立的事，串成一条链路
+
+整个机关大致是这样运转的：
+
+```text
+玩家按按钮  →  脚本翻转 isOpen  →  Animator.SetBool 通知动画机
+                                ↓
+                Animator 检查参数变化  →  播开门 / 关门动画
+```
+
+这一章会按从右往左的顺序搭：先做能播放的动画，再做控制动画的状态字段，最后接上玩家按按钮的事件。每一段单独做完都能验证，最后接起来就行。
+
+## 第一步：建一扇可旋转的门
+
+打开第二部那间小屋，在墙上找一个「想留出门洞」的位置。门最简单的做法是用一个 Cube 当门板。
+
+`Hierarchy` 空白处右键 `Create Empty`，命名 `DoorPivot`。位置摆在门铰链该在的位置，比如门框左边边缘：
+
+```text
+DoorPivot
+Position    -1.5,  1.0,   2     # 门框左侧上方
+Rotation     0,    0,     0
+Scale        1,    1,     1
+```
+
+`DoorPivot` 下右键 `3D Object` → `Cube`，命名 `DoorBoard`：
+
+```text
+DoorBoard
+Position     0.5,   0,    0     # 让门板从 pivot 向右展开
+Rotation     0,     0,    0
+Scale        1.0,   2.0,  0.05  # 1 米宽、2 米高、5 厘米厚
+```
+
+```text
+Hierarchy
+└─ DoorPivot          (空 GameObject，铰链点)
+   └─ DoorBoard       (Cube，门板本体)
+```
+
+这套结构很重要：**旋转 `DoorPivot` 等于让门绕铰链转**。如果不分两层，直接旋转一个 Cube，它会绕自身中心转，门看起来像在原地打转而不是绕铰链开门。
+
+::::tip[为什么要做「父物体当铰链 + 子物体当门板」]
+Unity 的 Transform 旋转是绕物体自己的原点（中心点）转的。Cube 的原点在它几何中心。要让门绕「铰链」转，就得让那个原点恰好在铰链位置。
+
+最便宜的做法不是去改 Cube 的几何中心（会变得很别扭），而是套一层空的父物体，把「原点」挪到铰链。父物体转，子物体跟着甩。这是 Unity 里所有「绕外部点旋转」的标准做法：旋转门、绕轴公转、武器握把摆动，全这套思路。
+::::
+
+## 第二步：给门做一段开关动画
+
+要让门「滑动」开关，得有一段动画。Unity 的 Animation 系统能记录「几个时间点上的旋转值」，然后按时间播放。
+
+这一章用最简单的「用 Animator 直接录制旋转」的做法。复杂动画后面章节再展开。
+
+### 录开门动画
+
+确保选中的是 `DoorPivot`（不是 `DoorBoard`），打开 Animation 面板（菜单栏 `Window` → `Animation` → `Animation`，或快捷键 `Ctrl+6`）。面板会显示 `Create` 按钮。点它。
+
+弹出保存对话框，命名 `Door_Open.anim`，保存到 `Assets/Animations/`（没这个目录就新建一个）。
+
+保存后会自动给 `DoorPivot` 加一个 `Animator` 组件，并创建一个同名 Animator Controller 文件 `DoorPivot.controller`。这一步先用着，下面会替换。
+
+录制开门动画：
+
+1. Animation 面板顶部的红色圆点（Record Mode），点击进入录制状态。整个 Inspector 会变红。
+2. 时间轴拖到第 `0:00`（最左端），在 Inspector 里把 `DoorPivot` 的 Rotation Y 设为 `0`。Animation 面板会出现一行 `Rotation` 关键帧。
+3. 时间轴拖到 `0:30`（半秒位置），把 `DoorPivot` 的 Rotation Y 改成 `90`（开 90 度的样子）。会自动多出一帧。
+4. 再次点击红色圆点，退出录制。
+
+这是开门动画的全部内容：从 Y=0 到 Y=90，半秒。
+
+### 加关门动画
+
+Animation 面板左上角下拉框（默认显示 `Door_Open`）→ `Create New Clip` → 命名 `Door_Close.anim`，保存到同一目录。
+
+切到 `Door_Close`：
+
+1. 进入录制。
+2. 第 `0:00`：Rotation Y = `90`。
+3. 第 `0:30`：Rotation Y = `0`。
+4. 退出录制。
+
+两段动画做完了。临时按 Animation 面板的播放键能预览各自的播放效果。
+
+## 第三步：用 Animator Controller 控制状态切换
+
+刚才 Unity 自动生成的 `DoorPivot.controller` 现在长这样：里头有两个状态 `Door_Open` 和 `Door_Close`，但它们之间没有切换条件，所以一直在播第一个。要让它根据「门是开还是关」切换，得加一个布尔参数和两条切换线。
+
+双击 `DoorPivot.controller` 打开 Animator 面板。
+
+### 加布尔参数
+
+Animator 面板左上角有个 `Parameters` 标签。点开 → `+` → `Bool`，命名 `IsOpen`。默认值不勾（关）。
+
+### 配置状态切换
+
+Animator 视图里两个状态之间画切换线：
+
+1. 右键 `Door_Close` 状态 → `Make Transition`，拖到 `Door_Open`。一条箭头连过去。
+2. 选中这条箭头，Inspector 里：
+   - `Has Exit Time`：**取消勾选**。这非常关键，下面专门讲。
+   - `Conditions` → `+` → `IsOpen` → `true`。
+3. 反方向也一条：右键 `Door_Open` → `Make Transition` → `Door_Close`。
+4. 选中这条箭头：
+   - `Has Exit Time`：取消勾选。
+   - `Conditions` → `+` → `IsOpen` → `false`。
+
+把默认状态确认一下：右键 `Door_Close`（在视图里那个橙色的就是默认状态）→ 如果不是橙色的话 `Set as Layer Default State`，把 `Door_Close` 设为默认。门一开始是关的。
+
+::::tip[Has Exit Time 是什么意思，为什么要关掉]
+Animator 切换状态有两种触发模式：
+
+- **Has Exit Time 勾选**：等当前动画播到指定百分比之后再切。适合「一段动画必须放完才能进下一段」的场景，比如格斗游戏的攻击动作。
+- **Has Exit Time 取消勾选**：条件一满足就切。
+
+门按一下要立刻有反应，不能等当前动画播完。所以两条转移都要把 `Has Exit Time` 取消。如果忘了关，会出现「按按钮门没反应、要等几秒才动一下」的诡异延迟。
+
+这是 Unity 动画状态机里最频繁撞上的坑之一，第一次撞上不知道在哪儿找原因。要立刻反应，就关掉 Has Exit Time。
+::::
+
+到这里 Animator 已经能根据 `IsOpen` 参数切换动画了。下一步把这个参数接到玩家按按钮的事件。
+
+## 第四步：写状态字段和按钮脚本
+
+`Assets/Scripts/` 下新建 U# Script `DoorController`：
+
+```cs title="DoorController.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class DoorController : UdonSharpBehaviour
+{
+    [Tooltip("门枢轴上的 Animator 组件")]
+    public Animator doorAnimator;
+
+    [Tooltip("门当前的开关状态。运行时由脚本维护，不要在 Inspector 里手动改")]
+    private bool isOpen = false;
+
+    public override void Interact()
+    {
+        // 状态翻转
+        isOpen = !isOpen;
+
+        // 把状态推给 Animator
+        if (doorAnimator != null)
+        {
+            doorAnimator.SetBool("IsOpen", isOpen);
+        }
+    }
+}
+```
+
+短短几行，但跟前几章已经多了一件新事：**`isOpen` 这个字段在两次 `Interact` 之间还活着**。第一次按它从 false 翻成 true，第二次从 true 翻成 false。脚本第一次需要记忆。
+
+这件事的术语叫「实例字段」。每个挂着 `DoorController` 的物体都有自己的一份 `isOpen`，不会被别的门搞乱。
+
+::::tip[为什么 isOpen 写成 private]
+`public` 字段会出现在 Inspector 里，方便拖引用和填初始值。`private` 字段不出现，只在脚本内部存着。
+
+`isOpen` 不该被 Inspector 里手动改，原因是它是「运行时状态」。开发者在编辑器里把它勾成 true，但 Animator 启动时 `IsOpen` 参数还是默认值 false，两边对不齐。游戏一跑起来玩家按一下，状态从 true 翻成 false，门「反向开」。
+
+让运行时状态用 `private`，让配置参数用 `public`，是简单且少出错的分工。这一章 `doorAnimator` 是要在 Inspector 拖的（配置），所以 public；`isOpen` 是运行时翻的（状态），所以 private。
+::::
+
+### 接到按钮上
+
+放一个 `DoorButton` 小 Cube 当门把手 / 开关。可以贴在门板边、贴在墙上、做成一个小拉手。
+
+```text
+DoorButton
+Position    -0.5,  1.2,   2     # 门旁边
+Scale        0.15, 0.3,   0.05
+```
+
+把 `DoorController.cs` 挂到 `DoorButton` 上。Inspector 里：
+
+- 把 `DoorPivot` 上的 `Animator` 组件拖到 `Door Animator` 字段（直接拖 `DoorPivot` 物体也行）。
+- `Udon Behaviour` 的 `Interaction Text` 设为 `开/关门`。
+- 确认 `DoorButton` 上有 `Box Collider`、未勾 `Is Trigger`。
+
+### Build & Test
+
+`Build & Test` 进世界。走到门把手前按 `V`，门绕铰链转开 90 度。再按 `V`，门转回来。半秒动画看着是真的「滑开 / 合上」，不是瞬间切换。
+
+## 状态在哪、谁负责把它做出来
+
+回头看这条链路上数据是怎么流的：
+
+- **状态在脚本里**：`isOpen` 这个 bool 字段，是单一真实来源。脚本翻一下，状态变。
+- **状态被推给 Animator**：`doorAnimator.SetBool("IsOpen", isOpen)` 把 C# 的状态推到 Animator 的参数里。
+- **Animator 把状态变成动作**：根据 `IsOpen` 参数切换状态，播对应动画。
+
+这三件事各管各的。换句话说：脚本不直接旋转门板。它只负责「现在该开还是关」，旋转的事让 Animator 做。
+
+::::tip[为什么不直接在脚本里改 Rotation]
+确实可以直接 `transform.localRotation = Quaternion.Euler(0, isOpen ? 90 : 0, 0);`，按一下门瞬间转到位。但这样有几件事得自己搞：
+
+- 想让门**滑开**而不是**瞬切**？要在 Update 里写 Lerp / Slerp 插值。
+- 想加开门音效、滑动到一半时改材质、半开状态卡住一会儿？全得手写。
+- 后面想换成「自动门 + 按钮门 + 钥匙门」，全得改脚本。
+
+把「演示动作」交给 Animator 之后，脚本只剩「现在哪个状态」。换动画只改 Animator，加状态只加参数，写代码的部分小到一目了然。
+
+游戏开发里这是非常普遍的分工：**逻辑在代码里，演示在动画/材质/特效里**。两边只通过几个简单参数对话。第二部讲过的「组合优于继承」的味道又冒出来了。
+::::
+
+## 不止两个状态：用 int 做更复杂的机关
+
+门只有「开 / 关」两态，bool 够用。换成「红 / 黄 / 绿」三态信号灯就不够了，得用 `int`。
+
+VRChat 桌面信号灯例子：
+
+```cs title="TrafficLight.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class TrafficLight : UdonSharpBehaviour
+{
+    public Light trafficLight;
+
+    // 三种状态用三个常量代替魔法数字
+    private const int STATE_RED = 0;
+    private const int STATE_YELLOW = 1;
+    private const int STATE_GREEN = 2;
+
+    private int currentState = STATE_RED;
+
+    public override void Interact()
+    {
+        currentState = (currentState + 1) % 3;
+        ApplyState();
+    }
+
+    private void ApplyState()
+    {
+        if (trafficLight == null) return;
+
+        if (currentState == STATE_RED)
+        {
+            trafficLight.color = Color.red;
+        }
+        else if (currentState == STATE_YELLOW)
+        {
+            trafficLight.color = Color.yellow;
+        }
+        else if (currentState == STATE_GREEN)
+        {
+            trafficLight.color = Color.green;
+        }
+    }
+}
+```
+
+跟门的脚本骨架是同一份：状态字段 → 翻转 → 推到外部表现。区别只是：
+
+- 状态从 bool 变成 int，能装更多档。
+- 用 `const int` 给每个数字一个名字（`STATE_RED` 比 `0` 容易读得多）。
+- 「推到外部表现」由 `ApplyState()` 这个内部方法集中处理。
+
+这套写法规模再大也按这个思路：**所有「现在的状态」集中放一起，所有「根据状态做表现」集中放一起**，两边各有自己的小函数。代码不容易乱。
+
+::::caution[别在 Interact 里直接写一长串 if]
+容易把「翻状态」和「做表现」全堆在 `Interact()` 里：
+
+```cs
+public override void Interact()
+{
+    if (currentState == STATE_RED) { trafficLight.color = Color.yellow; currentState = STATE_YELLOW; }
+    else if (currentState == STATE_YELLOW) { trafficLight.color = Color.green; currentState = STATE_GREEN; }
+    else { trafficLight.color = Color.red; currentState = STATE_RED; }
+}
+```
+
+写个三态没事，加到第五个、第六个状态时这块代码会变成一坨。其它地方也想「切到红灯」（比如计时器到点了）的时候，又得重写一份相同的 if-else。
+
+把「翻」和「用」分开，加新状态只动一处、其它触发方式（计时器、Trigger、网络事件）调用同一个 `ApplyState()`，代码一直保持小。
+::::
+
+## 防双击：用一个布尔锁住动画过程
+
+回到那扇门。再做一个细节：动画期间不让玩家再按。
+
+门正在滑开的半秒，玩家如果连点两下，会出现「门刚开到一半被指令重新关上、动画乱跳」的别扭表现。可以用一个简单的「锁」挡住：
+
+```cs title="DoorController.cs (改进版)"
+using UdonSharp;
+using UnityEngine;
+
+public class DoorController : UdonSharpBehaviour
+{
+    public Animator doorAnimator;
+
+    [Tooltip("动画时长，跟 Animator 里两段动画的时长一致")]
+    public float animationDuration = 0.5f;
+
+    private bool isOpen = false;
+    private bool isAnimating = false;
+
+    public override void Interact()
+    {
+        if (isAnimating) return;
+
+        isAnimating = true;
+        isOpen = !isOpen;
+
+        if (doorAnimator != null)
+        {
+            doorAnimator.SetBool("IsOpen", isOpen);
+        }
+
+        SendCustomEventDelayedSeconds(nameof(OnAnimationFinished), animationDuration);
+    }
+
+    public void OnAnimationFinished()
+    {
+        isAnimating = false;
+    }
+}
+```
+
+第 12 章见过 `SendCustomEventDelayedSeconds`：UdonSharp 不能用 yield / Coroutine，要「过 N 秒之后做某事」就用它。这里调用方式是：
+
+```cs
+SendCustomEventDelayedSeconds(nameof(OnAnimationFinished), animationDuration);
+```
+
+`nameof(OnAnimationFinished)` 把方法名转成字符串 `"OnAnimationFinished"`，`animationDuration` 是延迟秒数。半秒之后 VRChat 会调一次 `OnAnimationFinished`，把锁解掉。
+
+`OnAnimationFinished` 写成 `public` 是有原因的：第 12 章提过 `SendCustomEventXxx` 调用的目标方法必须是 `public`。这一行不是给外人调用的，但因为是延时事件的目标，必须 public。
+
+::::caution[nameof 拼错的沉默错误]
+`nameof(OnAnimationFinished)` 在编辑器里会被语法检查。但有些写法（比如手写字符串 `"OnAnimationFinished"`）不会。如果方法名拼错了，UdonSharp 编译能过、运行时找不到方法、Console 一般会报一行红字但不会让世界崩溃，结果就是「延时事件不响」。
+
+`SendCustomEventXxx` 的方法名参数用 `nameof()` 包一下：方法名后续被改时 IDE 会一并改，写成手写字符串则不会，留下的幽灵字符串只在运行时静默失败。
+::::
+
+## VRC Object Sync 不适合做门
+
+第 15 章末尾让 Pickup 配 `VRC Object Sync` 是顺路的。门不一样：门状态是布尔的、是按钮触发的、跟物理无关，强行加 `VRC Object Sync` 会让门的 Transform 被网络同步接管，反而打架。
+
+要让门在多人下同步，靠的是 `[UdonSynced]` 标记 `isOpen` 字段 + 在 `Interact` 里调 `RequestSerialization()` + 实现 `OnDeserialization()`。这是第六部要展开的事，第 28 章会从这扇门开始讲多人同步。这一章先把单人版本做扎实。
+
+## 自己改三个版本
+
+把 `DoorController` 当骨架：
+
+- 把动画时长从 0.5 秒改成 1.5 秒，门变得「沉重」。再改成 0.15 秒，门「啪」地打开。同一段脚本同一份 Animator，节奏完全不同。
+- 加一个开门音效：`public AudioSource openSound`，在 `isOpen` 翻成 true 的那一刻调 `openSound.Play()`。
+- 把按按钮换成走进区域：用第 14 章的 `OnPlayerTriggerEnter` 触发 `Interact()` 体内那段逻辑（提示：把翻转和 SetBool 抽出一个方法 `ToggleDoor()`，让 `Interact` 和 `OnPlayerTriggerEnter` 都调它）。
+
+第三个改完之后，门就变成了「自动门」。同一扇门、同一个 Animator，触发方式由几行代码决定。
+
+## 一段状态机交互的骨架
+
+这一章引入了第四部到现在为止最复杂的一条骨架：
+
+- 一个状态字段（`bool isOpen` / `int currentState`），是这台机器的「记忆」。
+- 一个动作触发（`Interact` / Trigger / 计时器），翻转状态。
+- 一段「把状态变成可见效果」的逻辑：调 `Animator.SetBool` 让动画播、改 `Light.color` 让灯变色、`SetActive` 让物体显隐。
+- 可选的「动画期间锁住」机制（`isAnimating` + `SendCustomEventDelayedSeconds`），防双击和打架。
+
+VRChat 世界里，凡是「按一下变样、再按一下变回来」的机关，几乎都用这个骨架。看到的越复杂的机关（电梯、可换皮的展品、解谜机关），多数也只是把这套骨架的状态从 bool 扩到 int，再扩到几个互相关联的字段。
+
+到这里第四部的所有动手章已经写完。从按一下开关，到坐下来照镜子，再到一扇会「记住自己」的门，这五章其实在讲同一件事：**触发 → 改状态 → 反映到世界上**。下一节理解章把这件事拆成一个能直接套用到任何新交互的三段式。
+
+## 本章参考
+
+- [Unity Manual：Animator 概述](https://docs.unity3d.com/Manual/AnimatorControllers.html)
+- [Unity Manual：Animation Transitions（含 Has Exit Time）](https://docs.unity3d.com/Manual/class-Transition.html)
+- [Unity Scripting API：Animator.SetBool](https://docs.unity3d.com/ScriptReference/Animator.SetBool.html)
+- [VRChat Creator Docs：Udon Special Variables and Events](https://creators.vrchat.com/worlds/udon/special-variables-and-events/)
+- [Implementing Doors（UhiyamaLab，2025-12，含同步版本）](https://uhiyama-lab.com/ja/notes/vrchat/udonsharp-gimmick-door/)

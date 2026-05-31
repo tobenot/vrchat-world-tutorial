@@ -1,0 +1,368 @@
+---
+title: 16. 坐下来，照镜子，走过去
+description: 三个 VRChat 房间最常见的配件一次到位：用 VRCStation 做一把能坐的椅子、用 VRCMirrorReflection 做一面默认关闭的镜子、用 Networking.LocalPlayer.TeleportTo 做一个走过去就送你到二楼的传送门。
+difficulty: 新手
+estimatedMinutes: 50
+chapterType: hands-on
+requiresSDK: true
+summary: 三件常驻配件一次配齐：坐下用 VRCStation，镜子用 VRCMirrorReflection（默认关闭+按钮开启+只反射 Player 层），传送用 Networking.LocalPlayer.TeleportTo + Trigger 区域。每件单看都简单，加一起房间立刻像个「完整」的房间。
+sidebar:
+  order: 4
+---
+
+走进任何一个 VRChat 休闲世界，几乎都会找到这三件东西：一把能坐下歇歇腿的椅子、一面给玩家照自己 avatar 的镜子、一道按一下或走过去就能跳到下一片区域的传送门。三件东西单看都不大，凑齐之后房间从「能站着看的空间」升级成「能停下来、能看到自己、能换地方」的房间。
+
+这一章把三个配件一次做完，每个都用最薄的一层逻辑。前几章的事件骨架还在，这次把它们接到 VRChat 三个不同的内置组件上。
+
+## 先把三个配件的位置摆好
+
+打开第二部那间小屋。这一章会在场景里加：
+
+- 房间一角放一把椅子（一个 Cube 就够）。
+- 一面墙边立一块镜子（一个 Quad）。
+- 一个传送区域（隐形 Trigger Collider）和一个传送目的点（空 GameObject）。
+
+为了少在 Hierarchy 里翻找，建议先建一个空 GameObject 当容器：
+
+```text
+Hierarchy
+├─ ...（已有的物体）
+└─ Fixtures           （新建的空 GameObject，Position 0,0,0）
+   ├─ Chair
+   ├─ MirrorRoot
+   └─ Teleporter
+```
+
+`Fixtures` 用来装这一章的三个配件，方便整体启用 / 禁用。Hierarchy 的整理对后期项目找东西非常关键，第 8 章铺过的 `Assets/` 目录建议跟这边的 Hierarchy 容器思路是一致的。
+
+## 第一节：用 VRCStation 做一把能坐的椅子
+
+`VRCStation` 是 VRChat 让玩家「被固定在某个位置和姿势」的官方组件。底下的载具、电影院座位、餐桌椅子，都是它。
+
+### 做一把最朴素的椅子
+
+`Fixtures` 下右键 `Create Empty`，命名 `Chair`。Position 摆到房间一角，比如 `2.5, 0, -2.5`。
+
+`Chair` 下右键 `3D Object` → `Cube`，命名 `Chair_Seat`，Transform：
+
+```text
+Position   0,    0.45,  0
+Rotation   0,    0,     0
+Scale      0.6,  0.05,  0.6
+```
+
+得到一块 60 厘米见方、5 厘米厚、悬在地面 45 厘米高的薄板。这就是椅面。要做得更像椅子，再加一块靠背 Cube，形状自由。
+
+### 加 VRCStation 和 EnterPoint
+
+选中 `Chair`（不是 `Chair_Seat`），`Add Component` → 搜 `VRC Station`，加上。
+
+Inspector 里 `VRC Station` 的字段：
+
+```text
+Player Mobility               Immobilize  # 坐着不能再走
+                                          # （选项：Mobile / Immobilize / Immobilize For Vehicle）
+Can Use Station From Station  False       # 已经坐在另一把上时还能不能切到这把
+Disable Station Exit          False       # 玩家可以自行起身
+Animation Controller          None        # 自定义坐姿动画的 Override Controller，这一章用不到
+Station Enter Player Location None        # 待会儿拖一个 Transform 进来
+Station Exit Player Location  None
+Seated                        True        # 应用坐姿动画
+```
+
+`Seated` 勾上之后 VRChat 会用坐姿姿势放玩家。要做的是「立着的传送阵」那种 Station 时才把它关掉。
+
+接下来定位「玩家坐下后落点在哪里、面朝哪边」。`Chair` 下右键 `Create Empty`，命名 `EnterPoint`。Transform：
+
+```text
+Position   0,    0.40,  0      # 椅面之上一点点（玩家 root，默认在脚下）
+Rotation   0,    0,     0      # 蓝色 Z 轴指向玩家面朝的方向
+Scale      1,    1,     1
+```
+
+::::tip[为什么是这样？]
+VRChat 把玩家放进 Station 时，对齐的是玩家 root（在头像层级里默认落在脚下原点），不是腰、不是头。`EnterPoint` Y 设到椅面之上的位置（约 0.40），坐姿 IK 才能把骨盆抬到椅面、看着像「腿垂在椅面前」，而不是脚穿过椅面。
+
+朝向也容易踩坑。`EnterPoint` 上 Scene 视图的蓝色 Z 轴箭头指哪边，玩家就面朝哪边。如果把椅子摆得「朝墙」，记得旋转 `EnterPoint` 让它面向房间。脚位 + 朝向的轴，是 Station 一切坐姿正确性的来源。
+::::
+
+把 Hierarchy 里的 `EnterPoint` 拖到 `VRC Station` 的 `Station Enter Player Location` 字段。`Station Exit Player Location` 留空，VRChat 会让玩家在 Enter Point 附近起身。
+
+### 给椅面加 Collider 和 Interaction Text
+
+玩家走到椅子前要能瞄准椅面。`Chair_Seat` 自带 `Box Collider`，保留即可。
+
+但 VRCStation 默认不会把椅面的 Collider 当成「可点击区域」。它需要的是 `VRC Station` 同一物体上有 Collider。
+
+最稳的做法是把 `Chair_Seat` 上的 `Box Collider` 复制配置过去：
+
+1. 选中 `Chair`，`Add Component` → `Box Collider`。
+2. `Center` 设为 `0, 0.45, 0`，`Size` 设为 `0.6, 0.05, 0.6`，跟 `Chair_Seat` 上的盒子重合。
+3. 保留 `Chair_Seat` 自身的 Collider 不删，那一份继续负责物理碰撞（玩家撞到椅面会停）。
+
+`VRC Station` 下面会有一个隐藏的 `Interaction Text` 字段（从 SDK 内部拿，不在 Inspector 顶部显示）。装上 `VRC Station` 时如果出现一个 `Udon Behaviour` 占位，里面也有 `Interaction Text`。把它填上：
+
+```text
+Sit
+```
+
+### Build & Test
+
+`Build & Test` 进世界。走到椅子前，光标对准椅面，头顶提示 `Sit`。按 `V`，玩家被放进椅面上方，坐姿生效，视角也固定。再按一次 `V` 起身。
+
+如果坐下去之后脚穿透椅面，回 Unity 把 `EnterPoint` 的 Y 拉高一点，多调几次直到看着自然。VR 里坐姿的视角高度比桌面下不一样，最终位置以拉朋友实际进 VR 测试为准。
+
+::::caution[椅子第一次踩的两个坑]
+1. **走到椅子前看不到 `Sit` 字** → 多半是 `VRC Station` 同一物体上没有 Collider。`Chair_Seat` 子物体上的 Collider 不算。
+2. **坐下后视角飘到房间外** → `EnterPoint` 的 Position 没改，留在 `0,0,0` 那种远离椅面的位置。回 Unity 把它的 Position 调到椅面正上方一点点。
+::::
+
+### 一段进出椅子的脚本（可选）
+
+`VRCStation` 提供两个事件让作者在玩家坐下 / 起身时做点事：
+
+```cs
+public override void OnStationEntered(VRCPlayerApi player) { ... }
+public override void OnStationExited(VRCPlayerApi player) { ... }
+```
+
+跟第 14 章的玩家事件一样，这两个会在**所有玩家客户端**都触发，要按需求加 `if (player.isLocal) return;` 或 `if (!player.isLocal) return;` 过滤。
+
+一个常见小用法：玩家坐上去之后把这把椅子标记为「占用」，别人就别再点了。
+
+```cs title="ChairOccupancy.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+public class ChairOccupancy : UdonSharpBehaviour
+{
+    public override void OnStationEntered(VRCPlayerApi player)
+    {
+        // 所有人客户端都会执行：这把椅子在所有人眼里都失效
+        DisableInteractive = true;
+    }
+
+    public override void OnStationExited(VRCPlayerApi player)
+    {
+        DisableInteractive = false;
+    }
+}
+```
+
+`DisableInteractive` 是 `UdonSharpBehaviour` 自带的字段，`true` 时这个脚本所在物体的 `Interact` / `Sit` 提示和点击都失效。这一段不需要每个客户端都同步状态。只要每个客户端各自把「看到那把椅子上有人」翻译成「我也别点」，这件事在视觉上就成立了。多人同步层面会不会出现「两个人同时点同一把椅子」的极端情况，第六部展开。
+
+## 第二节：用 VRCMirrorReflection 做一面镜子
+
+VRChat 玩家进世界喜欢做的第二件事就是找镜子。镜子的实现简单，但镜子的性能成本是房间里所有元素中最高的之一，做的时候要考虑 ON/OFF 切换和反射层级。
+
+### 镜面用 Quad，不用 Plane
+
+`Fixtures` 下 `Create Empty` 命名 `MirrorRoot`，下面再 `3D Object` → `Quad`，命名 `Mirror`。Quad 的好处：默认朝 Z+ 方向，不需要再旋转 -90 度，反射方向不会上下颠倒。
+
+把 `Mirror` 摆到墙边，比如：
+
+```text
+Position    -3.5,  1.6,  0
+Rotation     0,    90,   0     # 让镜面朝向房间中央
+Scale        2,    2,    1     # 2 米宽、2 米高
+```
+
+具体角度看墙的位置调整。镜面的法线方向（Quad 的 +Z）要朝向房间，玩家站在房间里才能看到自己。
+
+### 加 VRCMirrorReflection
+
+选中 `Mirror`，`Add Component` → 搜 `VRC Mirror Reflection`，加上。
+
+Inspector 里几个核心字段：
+
+```text
+m_DisablePixelLights   False     # true 关掉镜中点光，省性能
+m_ReflectLayers        Everything   # 反射哪些层
+Mirror Resolution      Auto      # Auto 跟随屏幕分辨率，最高 2048×2048
+Custom Skybox          None      # 镜中天空盒可以单独设置
+```
+
+`m_ReflectLayers` 是这一章最该改的东西。默认值 `Everything` 会把场景所有层都渲一遍进镜子，相当于场景被画了两次。改成只反射 Player 层（角色和 avatar）已经够大多数「对镜整理 avatar」的需求，性能负担瞬间下降一大截。
+
+### 默认关闭 + 用按钮开启
+
+镜子是 VRChat 公认最贵的对象之一。社区里几乎所有讲性能优化的文章都会强调：**默认关闭，玩家想用时再开**。
+
+做法很简单：取消勾选 `Mirror` 物体顶部的复选框（让它默认 inactive），再用一个 Interact 按钮控制开关。
+
+`Fixtures` 下放一个小 Cube 当镜子开关，挂上一段几乎跟第 13 章一模一样的脚本：
+
+```cs title="MirrorSwitch.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class MirrorSwitch : UdonSharpBehaviour
+{
+    public GameObject mirrorObject;
+
+    public override void Interact()
+    {
+        if (mirrorObject == null) return;
+        mirrorObject.SetActive(!mirrorObject.activeSelf);
+    }
+}
+```
+
+挂在小 Cube 上，把 `Mirror` 物体拖到 `Mirror Object` 槽。`Interaction Text` 填 `镜子开关` 或 `Mirror`。
+
+::::tip[为什么镜子要默认关]
+镜子做的事是把场景从镜面位置再渲一次。一面 1080p 镜子等于额外一台屏幕在跑，两面镜子等于两台。性能预算还要分给 Avatar、灯光、阴影、视频播放器，玩家进世界一刹那挨一刀。
+
+默认关闭把「贵的事情」挪到玩家有意识的选择上。需要照镜子的人按一下，不需要的人完全不用付这份开销。这个原则在所有「昂贵但可选」的功能上都成立：高端粒子特效、视频播放器、复杂 Shader 材质，都按「默认关、按钮开」做。
+::::
+
+### Build & Test
+
+进世界后镜子默认是关的，墙上看到一块 Quad（带个默认材质）。走到 `MirrorSwitch` 前按 `V`，Quad 变成镜面，能看到自己 avatar。再按一次关掉。
+
+如果开了之后镜面是黑的：
+
+- 把 `m_ReflectLayers` 拉回 `Everything` 看是不是层级过滤过了。
+- `Mirror Resolution` 在 Quest 上不要拉到 `Unlimited`，会直接卡住。
+- Quad 的法线方向是不是朝向房间，旋转角度不对会让玩家站在镜子背面。
+
+::::caution[Plane 旋转 -90° 会让镜像翻转]
+看老教程时偶尔能看到「用 Plane 加 VRCMirrorReflection」的写法。Plane 默认法线朝上，要让镜面立起来必须 X 轴 -90°。这个旋转有时会让镜中世界上下颠倒。Quad 没这个问题，本书所有镜面都用 Quad。
+::::
+
+## 第三节：用 TeleportTo 做一个走过去就传送的门
+
+第 14 章用过 `OnPlayerTriggerEnter`。这一章把进区域的事件改成「传送玩家到另一个位置」。
+
+### 摆两个点：起点的 Trigger 和终点的 Marker
+
+`Fixtures` 下 `Create Empty` 命名 `Teleporter`。
+
+`Teleporter` 下：
+
+1. `Create Empty` 命名 `EntryZone`。这是触发区。`Add Component` → `Box Collider`，勾选 `Is Trigger`。`Size` 设为 `1.2, 2.2, 1.2`，做一块走到门口大小的隐形区域。`EntryZone` 的 Position 摆在房间靠近「想离开」的位置，比如 `0, 1.1, -3.8`。
+
+2. `Create Empty` 命名 `Destination`。这是目的点。Position 摆到想送玩家到的位置，比如二楼平台 `0, 4.5, 5`，Y 轴 `Rotation` 调成玩家落地后该面朝的方向（比如 `0, 180, 0` 让玩家面朝相反方向）。
+
+如果还没有「二楼平台」这种地方，把 Destination 临时摆在房间另一头（同样的 Y 高度）就能测。
+
+### 一段六行的传送脚本
+
+`Assets/Scripts/` 下新建 `Teleporter.cs`：
+
+```cs title="Teleporter.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+public class Teleporter : UdonSharpBehaviour
+{
+    public Transform destination;
+
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        if (!player.isLocal) return;
+        if (destination == null) return;
+
+        Networking.LocalPlayer.TeleportTo(destination.position, destination.rotation);
+    }
+}
+```
+
+挂到 `EntryZone` 上，把 `Destination` 物体拖到 `Destination` 字段。
+
+逐行扫一眼：
+
+- `if (!player.isLocal) return;` 第 14 章讲过：玩家事件在所有客户端都被通知。只有「进区域的就是自己」时才执行传送，否则会出现「别人进区域，自己被传走」的诡异现象。
+- `Networking.LocalPlayer` 拿到当前客户端的本地玩家。`TeleportTo` 是 `VRCPlayerApi` 上的方法，第一个参数是目标位置（Vector3），第二个是目标朝向（Quaternion）。
+- 直接传 `destination.position` 和 `destination.rotation`，等于「以这个 GameObject 的位姿为准」。
+
+`TeleportTo` 还有一个三参数重载，第三个参数是 `VRC_SceneDescriptor.SpawnOrientation`，控制传送后玩家朝向的对齐方式。两参数版本够用。
+
+### Build & Test
+
+进世界，走向 `EntryZone` 那块隐形区域，跨过线框那一刻视角瞬间切到 `Destination`。再走回来不会被反向传送（因为那块区域只在前一个位置，不在 Destination）。
+
+要做「双向门」，复制一份 `Teleporter`、再做一个反向 EntryZone，目的点指回原来的位置。两个 `Teleporter` 各管各的方向。
+
+::::caution[传送后头顶又掉下来]
+如果传送之后玩家落地几秒后又掉下去：
+
+- `Destination` 的 Y 高度太低，玩家被传到地板内部。把 Y 抬高一格（比如从 4.5 改成 4.7）。
+- `Destination` 周围没有可踩的地面，玩家直接坠落。
+- 传送目的点正好在另一个 `EntryZone` 内，触发了循环。两个 EntryZone 之间留够距离。
+::::
+
+### 用 Interact 替代 Trigger 也可以
+
+把 `OnPlayerTriggerEnter` 换成 `Interact`，传送区域变成传送按钮：靠近 → 看到提示 → 按一下才传走。要想做「传送门只在玩家主动选择时才生效」，这个版本更合适：
+
+```cs
+public override void Interact()
+{
+    if (destination == null) return;
+    Networking.LocalPlayer.TeleportTo(destination.position, destination.rotation);
+}
+```
+
+注意：用 Interact 时不需要 `isLocal` 过滤，第 13 章讲过 Interact 完全本地，按下的就是当前客户端。
+
+::::note[VRC Portal Marker 是另一种「传送门」]
+VRChat SDK 还有一个叫 `VRC Portal Marker` 的 Prefab，做的是「在世界 A 里立一个能进入世界 B 的入口」。它和 `TeleportTo` 解决的是不同问题：
+
+- `TeleportTo`：在**同一个世界内**把玩家挪到另一个位置。
+- `VRC Portal Marker`：让玩家**离开当前世界**进入另一个世界。
+
+第 35 章会专门聊跨世界传送门和导航连接。这一章只做世界内传送。
+::::
+
+## 三个配件一次完工
+
+从开局到现在，房间里多了：
+
+- 一把能坐的椅子 `Chair`，挂着 `VRCStation`。
+- 一面默认关、按钮开的镜子 `Mirror`，挂着 `VRCMirrorReflection`。
+- 一个能传到另一处的隐形区域 `EntryZone`，挂着自己写的 `Teleporter`。
+
+每一件单独的接线方式都跟前几章一模一样：一个 Collider（决定瞄准 / 触发区域），一段脚本（决定调什么），一个引用槽（决定操作哪个对象）。
+
+::::note[不同世界不同活法]
+- **休闲世界**最爱镜子和椅子。一组沙发加一面落地镜，玩家自然会停下来一聊就是半小时。
+- **游戏世界**几乎用不到镜子，但传送（重生、关卡切换）和 Station（载具、炮塔）是核心。
+- **展览世界**用 Station 做「观展座椅」，配合 `Disable Station Exit`，让玩家被锁在最佳观展位置直到看完一段动画 / 听完一段语音再放出来。
+- **舞台 / 活动世界**用 TeleportTo + Trigger 做后台限制：踩进观众席 OK，越过舞台边缘自动传送回观众区。
+
+同样三个组件，根据世界类型把字段填法、触发方式、是否默认开调一调，做的就是不同世界的不同事。
+::::
+
+## 自己改三个版本
+
+挑一个或几个改：
+
+- 给椅子加一个事件：玩家坐下时灯光稍微暗一点，离座时恢复（在 `OnStationEntered` 里调 `Light.intensity`）。
+- 给镜子开关加一段「按住 Interact 五秒切高画质 / 短按切开关」的逻辑。提示：用第 12 章 `SendCustomEventDelayedSeconds` 的延时事件思路，再补一个 `int qualityLevel` 字段。
+- 把 `Teleporter` 改成 `OnPlayerTriggerExit` 触发：人**走出区域**才传走，做「门口的告别」。
+
+第二个改起来最磨人，做完后回头看 SDK 自带的镜子 Prefab 会更顺眼。
+
+## 一段配件交互的骨架
+
+回到第四部反复出现的那个骨架：
+
+- 一个 GameObject + Collider（实体 / Trigger 看用途），决定瞄准 / 触发的范围。
+- 一个 SDK 自带组件（`VRCStation` / `VRCMirrorReflection` / 不需要也行）做实际「重活」。
+- 一段薄薄的 UdonSharp（开关镜子、传送、改 DisableInteractive）做「控制」。
+- 一组 `public` 字段引用具体目标（座椅 EnterPoint、镜子物体、传送终点）。
+
+每一章的「动作」在变，骨架在 stay 一致。下一章把这个骨架推到稍微难一点的地方：一扇门要记得自己是开还是关，按一下变开、再按一下变关。脚本第一次需要「记忆」。
+
+## 本章参考
+
+- [VRChat Creator Docs：VRC Station](https://creators.vrchat.com/worlds/components/vrc_station/)
+- [VRChat Creator Docs：VRC Mirror Reflection](https://creators.vrchat.com/worlds/components/vrc_mirrorreflection/)
+- [VRChat Creator Docs：Player Positions](https://creators.vrchat.com/worlds/udon/players/player-positions/)
+- [VRChat Creator Docs：Performance Tips](https://creators.vrchat.com/worlds/performance-tips/)
+- [Implementing Stations（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-gimmick-station/)
+- [Creating a Mirror System（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-gimmick-mirror/)
+- [Creating Teleporters（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-gimmick-teleporter/)
