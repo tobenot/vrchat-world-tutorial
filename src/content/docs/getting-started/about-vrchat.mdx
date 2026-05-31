@@ -28,14 +28,18 @@ VRChat Inc. 由 Graham Gaylor 和 Jesse Joudrey 在 2014 年成立，最初的�
 ```text
 2017 Feb    Steam Early Access 上线
 2018 Jan    Ugandan Knuckles 出圈，DAU 暴涨
-2019        Quest 一代支持上线
+2019 Dec    Quest 一代支持上线
 2020        SDK3 + Udon 发布，老的 SDK2 进入弃用倒计时
-2021        D 轮融资 8000 万美元
+2021 Jun    D 轮融资 8000 万美元
 2022        VCC（Creator Companion）发布
-2024        iOS 端正式上线
+2022 Jul    强推 EasyAntiCheat 反作弊，Steam 涌入近一万差评
+2023 Jun    Quest 一代停止支持
+2023        SDK2 的 UnityPackage 下架，新世界上传通道关闭
+2024 Jun    公司裁员约 30%
+2025 Oct    iOS / Android 端结束 beta，正式上线
 ```
 
-写本书时（2026 年中）日活十几万，节假日峰值并发能上 12–15 万。但公司规模一直不大，比起做大型 MMO 的工作室小得多。这一点下面要反复用到。
+写本书时（2026 年中），仅 Steam 平台的同时在线峰值就摸到过 13.6 万（2025 年元旦），加上 Quest 商店和移动端实际更多。但公司规模一直不大，公开员工数在百人量级，2024 年 6 月还经历过约三成的裁员。比起做大型 MMO 的工作室小得多，这一点下面要反复用到。
 
 ## VRChat 是 Unity 之上的一层「世界格式」
 
@@ -90,7 +94,7 @@ com.vrchat.worlds      世界专用：Scene Descriptor、Pickup、Station、Udon
 com.vrchat.clientsim   本地模拟器，不上传也能在 Unity 里测
 ```
 
-如果是 Avatar 项目，第二个会换成 `com.vrchat.avatars`。`base` 和 `clientsim` 两边共用。
+如果是 Avatar 项目，第二个会换成 `com.vrchat.avatars`。`base` 和 `clientsim` 两边共用。写本书时 `com.vrchat.worlds` 在 3.10.x 系列，玩家持久化数据等较新的 API 需要 SDK 不低于 3.7.4，后面相关章节会再点出版本要求。
 
 这三件套现在叫 SDK3。它的前面还有过两代：
 
@@ -98,7 +102,7 @@ com.vrchat.clientsim   本地模拟器，不上传也能在 Unity 里测
 - **SDK2（2018–2020）**：引入 `VRC_Trigger` 这个可视化事件触发器。新手友好，但写复杂逻辑时一个按钮会展开成几百个嵌套节点。
 - **SDK3（2020 至今）**：引入 Udon 和它的文本版本 UdonSharp。一次彻底重写，老世界要么迁移要么停在 SDK2 时代。
 
-SDK1 和 SDK2 已经停止支持，新世界只有 SDK3 一条路。但现在搜资料还能搜到大量 2020 年之前的中文教程和 YouTube 视频，它们大概率是 SDK2 的，看着熟悉但每一步都跑不通。这是新手第二常见的踩坑来源（第一是 Unity 版本错装）。
+SDK1 和 SDK2 已经停止支持。SDK2 的 UnityPackage 在 2023 年初下架，SDK2 世界的新上传通道也在同年关闭，已上传的老世界保留运行权但不能再更新，新世界只有 SDK3 一条路。但现在搜资料还能搜到大量 2020 年之前的中文教程和 YouTube 视频，它们大概率是 SDK2 的，看着熟悉但每一步都跑不通。这是新手第二常见的踩坑来源（第一是 Unity 版本错装）。
 
 :::caution[踩坑预警]
 看到一篇教程说「在物体上挂 `VRC_Trigger`」「把 SDK 拖到 Assets 根目录」「Build Control Panel 在菜单最下面」，三句里出现任何一句就是 SDK2 时代的，可以直接关掉。新一代的关键词是 Udon、UdonSharp、VCC、Packages。
@@ -112,13 +116,15 @@ SDK1 和 SDK2 已经停止支持，新世界只有 SDK3 一条路。但现在搜
 
 绕这一圈是为了安全。VRChat 客户端要执行陌生人写的代码：点开一个 Public 世界，里面的脚本是某个不认识的人写的。如果这段脚本能调 `System.IO.File.Delete`、能调 `System.Net.WebClient`、能调 `Process.Start`，玩家电脑就会被任意操作。
 
-VRChat 的解法是只允许调用一个白名单上的 API。这个白名单写死在 Udon 里，叫 **Class Exposure Tree**。`UnityEngine.Transform.position` 在白名单上能用；`System.IO.File.Delete` 不在，调用会被编译器直接拦下。
+VRChat 的解法是只允许调用一个白名单上的 API。这个白名单写死在 Udon 里，叫 **Class Exposure Tree**。`UnityEngine.Transform.position` 在白名单上能用；`System.IO.File.Delete` 不在，调用会被编译器直接拦下。想看完整白名单，可以在 Unity 编辑器里打开 Udon Graph，节点搜索框里翻一遍；或者查官方的 [Udon Node Reference](https://creators.vrchat.com/worlds/udon/) 页面，写脚本撞墙时第一个该问的就是它。
 
 这件事会带来三个具体后果：
 
 - 写脚本会不时撞上「这个 API 在 UdonSharp 里不能用」。常见 Unity API 大部分能用，但 LINQ、反射、`async/await`、自定义泛型类、`yield return`、`event` 等都不能用或行为不同。第 11 章会专门铺一节。
 - 执行效率比纯 C# 慢一到两个数量级。脚本要写得保守，不要每帧 `Update()` 里跑大循环。
 - 沙箱保护的是客户端不被陌生世界脚本攻击；它不保护世界本身的运行性能。写得很糙的脚本仍然能把帧率拖到个位数。
+
+沙箱管的是上传内容这一侧的代码。客户端进程那一侧 VRChat 用的是另一套机制：2022 年 7 月起强推 EasyAntiCheat 反作弊，禁用所有运行时客户端 mod，几天里 Steam 上涌入近一万差评，是平台史上最大的公关事件，最终妥协是保留 EAC 但开放部分挂件接口。这件事跟做世界没直接关系，但看到老教程提到「装个客户端 mod 就能 X」，可以默认那条路 2022 年之后已经走不通。
 
 UdonSharp 之外还有 **Udon Graph**，可视化连线版本，长得像 Unreal 的 Blueprint。两者编译产物相同，但 Graph 写复杂逻辑时节点会乱成一团，可读性迅速下降。这本书全程用 UdonSharp。
 
@@ -132,16 +138,19 @@ Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2
 
 ```text
 Windows PC          主力。SteamVR / Oculus 头显或纯 Desktop 模式都能玩
-Meta Quest 系列     独立 VR 头显，跑 Android。GPU 是 PC 中端的 1/10 量级
-iOS                 2024 上线。触屏，无 VR
-Android 手机        2024 起内测，写本书时仍是受限发布
+Meta Quest 系列     独立 VR 头显，跑 Android。当前指 Quest 2 / 3 / 3S / Pro，
+                    GPU 是 PC 中端的 1/10 量级。Quest 一代 2023 年 6 月停止支持
+iOS / Android 移动端   2023 年起 alpha / beta，2025 年 10 月才正式上线。
+                    触屏操作，无 VR
+macOS / Linux       没有官方客户端。Mac 用户走 Boot Camp、云游戏或 Wine，
+                    都不算稳定方案
 ```
 
 跨平台是 VRChat 创作里最贵的一块。一个 PC 上做得很美的世界塞进 Quest 的预算里，往往要把贴图压一半、把实时光全删、把 shader 换成更便宜的版本，最后视觉只剩五成。第 38 章会具体展开。
 
 ## 围绕在外面的生态
 
-VRChat 官方做引擎、做客户端、做 SDK，不做内容，也不做大部分创作辅助工具。所有内容、几乎所有创作工具都来自社区：
+VRChat 官方做引擎、做客户端、做 SDK，不做内容，也不做大部分创作辅助工具。所有内容、几乎所有创作工具都来自社区，而这个社区有相当大一块重心在日本：日本用户占比常年居前，MMD 文化、Avatar 经济、线上活动场次密度整套生态以日本社区为引擎，这也解释了为什么下面 Booth 排在第一位。
 
 - **Booth**：日本的同人销售平台，Avatar、Shader、世界 Prefab 的主交易市场。
 - **Gumroad**：欧美创作者的销售主场，付费 Shader（poiyomi、lilToon Pro）和模型常在这里。
