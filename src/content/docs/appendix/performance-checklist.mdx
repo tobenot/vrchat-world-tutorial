@@ -135,14 +135,9 @@ Quest 是渲染预算远低于 PC 的 Android 设备。下面这些分成两类�
 ### G.6.2 强烈建议项（违反能上传，但跑起来会塌）
 
 - [ ] 实时光数量 = **0**（全部 Mode = Baked）。
-- [ ] 单世界三角面 ≤ **250,000**（再小更稳）。
+- [ ] 单世界三角面 ≤ **250,000**（官方 Android 优化文档建议给世界预留的预算）。
 - [ ] 贴图最大尺寸 ≤ **1024**。
-- [ ] 所有 Material Shader 改成 `VRChat/Mobile/...` 系列：
-  - `VRChat/Mobile/Lightmapped`（性能最好，配合 Subtractive 用）
-  - `VRChat/Mobile/Bumped Diffuse`（带 Normal Map）
-  - `VRChat/Mobile/Toon Lit`（最便宜的卡通着色）
-  - `VRChat/Mobile/Standard Lite`（简化版 PBR）
-  - `VRChat/Mobile/MatCap Lit`（卡通 / Anime 风）
+- [ ] 所有 Material Shader 优先换成移动端友好 Shader。官方文档推荐世界使用 `Mobile/VRChat/Lightmapped` 并烘焙光照；也可以按画面需要选 `VRChat/Mobile/...` 系列。
 - [ ] 透明物体几乎为 **0**（移动 GPU 上半透明像素的代价远高于桌面 GPU）。
 - [ ] 烘焙了 Occlusion Culling。
 - [ ] 所有 Material 勾了 GPU Instancing。

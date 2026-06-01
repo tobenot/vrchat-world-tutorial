@@ -201,7 +201,7 @@ VRChat SDK 3.7.4 起提供的玩家数据持久化通道，让世界保存少量
 首次出现：[第 12 章 · 第一类：白名单里没有的 API](/programming/udonsharp-personality/#第一类白名单里没有的-api)。
 
 **`VRCUrl`** / **`VRCStringDownloader`**  
-VRChat 提供的受限 URL 类型与字符串下载工具。世界要从外部地址读文本只能走这套通道，普通 `System.Net.*` 调不到。URL 还要在 SDK 控制面板里登记。  
+VRChat 提供的受限 URL 类型与字符串下载工具。世界要从外部地址读文本只能走这套通道，普通 `System.Net.*` 调不到。官方 String Loading 文档列出一组可信域名；不在列表里的地址，需要玩家在设置中允许不受信任 URL 才会下载。  
 首次出现：[第 12 章](/programming/udonsharp-personality/#第一类白名单里没有的-api)。
 
 ---
@@ -735,7 +735,7 @@ VRChat 的镜子组件（`Add Component` 搜索框里显示为 `VRC Mirror Refle
 首次出现：[第 16 章 · 第二节：用 VRCMirrorReflection 做一面镜子](/come-alive/sit-mirror-teleport/#第二节用-vrcmirrorreflection-做一面镜子)。
 
 **`m_ReflectLayers`**（`VRCMirrorReflection` 字段）  
-告诉镜子要画哪些 Layer。剔除 `UI`、`Water`、`PlayerLocal` 等层后镜子开销会显著下降。  
+告诉镜子要画哪些 Layer。常见优化是只保留玩家相关层（如 `Player` / `PlayerLocal`），剔除家具、UI、特效等不需要在镜子里出现的层。  
 首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第二节用-vrcmirrorreflection-做一面镜子)。
 
 **`TeleportTo`**  
@@ -1251,3 +1251,4 @@ IDE 的自动补全和类型提示功能。检查 AI 给出的 UdonSharp API 名
 1. **章节锚点（`#xxx`）**：上面所有引用章节中某节的链接，都基于 Starlight 自动从中文 h2 标题转出的 slug。如果将来有章节标题改了，这里链接需要同步更新。本文件里所有锚点都是按写本文件时的章节标题手工生成的。
 2. **后续章节术语**：部分章节的术语仍未系统补齐，等对应正文写完或校订完再补。
 3. **版本注**：受 SDK 版本影响的词条统一加 `适用 SDK3.x / Unity 2022.3.22f1`。SDK 升级时，以 [VRChat Current Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) 当前页面为准。
+

@@ -24,7 +24,7 @@ VRChat 沙箱让 Udon 只能调用一份白名单内的 .NET / Unity API。判�
 | 普通 C# / Unity 里的写法 | 在 UdonSharp 里 | 替代 |
 |---|---|---|
 | `System.IO.File.ReadAllText(path)` | 调不到，沙箱硬性禁 | 想存玩家数据走 [Player Persistence API](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)（SDK 3.7.4+）；想从外部读文本走 `VRCUrl` + `VRCStringDownloader` |
-| `System.Net.Http.HttpClient` / `WebRequest` | 调不到 | `VRCUrl` + `VRCStringDownloader`；URL 还要在 SDK 控制面板里登记 |
+| `System.Net.Http.HttpClient` / `WebRequest` | 调不到 | `VRCUrl` + `VRCStringDownloader`；只能直接下载官方信任列表里的域名，其他地址需要玩家在设置里允许不受信任 URL |
 | `System.Reflection.*`（反射） | 调不到 | 反射能绕开静态白名单，整体禁。需要"按名字调用方法"用 `SendCustomEvent("方法名")` |
 | `System.Diagnostics.Process.Start(...)` | 调不到 | 没有等价物，世界不能启动外部程序 |
 | `System.Threading.*` / `Task` / `async` / `await` | 调不到 | 想"过 N 秒做某事"用 `SendCustomEventDelayedSeconds(nameof(M), N)` |
