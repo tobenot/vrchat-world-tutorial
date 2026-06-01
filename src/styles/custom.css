@@ -633,6 +633,13 @@ nav.sidebar-pane,
   background: var(--vrc-surface-1);
   border: 1px solid var(--vrc-border) !important;
   box-shadow: none !important;
+  /* 抵消正文 line-height 的半行距，让头像顶部与首行文字大写字母顶部视觉对齐 */
+  margin-top: 0.3em;
+}
+
+.vrc-author__body {
+  flex: 1;
+  min-width: 0;
 }
 
 .vrc-author__body > :first-child {
@@ -641,6 +648,72 @@ nav.sidebar-pane,
 
 .vrc-author__body > :last-child {
   margin-bottom: 0;
+}
+
+/* 移动端：头像堆叠到顶上、居中显示 */
+@media (max-width: 50rem) {
+  .vrc-author {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .vrc-author__avatar {
+    margin-top: 0;
+  }
+}
+
+/* 海报展示：1-4 张 16:9 图片自适应网格 */
+.vrc-posters {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0 0.5rem;
+  /* 默认每张图最小 18rem，自动换行铺满 */
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+/* 仅 1 张时：不要拉伸到全宽，保持适中尺寸 */
+.vrc-posters[data-count="1"] {
+  grid-template-columns: minmax(0, 32rem);
+}
+
+/* 2 张时：在窄屏堆叠，宽屏并排 */
+.vrc-posters[data-count="2"] {
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+}
+
+.vrc-poster {
+  margin: 0;
+  border: 1px solid var(--vrc-border);
+  border-radius: 12px;
+  background: var(--vrc-surface-1);
+  overflow: hidden;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.vrc-poster:hover {
+  border-color: var(--vrc-border-strong);
+  transform: translateY(-2px);
+}
+
+.vrc-poster img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  /* 不要继承 .sl-markdown-content img 的边框/阴影 */
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.vrc-poster figcaption {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  color: var(--sl-color-gray-2);
+  text-align: center;
+  border-top: 1px solid var(--vrc-border);
 }
 
 .vrc-qr-row {

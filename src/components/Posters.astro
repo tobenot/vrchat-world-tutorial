@@ -1,0 +1,55 @@
+---
+// 自动扫描 src/assets/posters/ 下的 webp 海报图，按 1-4 张自适应 16:9 网格渲染。
+// 用法：把 16:9 的 webp 图丢进 src/assets/posters/，文件名按字母顺序排列即为展示顺序。
+//   推荐命名：01-xxx.webp / 02-xxx.webp …
+//   可选：和图片同名的 .txt 文件作为图注（例如 01-xxx.webp + 01-xxx.txt）。
+// 没有任何文件时组件输出为空，不影响页面布局。
+
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+  /** 可选：覆盖默认图注 */
+  captions?: Record<string, string>;
+}
+
+const { captions = {} } = Astro.props;
+
+const modules = import.meta.glob<{ default: ImageMetadata }>(
+  '/src/assets/posters/*.{webp,png,jpg,jpeg,avif}',
+  { eager: true }
+);
+
+const posters = Object.entries(modules)
+  .sort(([a], [b]) => a.localeCompare(b))
+  .map(([path, mod]) => {
+    const filename = path.split('/').pop() ?? '';
+    const stem = filename.replace(/\.[^.]+$/, '');
+    return {
+      filename,
+      stem,
+      img: mod.default,
+      caption: captions[stem] ?? '',
+    };
+  });
+
+const count = Math.min(posters.length, 4);
+---
+
+{posters.length > 0 && (
+  <div class="vrc-posters not-content" data-count={count}>
+    {posters.map((p) => (
+      <figure class="vrc-poster">
+        <Image
+          src={p.img}
+          alt={p.caption || p.stem}
+          widths={[480, 720, 1080, 1440]}
+          sizes="(max-width: 50rem) 100vw, 32rem"
+          loading="lazy"
+          decoding="async"
+        />
+        {p.caption && <figcaption>{p.caption}</figcaption>}
+      </figure>
+    ))}
+  </div>
+)}
