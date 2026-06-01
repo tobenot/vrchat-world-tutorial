@@ -128,12 +128,106 @@ pagefind: true
 
 ---
 
-## TODO（按章节进度补充）
+## I.7 验证 UdonSharp API 是否真的存在
 
-- ⏳ 第 12 章 后：UdonSharp 限制相关问法（怎么问 AI 验证某 API 在不在 Class Exposure Tree）
-- ⏳ 第 28 章 后：网络同步问法
-- ⏳ 第 36 章 后：光照烘焙问法
-- ⏳ 第 38 章 后：性能瓶颈定位问法
+AI 给 VRChat 相关代码时**经常编 API 名**——`VRC_Teleporter`、`Networking.SendCustomEvent` 这种看着像那么回事但跑不起来的写法是常态。每次 AI 给你一个 `VRC*` / `Udon*` / `Networking.X` 开头的成员，先用这个模板让它自证：
+
+```text
+你刚才给我写了这一段 UdonSharp：
+
+[贴代码]
+
+请逐条回答：
+1. 代码里出现的每一个 VRC* / Udon* / Networking.X 开头的成员（类、方法、字段）
+2. 它在 SDK Control Panel 的 Class Exposure Tree 哪个节点下？给出完整路径，例如 `VRCPlayerApi → IsUserInVR()`
+3. 它的当前签名是什么？（参数类型、返回值类型）
+4. 它从哪个 SDK 版本起可用？是 SDK3 World 一直就有的，还是某个 3.x 之后加的？
+
+如果你不确定某一项，就明确写"不确定，需要去 udonsharp.docs.vrchat.com 查"，不要猜一个像那么回事的答案。
+```
+
+来源：[第 12 章 · UdonSharp 长得像 C# 但它有脾气](/programming/udonsharp-personality/)、[附录 D · UdonSharp 限制](/appendix/udonsharp-limits/)。**经验**：让 AI 自己给"完整路径 + 签名 + 起始版本"三栏，会逼它把不确定的部分暴露出来；只问"这个 API 存在吗"它几乎永远说"存在"。
+
+---
+
+## I.8 设计网络同步策略（第 28 章后）
+
+写多人世界遇到「这个状态要不要同步」「同步给谁」「什么时候同步」这一组问题时：
+
+```text
+我在做 VRChat 多人世界（UdonSharp，SDK3 World）。当前要同步的状态是：
+
+[一句话描述：如"一扇门的开关状态"/"一个分数计数器"/"一个 Pickup 物体的位置"]
+
+这个状态的特征：
+- 谁会改它：[只有 Master / 任何玩家都可以改 / 只有 Owner 改]
+- 改的频率：[偶尔 / 每秒一次 / 每帧]
+- 容许误差：[必须严格一致 / 允许迟个 1-2 秒 / 演示性，丢一两帧无所谓]
+- 玩家中途加入时：[必须看到当前状态 / 看不到也无所谓]
+
+请帮我决定：
+1. 用 [UdonSynced] 字段同步，还是用 SendCustomNetworkEvent 广播事件？
+2. 如果用 [UdonSynced]，选 None / Continuous / Manual 哪一档？为什么？
+3. 谁该是 Owner？需不需要在某些时候转 Owner？
+4. Late Joiner 的兼容怎么做？需要 OnDeserialization 里做什么？
+5. 列出 2-3 个最容易踩的坑（如"Master 离开时 Owner 自动转移导致状态丢"）。
+
+不要直接给完整代码，先给方案，我自己写。
+```
+
+来源：[第 28 章 · 同步状态](/with-others/tell-everyone/)、[附录 E · 网络同步决策表](/appendix/networking-decision/)。**经验**：先让 AI 在三轴（同步什么 / 谁来改 / 什么时候打包）上做决策，再写代码——直接让它给代码，几乎一定会出现 Continuous 同步高频字段、或在 `Update` 里调 `RequestSerialization` 这种典型错配。
+
+---
+
+## I.9 排查光照烘焙问题（第 36 章后）
+
+烘焙完发现画面不对（黑斑、漏光、整体偏暗、Quest 上不一样）：
+
+```text
+我在做 VRChat 世界，刚跑完一次 Lighting → Generate Lighting，结果：
+
+[描述现象，例如：墙根有黑斑 / 阴影边缘有方块状马赛克 / 烘焙后整个房间比预览暗了一档 / Quest 上看比 PC 灰一档]
+
+当前关键设置：
+- Mixed Lighting > Lighting Mode：[Baked Indirect / Subtractive / Shadowmask]
+- Lightmapping Settings > Lightmapper：[Progressive CPU / Progressive GPU]
+- Lightmap Resolution：__ texels per unit
+- Light Probe Group：[有 / 没有；如果有大概多少个探针]
+- Reflection Probe：[有 / 没有；Box Projection 是否勾上]
+- 主要 Directional Light 的 Mode：[Realtime / Mixed / Baked]
+- 物体 Static 标志：[全勾 / 部分勾 / 没注意]
+
+请按"先排除什么、再排除什么"的顺序帮我列检查清单，不要一次给十条建议。Quest 相关的注意事项放最后单独说。
+```
+
+来源：[第 36 章 · 光与影](/placeness/light/)、[附录 G · 性能检查清单](/appendix/performance-checklist/) 第 G.3 节烘焙部分。**经验**：让 AI 先给"按顺序的排查清单"，比直接让它"诊断"更有用——光照问题的可能原因太多，一次给十条建议你一条都跟不上。
+
+---
+
+## I.10 定位性能瓶颈（第 38 章后）
+
+世界跑得卡，但不知道卡在哪：
+
+```text
+我在 VRChat 世界里测性能，目标平台是 [PC / Quest]。
+
+当前测得的数字：
+- Stats 面板：FPS __，Tris __，SetPass calls __，Batches __
+- Profiler 主线程：__ ms（CPU），__ ms（Render）
+- Profiler GPU：__ ms（如果开了 GPU profiling）
+- 大致场景规模：__ 个 GameObject，主要内容是 [描述]
+
+我已经做过的优化：
+- [列出已做的，如"主要物体勾了 Static" / "材质开了 GPU Instancing" / "Reflection Probe 烘焙过"]
+
+请按"瓶颈最可能在哪"的顺序回答：
+1. 这组数字里哪一项最异常？（参考第 38 章给的 PC / Quest 预算）
+2. 异常的那一项最常见的三个原因分别是什么？
+3. 每个原因下，我应该用 Profiler / Frame Debugger / Stats / Occlusion Culling 哪个工具去验证？
+4. 不要让我把所有优化都做一遍——按"最可能在 X 上，先验证 X"的顺序给我下一步。
+```
+
+来源：[第 38 章 · 性能](/placeness/performance/)、[附录 G · 性能检查清单](/appendix/performance-checklist/) 第 G.1 节"测量先于优化"。**经验**：性能优化最容易踩的坑是"全做一遍"——AI 一次性给 20 条建议，你做完两小时还没搞清楚卡哪。让它先**指认瓶颈**再给方向，能省至少一半时间。
 
 ---
 

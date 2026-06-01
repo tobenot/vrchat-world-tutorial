@@ -10,7 +10,7 @@ pagefind: true
 
 每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖第 1–2 部基础词、第 4 部（10–17 章）的编程基础与交互词、第 6 部（26–30 章）的多人同步词，以及第 7–9 部新增门槛词。
 
-未覆盖的术语，[`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 里逐章登记了"等哪一章写完就该补什么"。
+未覆盖的术语，等正文新章节写到时再回头补这里。
 
 ---
 
@@ -82,7 +82,7 @@ Udon 字节码格式。脚本最终被编译成它，由 VRChat 的虚拟机执�
 
 **`Class Exposure Tree`**  
 Udon 允许调用的 .NET / Unity API 白名单。不在白名单上的 API（`System.IO.File.Delete`、`async/await`、自定义泛型类、反射、LINQ 等）调用会被编译器拦下。  
-首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见 ⏳ 附录 D。
+首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见[附录 D · UdonSharp 限制](/appendix/udonsharp-limits/)。
 
 **`UdonSharpBehaviour`**  
 VRChat 脚本必须继承的基类，对应普通 Unity 的 `MonoBehaviour`。把 AI 给的代码贴进 Unity 后，前两行如果出现 `: MonoBehaviour` 而不是 `: UdonSharpBehaviour`，要立刻替换。  
@@ -230,7 +230,7 @@ Unity 的版本类型之一。LTS 版只修 bug、不加新特性，维护周期
 
 **`ClientSim`**  
 VRChat SDK 自带的本地模拟器（`com.vrchat.clientsim`），不上传也能在 Unity 里测玩家行为。  
-首次出现：[第 2 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。详细用法待 ⏳ 第 41 章。
+首次出现：[第 2 章](/getting-started/about-vrchat/#sdk-三件套和它的两代前身)。详细用法见[第 41 章 · 测试你的世界](/surviving/testing-your-world/)。
 
 **`Library/PackageCache`**  
 Unity 项目下的本地缓存目录，Unity 编译时会高频读写。**不要进 git**，**不要被网盘同步**。  
@@ -314,7 +314,7 @@ Cloudflare 的对象存储服务。这里可以先把它理解成 VRChat 用来�
 
 **`Late Joiner`**  
 在实例已经跑了一段之后才加入的玩家。同步状态需要专门处理才能让他看到「之前发生过什么」。  
-首次出现：[理解章 A · 一张可以反复回看的全景图](/getting-started/world-pipeline/#一张可以反复回看的全景图)。详细见 ⏳ 第 29 章。
+首次出现：[理解章 A · 一张可以反复回看的全景图](/getting-started/world-pipeline/#一张可以反复回看的全景图)。详细见[第 29 章 · 后来的人怎么办](/with-others/late-joiners/)。
 
 **`VRC Scene Descriptor`**  
 告诉 SDK「这个 Unity 场景是 VRChat 世界」的描述组件，登记出生点、参考摄像机等。世界必装。  
@@ -460,7 +460,7 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`VRC Spatial Audio Source`**  
 3D 空间音效组件，离远了变小。比 Unity 原生 `Audio Source` 多一些 VRChat 端的限制（最大距离上限等）。  
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 33 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见[第 33 章 · 声音和氛围](/placeness/sound-and-mood/)。
 
 **`VRC Mirror Reflection`**  
 生成镜子。镜子是 VRChat 性能最重的几样东西之一，做休闲世界时谨慎用。  
@@ -472,7 +472,7 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`Udon Behaviour`**  
 挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。  
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第三、四部。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见第三部（[第 12 章 · UdonSharp 长得像 C# 但它有脾气](/programming/udonsharp-personality/)起）和第四部（[第 13 章 · 可以按的东西](/come-alive/press-and-light/)起）。
 
 ---
 
@@ -496,7 +496,7 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`Area Light`**（面光源）  
 柔和的大面积光，通常需烘焙进 lightmap。本书前期不用。  
-首次出现：[第 9 章](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 36 章。
+首次出现：[第 9 章](/workbench/materials-light/#light空间情绪的开关)。详细见[第 36 章 · 光与影](/placeness/light/)。
 
 **`Audio Source`**  
 Unity 原生音频组件。VRChat 世界里通常优先用 `VRC Spatial Audio Source` 替代。  
@@ -572,11 +572,11 @@ Override 的两种处理：Apply 把 Override 写回 Prefab 模具，Revert 把�
 
 **`Standard Shader`**  
 Unity 内置的 PBR 标准 Shader。本书前期默认用它。  
-首次出现：[第 9 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细见 ⏳ 第 37 章。
+首次出现：[第 9 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细见[第 37 章 · 表面和材质](/placeness/surfaces/)。
 
 **「材质突然变粉色」**  
 Shader 丢了 / 不兼容 / 渲染管线对不上的视觉表现。处理：先把 Material 的 Shader 切回稳定可用的标准 Shader。  
-首次出现：[第 9 章](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细排查见 ⏳ 附录 F。
+首次出现：[第 9 章](/workbench/materials-light/#踩坑预警-材质突然变粉色)。详细排查见[附录 F · 报错排查](/appendix/errors/)。
 
 ---
 
@@ -584,11 +584,11 @@ Shader 丢了 / 不兼容 / 渲染管线对不上的视觉表现。处理：先�
 
 **`Lightmap`**（烘焙光贴图）  
 事先把光照算好烤成贴图，运行时不再实时计算。代价是贴图占内存、不能动。  
-首次出现：[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。详细见 ⏳ 第 36 章。
+首次出现：[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。详细见[第 36 章 · 光与影](/placeness/light/)。
 
 **`Light Probe`**  
 散布在场景里的探针，存间接光信息，让动态物体（玩家、Pickup）也能受静态烘焙光影响。  
-首次出现：[第 9 章 · VRChat 里要节制实时灯光](/workbench/materials-light/#vrchat-里要节制实时灯光)。详细见 ⏳ 第 36 章。
+首次出现：[第 9 章 · VRChat 里要节制实时灯光](/workbench/materials-light/#vrchat-里要节制实时灯光)。详细见[第 36 章 · 光与影](/placeness/light/)。
 
 **`Shadow Map`**  
 实时阴影的内部表示。Unity 每帧重算，灯多 + 投影开 = 帧率掉。  
@@ -604,7 +604,7 @@ VRChat 主力平台，SteamVR / Oculus 头显或纯 Desktop 模式都能玩。
 
 **`Meta Quest`**  
 独立 VR 头显，跑 Android。GPU 是 PC 中端的 1/10 量级，内容预算受严格限制。  
-首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见 ⏳ 第 39 章。
+首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见[第 39 章 · PC 和 Quest](/placeness/pc-and-quest/)。
 
 **`iOS`**（VRChat 端）  
 2024 年上线。触屏、无 VR。  
@@ -1249,5 +1249,5 @@ IDE 的自动补全和类型提示功能。检查 AI 给出的 UdonSharp API 名
 以下三件事现在还没完成：
 
 1. **章节锚点（`#xxx`）**：上面所有引用章节中某节的链接，都基于 Starlight 自动从中文 h2 标题转出的 slug。如果将来有章节标题改了，这里链接需要同步更新。本文件里所有锚点都是按写本文件时的章节标题手工生成的。
-2. **后续章节术语**：部分章节的术语仍未系统补齐，等对应正文写完或校订完再补。规划见 [`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 第 2 节。
-3. **版本注**：受 SDK 版本影响的词条统一加 `适用 SDK3.x / Unity 2022.3.22f1`。SDK 升级时按 `encyclopedia-plan.md` 第 5.2 节流程走。
+2. **后续章节术语**：部分章节的术语仍未系统补齐，等对应正文写完或校订完再补。
+3. **版本注**：受 SDK 版本影响的词条统一加 `适用 SDK3.x / Unity 2022.3.22f1`。SDK 升级时，以 [VRChat Current Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) 当前页面为准。
