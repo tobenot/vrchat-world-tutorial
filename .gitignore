@@ -26,3 +26,5 @@ scripts/.cache/
 # OG 卡生成器：per-page 派生 PNG（由 prebuild 钩子从 mdx 派生，不入仓）
 public/og/
 build.log
+
+design/
