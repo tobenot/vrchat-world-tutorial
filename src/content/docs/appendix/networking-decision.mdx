@@ -1,66 +1,335 @@
 ---
 title: 附录 E · 网络同步决策表
-description: VRChat 网络同步在不同场景下选哪种方案的决策树。第六部写完后填充。
+description: VRChat 网络同步在不同场景下选哪种方案的决策树。按"同步什么 / 谁来改 / 什么时候打包"三轴整理，每条配回链。
 sidebar:
   order: 5
-draft: true
-pagefind: false
 ---
 
-:::caution[占位中]
-这一份附录的主数据源是第六部（⏳ 第 25–29 章）。等同步系列章节写完后会按以下骨架填充。
-:::
+VRChat 的网络同步表面上花样不少（`VRC Object Sync` / `[UdonSynced]` / `SendCustomNetworkEvent` / `OnPlayerJoined` / Manager 模式…），但绝大多数场景能被三个问题问完：
+
+1. **同步什么**——是物体的位姿、一个状态字段，还是一次性事件？
+2. **谁来改**——任意人都可以，还是只能 Owner？
+3. **什么时候打包**——每帧自动？按下按钮才发？
+
+把这三问答完，方案基本就定了。这份附录把它落成几张可以查的表。
+
+主源：
+
+- [第 26 章 · 你看到的，别人不一定看到](/with-others/you-see-others-dont/) — 网络可见性的基本心智模型
+- [第 27 章 · Ownership](/with-others/ownership/) — 所有权机制
+- [第 28 章 · 告诉别人发生了什么](/with-others/tell-everyone/) — 同步字段 + 网络事件
+- [第 29 章 · 后来的人怎么办](/with-others/late-joiners/) — Late Joiner 处理
+- [第 30 章 · 多人小游戏](/with-others/multiplayer-mini-game/) — 综合案例（Manager 模式）
+
+词条层细节见[附录 A · 多人同步：所有权、网络事件、Manager 模式](/appendix/glossary/#多人同步所有权网络事件manager-模式第-26-30-章)。
 
 ---
 
-## 计划骨架
-
-### E.1 决策树骨架
+## E.1 主决策树
 
 ```text
-要同步什么？
+要让别人也看到这件事？
+│
 ├─ 物体的位置 / 旋转 / 速度
-│   └─→ VRC Object Sync
-│         + 是否需要被拾起？──→ VRC Pickup
+│   │
+│   ├─ 玩家可以拿起来扔
+│   │   └─→ Rigidbody + VRC Pickup + VRC Object Sync
+│   │       （三件套，第 15 章）
+│   │
+│   └─ 不需要拿起，只是要同步移动
+│       └─→ VRC Object Sync 单装即可
 │
-├─ 一个状态（开/关、计数、玩家选择）
-│   ├─ 状态变化频繁（每帧或多帧一次）：
-│   │   └─→ [UdonSynced] + Continuous Sync
-│   └─ 状态变化偶发（按一次按钮才变）：
-│       └─→ [UdonSynced] + Manual Sync + RequestSerialization()
+├─ 一个状态（开/关、计数、当前回合、玩家选择）
+│   │
+│   ├─ 状态变化频繁（每帧 / 多帧一次）：
+│   │   └─→ [UdonSynced] 字段
+│   │       + [UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
+│   │       （Continuous 模式下 Udon 自动每帧检查并打包变化字段）
+│   │
+│   └─ 状态变化偶发（按一次按钮才变；回合切换时才变）：
+│       └─→ [UdonSynced] 字段
+│           + [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+│           + Owner 在改完字段后调一次 RequestSerialization()
+│           （非 Owner 收到后从 OnDeserialization 里读新值）
 │
-├─ 一次性事件（按了按钮要广播给所有人）
-│   └─→ SendCustomNetworkEvent(NetworkEventTarget.All, "MethodName")
+├─ 一次性事件（按按钮要让所有人都知道）
+│   │
+│   ├─ 不需要"重放给迟到的人"：
+│   │   └─→ SendCustomNetworkEvent(NetworkEventTarget.All, nameof(M))
+│   │
+│   └─ 迟到的人也要知道事件发生过：
+│       └─→ 把"事件发生过"翻译成一个状态字段
+│           （比如 hasGameStarted = true）
+│           按上面"状态"分支处理
 │
-├─ 只想让某个特定玩家执行
-│   └─→ SendCustomNetworkEvent(NetworkEventTarget.Owner, ...)
-│       配合 Networking.SetOwner() 转移所有权
+├─ 只想让某个特定玩家执行（通常是 Owner）
+│   └─→ SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(M))
+│       配合 Networking.SetOwner(player, gameObject) 切换 Owner
 │
-└─ 后加入的人也要看到当前状态
-    └─→ Late Joiner 处理 (OnDeserialization / OnPlayerJoined)
+└─ 后加入的人也要看到当前状态（Late Joiner）
+    │
+    ├─ 状态用 [UdonSynced]：
+    │   └─→ 自动追：迟到玩家加入时会收到 OnDeserialization，
+    │       不用额外处理
+    │
+    └─ 状态靠"事件"维护（之前 SendCustomNetworkEvent 广播过）：
+        └─→ 追不上：迟到玩家根本没收到那次事件
+            必须改成同步字段，或在 OnPlayerJoined 时
+            从 Owner 主动 SendCustomNetworkEvent 发一份"当前状态"过去
 ```
 
-### E.2 Ownership 决策
+每个分支的展开见下面的小节。
 
-什么时候该 SetOwner？什么时候让 Owner 自然漂移？
+---
 
-### E.3 Manual Sync vs Continuous Sync 选择
+## E.2 同步什么 · 三种数据形态
 
-- Continuous：每帧自动序列化变化的字段，省心，但带宽大。
-- Manual：手动 `RequestSerialization()`，带宽可控，但漏调一次状态就走样。
+### E.2.1 物体的位姿（位置 / 旋转 / 速度）
 
-判断标准：变化频率、对带宽的敏感度、是否需要严格保证最新值送达。
+| 用什么 | 何时用 | 注意 |
+|---|---|---|
+| `VRC Object Sync` | 位置、旋转、速度需要同步给其他人时的标配 | 它本身不让玩家拿——拿要配 `VRC Pickup` |
+| `VRC Pickup` | 玩家可以"拿起"这个物体（手柄抓 / 鼠标点） | 拿起 / 放下时 VRChat 自动调用 `Networking.SetOwner` 把所有权转给抓的人，所以 Pickup 物体很少需要手动 `SetOwner` |
+| `Rigidbody` | 上面两者的物理基础 | `Is Kinematic` 视场景定（自由扔的小球关掉，门 / 抽屉常开） |
+
+回链：[第 15 章 · 拿起来，丢出去](/come-alive/pickup-and-throw/)、[第 27 章 · VRC Pickup 已经在悄悄转移所有权](/with-others/ownership/#vrc-pickup-已经在悄悄转移所有权)。
+
+### E.2.2 一个状态字段（开关、计数、回合、玩家选择）
+
+```cs
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+public class GameManager : UdonSharpBehaviour
+{
+    [UdonSynced] public int currentTurn;
+    [UdonSynced] public int scoreA;
+    [UdonSynced] public int scoreB;
+
+    public void NextTurn()
+    {
+        if (!Networking.IsOwner(gameObject)) return;  // 只能 Owner 改
+        currentTurn++;
+        RequestSerialization();                       // 打包发出去
+    }
+
+    public override void OnDeserialization()
+    {
+        // 非 Owner 在这里读新值并刷新本地表现
+        UpdateScoreUI();
+    }
+}
+```
+
+- **谁来改**：写一行 `if (!Networking.IsOwner(gameObject)) return;` 防御。Owner 之外的客户端动了 `[UdonSynced]` 字段也不会同步出去——只是浪费 CPU。
+- **什么时候打包**：`Manual` 模式下 Owner 改完字段后**必须调** `RequestSerialization()`，否则别人不会收到。
+- **谁会收到**：所有非 Owner 客户端、以及迟到加入的客户端，都会在 `OnDeserialization` 里看到字段最新值。
+
+回链：[第 28 章 · 同步变量四件套](/with-others/tell-everyone/#同步变量四件套)、[· 同步字段能装什么](/with-others/tell-everyone/#同步字段能装什么)。
+
+### E.2.3 一次性事件（按下广播）
+
+```cs
+public void OnHit()
+{
+    SendCustomNetworkEvent(NetworkEventTarget.All, nameof(PlayHitSound));
+}
+
+public void PlayHitSound()  // 必须 public
+{
+    audio.PlayOneShot(hitClip);
+}
+```
+
+- 调用方任意客户端都行（不限 Owner）。
+- 所有当前在场的客户端（**包括调用者自己**）都会执行 `PlayHitSound`。
+- **Late Joiner 收不到**——这次事件之后才进来的玩家不会被补一份。需要"迟到也要看见"的，把它改造成状态字段。
+
+回链：[第 28 章 · 一次性事件：SendCustomNetworkEvent](/with-others/tell-everyone/#一次性事件sendcustomnetworkevent)。
+
+---
+
+## E.3 谁来改 · 所有权（Ownership）
+
+### E.3.1 Owner 是什么
+
+每一个挂着 `UdonBehaviour` 的 GameObject，在 VRChat 服务器那里都登记了"现在哪个玩家是 Owner"：
+
+- `[UdonSynced]` 字段以 Owner 那份的值为准。
+- `RequestSerialization()` 只有 Owner 调用才有效。
+- 某些事件（比如 `OnDeserialization` 后的回调链）只在非 Owner 上跑。
+- Owner 离线时所有权会自动迁移到下一位玩家。
+
+回链：[第 27 章 · Owner 是什么、不是什么](/with-others/ownership/#owner-是什么不是什么)。
+
+### E.3.2 什么时候要 `SetOwner`
+
+| 情况 | 要不要 `SetOwner` |
+|---|---|
+| `VRC Pickup` 物体被拿起 | 不用——VRChat 自动转 |
+| 玩家按一个按钮，要让"按下那个人"成为 Owner，再由他改字段 | **要**：进入按钮处理时先 `Networking.SetOwner(Networking.LocalPlayer, gameObject)`，再改 `[UdonSynced]` 字段 + `RequestSerialization()` |
+| 单 Manager 模式：所有同步状态都集中在一个 `GameManager` 上 | 看场景：让 Master 长期当 Owner（默认行为），或在每次操作前 `SetOwner` 给操作者 |
+| 几个人轮流持有"当前回合执行者"身份 | **要**：每回合切换时 `SetOwner` 给下一个玩家，让他在自己客户端上做权威决策 |
+
+回链：[第 27 章 · 给灯按钮加 SetOwner](/with-others/ownership/#给灯按钮加-setowner)。
+
+### E.3.3 Ownership 钩子
+
+| 钩子 | 在谁那里跑 | 用来做什么 |
+|---|---|---|
+| `OnOwnershipRequest(VRCPlayerApi requester, VRCPlayerApi newOwner)` | 当前 Owner | 在转移**之前**判断"接管 ok 吗"，返回 `false` 拒绝 |
+| `OnOwnershipTransferred(VRCPlayerApi player)` | **所有**客户端 | 转移**完成后**收到通知，刷新 UI、抓最新状态 |
+
+回链：[第 27 章 · 拒绝接管](/with-others/ownership/#拒绝接管onownershiprequest)、[· 转完做什么](/with-others/ownership/#转完做什么onownershiptransferred)。
+
+---
+
+## E.4 什么时候打包 · Continuous vs Manual vs NoVariableSync
+
+每个 `UdonSharpBehaviour` 类上贴一条 `[UdonBehaviourSyncMode(...)]`，决定这个脚本怎么参与同步：
+
+| 模式 | 行为 | 适合什么 |
+|---|---|---|
+| `BehaviourSyncMode.Continuous` | Udon 每帧自动比较 `[UdonSynced]` 字段，有变化就打包 | 高频变化的小字段，例如 Pickup 类物体的 `holding` 状态、跟随玩家位置的指针。带宽不大但延迟低 |
+| `BehaviourSyncMode.Manual` | Udon 不会自动同步；Owner 必须手动调 `RequestSerialization()` | 状态变化偶发——按一次按钮才变、一回合才换一次。带宽可控，但**漏调一次就走样** |
+| `BehaviourSyncMode.NoVariableSync` | 字段完全不同步，但仍然能 `SendCustomNetworkEvent` | 薄壳脚本：挂在按钮、UI、传感器上，自己不存状态，只把交互转发给某个 Manager。本类不引入同步噪音 |
+| `BehaviourSyncMode.None` | 彻底关闭网络功能 | 完全本地的脚本（HUD、本地开关）。不同于 `NoVariableSync`，连 `SendCustomNetworkEvent` 也用不了 |
+
+VRChat 推荐的多人脚本架构，正是这四档配合用：**Manager 主类挂 `Manual`；按钮 / 显示物体 / 玩家身上的小道具挂 `NoVariableSync`，把交互转发给 Manager**。这样同步源唯一，调试简单。详见 [第 30 章 · 一个完整多人系统的形状](/with-others/multiplayer-mini-game/#一个完整多人系统的形状)。
+
+### E.4.1 Continuous vs Manual 的实操判断
+
+```text
+按多久变一次？
+├─ 每帧 / 多帧一次（持续动）         → Continuous
+├─ 几秒一次但不可预测               → Manual（在改动那一刻调 RequestSerialization）
+└─ 不动，按下按钮才动                → Manual
+```
+
+边界判断：
+
+- 字段是 4–8 字节的 `int` / `float` / `bool`、几乎不变 → **不要** Continuous（每帧检查也是开销）。用 Manual。
+- 字段大小有几十上百字节、每帧都在变 → 这种通常已经被 `VRC Object Sync` 覆盖了，不要走 `[UdonSynced]`。
+
+---
+
+## E.5 Late Joiner（后来的人怎么办）
+
+### E.5.1 自动追还是追不上
+
+| 机制 | 迟到玩家进来时会不会自动看到 | 原因 |
+|---|---|---|
+| `[UdonSynced]` 字段 | **会** | 加入瞬间 VRChat 会把每个 `Manual` / `Continuous` 脚本的最新字段值发给迟到客户端，并触发 `OnDeserialization` |
+| `VRC Object Sync` 物体的位姿 | **会** | 当前位置 / 旋转 / 速度作为最新状态由 Owner 主动同步 |
+| `SendCustomNetworkEvent` 广播过的事件 | **不会** | 那次广播是即时的，迟到玩家压根没收到 |
+
+> 一句话总结：**状态自动追，事件追不上**。
+
+回链：[第 29 章 · 同步变量自动追，事件追不上](/with-others/late-joiners/#同步变量自动追事件追不上)。
+
+### E.5.2 修法：把"事件"翻译成"状态"
+
+```cs
+// 原本：按下按钮广播一次"游戏开始了"
+SendCustomNetworkEvent(NetworkEventTarget.All, nameof(StartGame));
+//   迟到的人不知道游戏已经开始
+
+// 改成：用一个同步字段记录"游戏开始过没有"
+[UdonSynced] public bool gameStarted;
+public void StartGame()
+{
+    if (!Networking.IsOwner(gameObject)) return;
+    gameStarted = true;
+    RequestSerialization();
+}
+public override void OnDeserialization()
+{
+    if (gameStarted) ShowGameStartedUI();
+}
+```
+
+回链：[第 29 章 · 实战修法：错过的事件要不要补回放](/with-others/late-joiners/#实战修法错过的事件要不要补回放)。
+
+### E.5.3 修法：在 `OnPlayerJoined` 时定向补一份
+
+```cs
+public override void OnPlayerJoined(VRCPlayerApi player)
+{
+    if (!Networking.IsOwner(gameObject)) return;
+    // 只让 Owner 给新进来的人发"当前状态"
+    SendCustomNetworkEvent(NetworkEventTarget.All, nameof(BroadcastCurrentState));
+}
+```
+
+适合"状态本身在 Owner 上是临时变量、还没进 `[UdonSynced]`"的过渡场景。能用 `[UdonSynced]` 还是先用 `[UdonSynced]`。
+
+回链：[第 29 章 · OnPlayerJoined 是欢迎新玩家的钩子](/with-others/late-joiners/#onplayerjoined-是欢迎新玩家的钩子)、[· 实战修法：迟到注册到玩家列表](/with-others/late-joiners/#实战修法迟到注册到玩家列表)。
+
+---
+
+## E.6 Manager 模式 · 推荐架构
+
+VRChat 多人脚本的事实标准长这样：
+
+```text
+GameManager (1 个，挂在场景里)
+  └ [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+  └ [UdonSynced] 所有跨客户端的状态
+  └ public 方法（被按钮等薄壳调用）
+        ↓
+        在方法里：
+          1. SetOwner 给操作者（如有需要）
+          2. 改字段
+          3. RequestSerialization()
+
+GameButton, ResetButton, ScoreDisplay (N 个薄壳)
+  └ [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
+  └ Inspector 里拖一个 GameManager 引用
+  └ Interact() / OnTriggerEnter 里调用 manager.XXX()
+```
+
+**为什么这样架**：
+
+- **同步源唯一**：所有 `[UdonSynced]` 字段都在 GameManager 上，调试只盯一个地方。
+- **薄壳无同步噪音**：按钮、显示器自己不带状态，省网络也省脑子。
+- **职责清晰**：薄壳只管"被按了告诉 Manager"，Manager 只管"被告诉了改状态"。
+
+回链：[第 30 章 · 一个完整多人系统的形状](/with-others/multiplayer-mini-game/#一个完整多人系统的形状)。
+
+---
+
+## E.7 常见错配的对照
+
+| 症状 | 真实原因 | 修法 |
+|---|---|---|
+| 按下按钮，自己看到效果，别人没看到 | 按钮脚本只改了本地字段，没走网络 | 把字段标 `[UdonSynced]`，改完调 `RequestSerialization()`；或改成 `SendCustomNetworkEvent(All, ...)` |
+| 按下按钮，状态先在自己端变，过一会儿被别人 override 回来 | 改字段的人不是 Owner，他改的值只在本机有效，下一次 Owner 同步过来就盖掉 | 改字段前先 `SetOwner(Networking.LocalPlayer, gameObject)`；或者发 `SendCustomNetworkEvent(NetworkEventTarget.Owner, "改字段的方法")` 让 Owner 改 |
+| 调了 `RequestSerialization` 但别人没收到 | 调用者不是 Owner | 加防御 `if (!Networking.IsOwner(gameObject)) return;`；想让谁来改就先 `SetOwner` 给谁 |
+| 状态字段同步上了，但另一边的 UI 没刷新 | 没在 `OnDeserialization()` 里调刷新 | 把"刷新表现"的代码放进 `OnDeserialization` |
+| 后来加入的人看不到游戏已经开始 | `SendCustomNetworkEvent` 广播过的事件 Late Joiner 收不到 | 把"游戏已开始"做成 `[UdonSynced] bool gameStarted` 字段，进 `OnDeserialization` 时刷 UI |
+| 一个挂 `[UdonBehaviourSyncMode(None)]` 的脚本调 `SendCustomNetworkEvent` 没反应 | `None` 模式连网络事件都关 | 改成 `NoVariableSync`（保留网络事件，只关字段同步） |
+| 跨脚本调 `private` 方法 `SendCustomNetworkEvent` 没找到 | `SendCustomNetworkEvent` 只认 `public` 方法 | 改成 `public`；用 `nameof(M)` 防拼写错 |
+
+---
+
+## E.8 三句口诀
+
+把这三句记住，多数同步问题在脑子里就能预演完：
+
+1. **想让别人看到状态：用 `[UdonSynced]` 字段，Owner 改完调 `RequestSerialization`，非 Owner 在 `OnDeserialization` 里读。**
+2. **想让所有人立即跑一段代码：用 `SendCustomNetworkEvent(All, ...)`。但 Late Joiner 收不到。**
+3. **要让"按下按钮的那个人"成为权威：先 `SetOwner` 给他，再改字段。**
 
 ---
 
 ## 数据源章节
 
-- 第 26 章 你看到的别人不一定看到 → 网络可见性基础
-- 第 27 章 Ownership → 所有权机制
-- 第 28 章 同步变量和网络事件 → `[UdonSynced]` + `SendCustomNetworkEvent`
-- 第 29 章 后来的人怎么办 → Late Joiner
-- 第 30 章 多人小游戏 → 综合案例
+- [第 26 章 · 你看到的，别人不一定看到](/with-others/you-see-others-dont/) — 网络可见性基础
+- [第 27 章 · Ownership](/with-others/ownership/) — 所有权机制 + `OnOwnershipRequest` / `OnOwnershipTransferred`
+- [第 28 章 · 告诉别人发生了什么](/with-others/tell-everyone/) — `[UdonSynced]` + `SendCustomNetworkEvent`
+- [第 29 章 · 后来的人怎么办](/with-others/late-joiners/) — Late Joiner 处理
+- [第 30 章 · 多人小游戏](/with-others/multiplayer-mini-game/) — 综合案例 / Manager 模式
 
 外部参考：
+
 - [VRChat Networking Docs](https://creators.vrchat.com/worlds/udon/networking/)
-- [Network Components](https://creators.vrchat.com/worlds/udon/networking/network-components/)
+- [VRChat Network Components](https://creators.vrchat.com/worlds/udon/networking/network-components/)
+- [VRChat Network Sync Modes](https://creators.vrchat.com/worlds/udon/networking/network-sync/)

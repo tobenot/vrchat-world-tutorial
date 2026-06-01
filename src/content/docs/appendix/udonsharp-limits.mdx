@@ -1,65 +1,180 @@
 ---
 title: 附录 D · UdonSharp 限制
-description: UdonSharp 不支持 / 行为差异 / 性能注意的清单。第 12 章写完后填充。
+description: UdonSharp 不支持 / 行为差异 / 性能注意的清单。按白名单层 / 编译器层 / 工程化层三栏整理，每条配替代写法和回链。
 sidebar:
   order: 4
-draft: true
-pagefind: false
 ---
 
-:::caution[占位中]
-这一份附录的主数据源是 ⏳ **第 12 章 · UdonSharp 长得像 C# 但它有脾气**。等正文写完后会按以下骨架填充。  
-临时参考可以看：
+写 UdonSharp 时撞墙，绝大多数情况都是撞在三个层面之一：
 
-- 项目内 `Docs/pitfalls/udonSharpPitfall.md`（已有的踩坑积累，待迁移）
-- [UdonSharp 官方 Docs](https://udonsharp.docs.vrchat.com/)
-- [UdonSharp GitHub Issues](https://github.com/MerlinVR/UdonSharp/issues)
-:::
+1. **白名单层**：沙箱不让 Udon 调那个 API。表现是编译时报「unexposed member」或运行时干脆不动。原因见[第 12 章 · 为什么会有这些限制](/programming/udonsharp-personality/#为什么会有这些限制)。
+2. **编译器层**：UdonSharp 编译器自身还没把那条 C# 特性翻译过来。表现是编译报错。
+3. **工程化层**：语法不报错也能跑，但脚本布局或运行时调用方式不符合 UdonSharp 的工作流。
+
+这份附录把第 12 章的全部"撞墙点"按这三层归档，每条配一句替代写法和回链。要的不是死记，而是撞墙时知道去哪一层翻。
+
+主源是[第 12 章 · UdonSharp 长得像 C# 但它有脾气](/programming/udonsharp-personality/)。术语层细节见[附录 A · UdonSharp 限制与替代写法](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)。
 
 ---
 
-## 计划骨架
+## D.1 白名单层（沙箱拦的）
 
-填充后会有三张清单：
+VRChat 沙箱让 Udon 只能调用一份白名单内的 .NET / Unity API。判断某个 API 在不在白名单：`VRChat SDK Control Panel → Udon → Class Exposure Tree`，或者直接写一行让编译器告诉你。
 
-### D.1 不支持的 .NET / C# 特性
+| 普通 C# / Unity 里的写法 | 在 UdonSharp 里 | 替代 |
+|---|---|---|
+| `System.IO.File.ReadAllText(path)` | 调不到，沙箱硬性禁 | 想存玩家数据走 [Player Persistence API](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)（SDK 3.7.4+）；想从外部读文本走 `VRCUrl` + `VRCStringDownloader` |
+| `System.Net.Http.HttpClient` / `WebRequest` | 调不到 | `VRCUrl` + `VRCStringDownloader`；URL 还要在 SDK 控制面板里登记 |
+| `System.Reflection.*`（反射） | 调不到 | 反射能绕开静态白名单，整体禁。需要"按名字调用方法"用 `SendCustomEvent("方法名")` |
+| `System.Diagnostics.Process.Start(...)` | 调不到 | 没有等价物，世界不能启动外部程序 |
+| `System.Threading.*` / `Task` / `async` / `await` | 调不到 | 想"过 N 秒做某事"用 `SendCustomEventDelayedSeconds(nameof(M), N)` |
+| `System.Linq`（`.Where` / `.Select` / `.OrderBy`） | 调不到 | 写循环 + 临时数组；动态长度场景用 `DataList` |
+| `List<T>` / `Dictionary<TKey, TValue>`（泛型集合） | 当前 UdonSharp 不当作可用能力 | 数组 `T[]` 够用就用；不够用上 `DataList` / `DataDictionary`（命名空间 `VRC.SDK3.Data`）|
 
-候选条目（来自 [第 2 章 · 写的是 C#，跑的是 Udon](/getting-started/about-vrchat/#写的是-c跑的是-udon)）：
+关键判断：**这次想做的事是不是会让一段陌生代码访问玩家电脑上不该访问的东西**——文件 IO、外部网络、反射、多线程，全都满足这条，所以全禁。这条原则比死记 API 列表更顶用。
 
-- LINQ
-- 反射 / `System.Reflection`
-- `async/await`
-- 自定义泛型类
-- `yield return` / `IEnumerator`
-- `event` 关键字
-- `System.IO.*` / `System.Net.*` / `Process.Start`
-- `delegate` / `Action` / `Func` 直接用法
+回链：[第 12 章 · 第一类：白名单里没有的 API](/programming/udonsharp-personality/#第一类白名单里没有的-api)。
 
-每条会注明：行为（编译报错 / 静默失败 / 运行时报错）、替代方案、为什么被禁。
+---
 
-### D.2 行为差异
+## D.2 编译器层（UdonSharp 还没支持的 C# 特性）
 
-UdonSharp 跟标准 C# 看起来一样但行为不同的地方。例如：
+这些不是沙箱拦，是 UdonSharp 编译器自身能力的边界。表现是编译报错（红字停在 Console，不让进 Play Mode）。
 
-- 字段访问性 + `[UdonSynced]` 的组合规则
-- `OnEnable` / `OnDisable` 在 VRChat 里的语义差异
-- 跨脚本调用必须用 `SendCustomEvent`，不能直接 `script.Method()`
-- `null` 检查的特殊性
+| C# 特性 | 在 UdonSharp 里 | 替代 |
+|---|---|---|
+| `async` / `await` | 不支持 | `SendCustomEventDelayedSeconds(nameof(M), seconds)` |
+| `yield return` / `IEnumerator` / 协程 | 不支持 | 同上 |
+| 自定义泛型类 `class Foo<T>` 和大部分自定义泛型方法 | 不支持 | 按具体类型各写一份；或绕到 `DataList` + `DataToken` |
+| `interface`（接口） | 不支持 | 不要试图用接口抽象，按具体 `UdonSharpBehaviour` 子类写 |
+| `try` / `catch` / `finally` | 不支持 | **先判后用**：`if (target != null) { ... }`，参考[第 12 章 · 没有 try-catch，要靠提前判空](/programming/udonsharp-personality/#没有-try-catch要靠提前判空) |
+| `event` 关键字 | 不支持 | 用 `SendCustomEvent` / `SendCustomNetworkEvent` 模拟广播 |
+| 自定义 indexer `this[int i]` | 不支持 | 公开一个数组字段，外部用 `obj.array[i]` 直接读 |
+| 自定义 operator overload（`==` / `+` / `-`） | 不支持 | 写命名方法 `static Vec2 Add(Vec2 a, Vec2 b)` 代替 |
+| `UdonSharpBehaviour` 子类里的 `static` 方法 | 不支持 | 工具方法挪到 `Assets/Plugins/` 下的纯静态类（见 D.3） |
+| `new` 一个自定义数据类（如 `new Enemy()`） | 官方不当作支持的工作流 | 三选一：并行数组 / 挂在 GameObject 上的 USB 字段 / `DataList` + `DataDictionary`；见[第 12 章 · 普通 C# 的数据类思路在这里走不通](/programming/udonsharp-personality/#普通-c-的数据类思路在这里走不通) |
+| `ref` / `out` 参数 | 受限：基本场景可用，复杂场景仍可能编译失败 | 简单类型场景 ok；如果编译报错，改成"返回新值"或"读公开字段" |
+| C# 8 `switch` 表达式 `e switch { ... }` | 受限 | 用传统 `switch` 语句 `switch (e) { case ...: }` |
+| 字符串内插 `$"score = {score}"` | 当前版本可用 | 老社区帖子可能写"不能用"，按当前 SDK 跑一次编译器即知 |
 
-### D.3 性能注意
+回链：[第 12 章 · 第二类：UdonSharp 编译器还没支持的 C# 特性](/programming/udonsharp-personality/#第二类udonsharp-编译器还没支持的-c-特性)。
 
-- `Update()` 里的循环成本
-- 字符串拼接 / `string.Format`
-- 数组分配
-- 深层 GameObject 查询
+---
+
+## D.3 工程化层（脚本布局、生命周期、运行时行为）
+
+语法不报错、白名单也过得去，但写法不对照样跑不通。
+
+### 脚本布局
+
+| 情况 | 表现 | 修法 |
+|---|---|---|
+| 纯静态常量类、纯工具类放在 `Assets/Scripts/` 下 | UdonSharp 编译器报「Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset」 | 文件挪到 `Assets/Plugins/`；引用方式不变 |
+| 工具方法写成 `UdonSharpBehaviour` 子类的 `static` 方法 | 编译过不去 | 改写成实例方法（场景里挂一个工具脚本），或挪到 `Plugins/` 下的纯静态类 |
+
+回链：[第 12 章 · 纯静态类必须放在 Plugins/ 文件夹](/programming/udonsharp-personality/#纯静态类必须放在-plugins-文件夹)、[· UdonSharpBehaviour 上的 static 方法不可用](/programming/udonsharp-personality/#udonsharpbehaviour-上的-static-方法不可用)。
+
+### 运行时行为差异
+
+| 普通 Unity / C# 的写法 | 在 UdonSharp 里 | 替代 |
+|---|---|---|
+| `gameObject.AddComponent<MyBehaviour>()` 运行时挂脚本 | 走不通：UdonSharp 脚本要在编辑期就跟 GameObject 绑好 | 场景里预放好挂脚本的物体、禁用着，按需 `SetActive(true)` |
+| 跨脚本直接 `otherScript.Method()` | 取决于脚本引用方式：拿到具体子类引用可以直接调；只有基类引用要走 `SendCustomEvent` | 习惯写 `other.SendCustomEvent(nameof(Other.Method))`，跨脚本调用稳一些 |
+| `private` 方法被 `SendCustomEvent("M")` 调用 | 调不到——`SendCustomEvent` 只认 `public` 方法 | 真正要外部调的设 `public`；只本脚本用的设 `private`（也能少一点查找开销）|
+| 字段名写错了会运行时找不到 | 字符串名字写错了运行时才会报错 | 用 `nameof(MethodName)` 代替手写字符串，改名时编译器立刻提示 |
+
+### 生命周期方法签名
+
+UdonSharp 在哪里写 `override` 是反复混淆的点：
+
+```cs
+// Unity 标准生命周期方法（Start / Update / FixedUpdate / LateUpdate / OnEnable / OnDisable）
+// 不写 override
+private void Start() { ... }
+private void Update() { ... }
+
+// VRChat / UdonSharp 提供的事件（Interact / OnPickup / OnPlayerJoined / OnStationEntered / 等）
+// 必须写 public override
+public override void Interact() { ... }
+public override void OnPlayerJoined(VRCPlayerApi player) { ... }
+```
+
+记忆方式：**Unity 自己的生命周期方法不写 `override`，VRChat 专属事件写 `public override`**。
+
+回链：[第 12 章 · 一些惯用法上的小差别](/programming/udonsharp-personality/#一些惯用法上的小差别)。
+
+---
+
+## D.4 性能层（量级与高成本写法）
+
+UdonSharp 跑同一段逻辑可能比普通 C# 慢 200–1000 倍。零基础阶段不学复杂优化，但要先避开几种高成本写法。
+
+| 不要 | 可以 |
+|---|---|
+| 在 `Update()` 里遍历很多物体 | 缓存到字段、低频事件里更新 |
+| 在 `Update()` 里反复 `GetComponent` | `Start()` 里缓存组件引用到字段 |
+| 每帧跨 `UdonBehaviour` 调 `SendCustomEvent` | 把跨脚本调用挪到事件发生时，而不是每帧 |
+| 把一堆方法都写成 `public` | 真正要给外部调的才 `public`；只本脚本用的 `private` |
+| 用脚本做能用动画 / Collider / 现成组件解决的事 | 优先用动画 / Collider / 现成组件 |
+
+`GetComponent` 在 UdonSharp 里尤其贵：除了 Unity 本身的反射查找，还要额外检查 `UdonBehaviour` 和脚本类型。Inspector 拖拽引用既是为了方便也是为了少写运行时查找。
+
+回链：[第 12 章 · 性能不是最后才管的事](/programming/udonsharp-personality/#性能不是最后才管的事)。
+
+---
+
+## D.5 替代写法对照（最常用的几条）
+
+撞墙的瞬间最想看的就是这张表——左边是普通 C# / Unity 教程里的常见写法，右边是 UdonSharp 里的替代。
+
+| 想做的事 | 普通 C# / Unity 写法 | UdonSharp 替代 |
+|---|---|---|
+| 过 N 秒做一件事 | `Coroutine` + `yield return new WaitForSeconds(N)` 或 `await Task.Delay(N * 1000)` | `SendCustomEventDelayedSeconds(nameof(M), N)` |
+| 出错时兜住 | `try { ... } catch (NullReferenceException) { ... }` | `if (target != null) { target.X(); }` |
+| 动态长度的列表 | `List<T>` | `T[]`（先够用就先用）；`DataList` |
+| 键值映射 | `Dictionary<TKey, TValue>` | `DataDictionary` |
+| 一组数据对象 | `class Enemy { string name; int hp; }` + `new Enemy()` | 并行数组（`string[] names; int[] hps;`），或一个挂场景里的 USB 字段，或 `DataList` + `DataToken` |
+| 按名字调本脚本上的方法 | `Invoke("M", 0f)` 或反射 | `SendCustomEvent(nameof(M))` |
+| 按名字调别人脚本上的方法 | 反射 / `delegate` | `other.SendCustomEvent(nameof(Other.M))` |
+| 按名字调网络上某玩家脚本上的方法 | — | `other.SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(Other.M))` |
+| 多线程 / 后台任务 | `Task.Run` / `async` / `await` | 没有等价物。把工作分摊到多帧（每帧处理一小批）|
+| LINQ 查询 | `arr.Where(x => x > 0).Select(x => x.Name).ToArray()` | 写循环：`for (int i = 0; i < arr.Length; i++) { if (arr[i] > 0) ... }` |
+| 启动外部程序、读写本地文件 | `Process.Start` / `File.WriteAllText` | 不能 |
+| 从外部 URL 读文本 | `HttpClient.GetStringAsync(url)` | `VRCStringDownloader.LoadUrl(new VRCUrl(...), this)`，URL 在 SDK 控制面板登记 |
+| 持久化玩家数据 | `PlayerPrefs.SetInt` | `Player Persistence API`（SDK 3.7.4+）|
+
+---
+
+## D.6 撞墙时的排查顺序
+
+第 12 章末尾给了一份具体的排查顺序，移到这里方便回查：
+
+1. 看 Console 里有没有红字。**有红字优先按红字修**——多数报错说人话。
+2. 看脚本是否真的挂在了想让它执行的 GameObject 上。
+3. 看 Inspector 里每个引用槽是否真指向了目标物体。**槽位是 None 时调用会 `NullReferenceException`，当前事件中断，按按钮看起来就像没反应**。
+4. 看用到的 API 是否在白名单上（`Class Exposure Tree`，或让编译器告诉你）。**对应 D.1**。
+5. 看是否撞上 UdonSharp 编译器的特性限制（`async` / `yield` / 泛型 / `interface` / `try-catch` / USB 上的 `static`...）。**对应 D.2**。
+6. 看是否撞上工程化约束（纯静态类没放在 `Plugins/`、运行时 `AddComponent`、`SendCustomEvent` 没找到 `private` 方法...）。**对应 D.3**。
+7. 都不是，加 `Debug.Log` 把变量值打出来。
+
+第 40 章 [调试心态](/surviving/debugging-mindset/) 会把 7 这一步展开讲。
+
+回链：[第 12 章 · 一份排坑顺序](/programming/udonsharp-personality/#一份排坑顺序)。
 
 ---
 
 ## 数据源章节
 
-正式填充时数据来自：
+- [第 12 章 · UdonSharp，长得像 C# 但它有脾气](/programming/udonsharp-personality/) — 主源
+- [第 11 章 · 刚好够用的 C#](/programming/csharp-just-enough/) — 基础语法（哪些是标准 C#）
+- [第 40 章 · 调试心态](/surviving/debugging-mindset/) — Console、`Debug.Log`、`NRE` 排查
+- [附录 A · UdonSharp 限制与替代写法](/appendix/glossary/#udonsharp-限制与替代写法第-12-章) — 词条层细节
 
-- 第 12 章 主源
-- 第 40 章 报错与调试相关条目（双向链）
-- 项目内 `Docs/pitfalls/udonSharpPitfall.md` 迁移
-- 官方 [UdonSharp Docs](https://udonsharp.docs.vrchat.com/) 的 Limitations 章
+外部参考：
+
+- [UdonSharp 官方文档](https://udonsharp.docs.vrchat.com/)
+- [UdonSharp Random Tips & Performance Pointers](https://udonsharp.docs.vrchat.com/random-tips-&-performance-pointers/)
+- [VRChat Creator Docs · Data Containers](https://creators.vrchat.com/worlds/udon/data-containers/)
+- [VRChat Creator Docs · Player Persistence](https://creators.vrchat.com/worlds/udon/persistence/)
+- [VRChat Creator Docs · String Loading](https://creators.vrchat.com/worlds/udon/string-loading/)
+- [VRChat Creator Docs · ClientSim](https://creators.vrchat.com/worlds/clientsim/)

@@ -1,72 +1,516 @@
 ---
 title: 附录 F · 报错排查
-description: 常见 UdonSharp 编译错误、Unity Console 报错、运行时异常的排查指引。第 11、39 章写完后开始填充。
+description: 报错文本 → 可能原因 → 排查步骤 → 章节回链。Unity Console 编译错、Udon VM 运行时异常、SDK Validation、Build/Quest、材质/资源类的常见踩坑全收。
 sidebar:
   order: 6
-draft: true
-pagefind: false
 ---
 
-:::caution[占位中]
-这一份附录主要等⏳ 第 12 章（UdonSharp 限制）和⏳ 第 40 章（调试）写完后填充。其他章节出现报错时也会陆续追加。
-:::
-
----
-
-## 计划骨架
-
-每条报错条目格式：
+写世界过程中冒出来的红字、卡点、"按了没反应"，绝大多数都能在下面这几张表里查到。每条按这个格式：
 
 ```text
-**报错文本（关键字）**
+**报错关键字 / 现象**
 
-> 完整报错样例（如有）
+> 完整样例（如有）
 
-可能原因：
-1. ...
-2. ...
-
-排查步骤：
-1. ...
-
-相关章节：[X 章 · 节标题](slug)
-相关词条：[XXX](/appendix/glossary/#anchor)
+可能原因：1. ... 2. ...
+排查步骤：1. ...
+相关章节：[X 章 · 节](slug)
+相关词条：[词条](/appendix/glossary/#anchor)
 ```
 
-### F.1 候选条目
+分六组：
 
-按已写章节预测可能要收的：
+- **F.1 Unity Console 编译错**——红字停在编辑器里、不让进 Play。
+- **F.2 Udon 运行时异常**——能进世界，但脚本一执行就出问题。
+- **F.3 同步与多人**——表现差异在客户端之间。
+- **F.4 Build & SDK 上传**——Build & Test / Build & Publish / SDK Validation。
+- **F.5 资源、材质、Quest**——粉色材质、Shader 兼容、APK 限制。
+- **F.6 工具链 / 环境**——VCC、Unity Hub、`MAX_PATH`、Library 损坏。
 
-- **「This world has no Quest version」**（玩家端报错）  
-  来源：[理解章 A · 跨平台](/getting-started/world-pipeline/#跨平台pcquestios-各一份)。处理：Build Target 切到 Android 重新 Build & Publish。
+第 12 章末尾的[排坑顺序](/appendix/udonsharp-limits/#d6-撞墙时的排查顺序)和第 40 章末尾的[排错清单](/surviving/debugging-mindset/#一份可以贴墙的排错清单)是这份附录的"主入口"——撞墙的时候先按那两份顺序走一遍，再回来这里查具体报错。
 
-- **SDK 控制面板缺少 Scene Descriptor**  
-  已经写在了 [第 5 章 · 踩坑预警 · Build & Test 不工作时的检查清单](/getting-started/first-world/#第五步build--test)。这一条直接锚回去就行。
+---
 
-- **进世界后一直往下掉**  
-  同上，已经在第 4 章覆盖，本附录加锚点回链。
+## F.1 Unity Console 编译错
 
-- **「.cs 脚本在 UdonSharp 里报错说 `: MonoBehaviour` 不行」**  
-  来源：[第 3 章](/getting-started/ai-partner/#把答案当假设不当结论)。处理：换成 `: UdonSharpBehaviour`。
+红字停在 Unity 编辑器，不让进 Play Mode。一般是脚本编译过不去。
 
-- **材质突然变粉色**  
-  来源：[第 9 章 · 踩坑预警 · 材质突然变粉色](/workbench/materials-light/#踩坑预警-材质突然变粉色)。处理：把 Material 的 Shader 切回 Standard。
+### `script class cannot be found` / GUID 失效
 
-- **VCC 提示找不到 Unity / Console 红字一片 / 卡在右下角**  
-  已经在 [第 4 章 · 启动卡点速查](/getting-started/tools/#启动卡点速查) 写过，本附录锚点回链。
+> `The associated script can not be loaded. Please fix any compile errors and assign a valid script.`
 
-- **`MAX_PATH` / 中文路径相关：文件存在但读不到 / .meta 找不到对应资源**  
-  来源：[第 4 章 · 第三步：用 VCC 创建第一个世界项目](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+可能原因：
+1. Console 上方还有其他红字编译错（脚本编译失败 → 这条是"找不到编译产物"的连锁反应）。
+2. `Library/ScriptAssemblies` 目录损坏（Unity 中途崩溃、被杀进程后常见）。
+3. 资源 GUID 漂了（手动复制 `.cs` 但没复制 `.meta`，或 git 冲突时把 `.meta` 解错）。
 
-### F.2 数据源章节
+排查步骤：
+1. 先把上面其他红字编译错修掉，本错通常自动消失。
+2. 如果上面没有别的红字：关闭 Unity，删掉项目根的 `Library/ScriptAssemblies` 文件夹，重开。
+3. 如果还在，看出问题的 `.cs` 旁边有没有同名 `.meta`。没有的话从 `git` 历史拉回来。
 
-- 第 3 章（环境配置类）
-- 第 4 章（首次 Build & Test 类）
-- 第 9 章（材质 / Shader 类）
-- 第 12 章（UdonSharp 编译类）
-- 第 14 章（Trigger / Collider 类）
-- 第 28、29 章（同步类）
-- 第 38 章（性能 / 黑屏 / 帧率类）
-- 第 39 章（Quest / 跨平台类）
-- 第 42 章（版本管理 / 文件丢失类）
-- 第 44 章（发布失败类）
+相关章节：[第 40 章 · 第六节 · 常见错误的速读表](/surviving/debugging-mindset/#第六节常见错误的速读表)。
+相关词条：[`Library/ScriptAssemblies`](/appendix/glossary/#编程基础与-c-语法第-1011-章)、[`.meta` 文件](/appendix/glossary/#版本管理与许可第-42-43-章)。
+
+### `[UdonSharp] xxx is not exposed in Udon`
+
+> `[UdonSharp] System.IO.File.ReadAllText is not exposed in Udon.`
+
+可能原因：调了不在 VRChat Class Exposure Tree 白名单上的 API。常见的有 `System.IO.*` / `System.Net.*` / `System.Reflection.*` / `System.Threading.*` / `LINQ`。
+
+排查步骤：
+1. 打开 `VRChat SDK Control Panel → Udon → Class Exposure Tree`，确认目标 API 不在白名单。
+2. 按 [附录 D.1](/appendix/udonsharp-limits/#d1-白名单层沙箱拦的) 找替代写法（持久化用 Player Persistence API、外部数据用 `VRCUrl` + `VRCStringDownloader`、列表用 `DataList`，等等）。
+
+相关章节：[第 12 章 · 第一类：白名单里没有的 API](/programming/udonsharp-personality/#第一类白名单里没有的-api)。
+相关词条：[`VRCUrl`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)、[`Player Persistence API`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)。
+
+### `Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset`
+
+可能原因：在 `Assets/Scripts/` 这类普通目录下放了一个**不继承 `UdonSharpBehaviour`** 的纯 C# 类（典型是装常量的 `static class`）。UdonSharp 编译器扫到它就抗议。
+
+排查步骤：
+1. 把这个文件挪到 `Assets/Plugins/` 下。Plugins 走另一条编译路径，UdonSharp 不会要求文件必须是 `UdonSharpBehaviour`。
+2. 引用方式不变，仍然能从 UdonSharp 脚本里 `using` 它、调它的常量。
+
+相关章节：[第 12 章 · 纯静态类必须放在 Plugins/ 文件夹](/programming/udonsharp-personality/#纯静态类必须放在-plugins-文件夹)。
+相关词条：[`Plugins/`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)、[`UdonSharpProgramAsset`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)。
+
+### `: MonoBehaviour` 报错（脚本基类用错）
+
+> 把外部教程的 C# 文件直接拖进 VRChat 项目，里面写着 `public class Foo : MonoBehaviour`。
+
+可能原因：UdonSharp 项目里能挂上 VRChat 物体并被 Udon 执行的脚本，必须继承 `UdonSharpBehaviour`，不是 `MonoBehaviour`。
+
+排查步骤：
+1. 把 `: MonoBehaviour` 改成 `: UdonSharpBehaviour`。
+2. 检查脚本里有没有用到 UdonSharp 不支持的 C# 特性（`async`、`yield`、`interface`、自定义泛型……），按 [附录 D.2](/appendix/udonsharp-limits/#d2-编译器层udonsharp-还没支持的-c-特性) 替换。
+
+相关章节：[第 3 章 · 把答案当假设，不当结论](/getting-started/ai-partner/#把答案当假设不当结论)、[第 12 章](/programming/udonsharp-personality/)。
+相关词条：[`UdonSharpBehaviour`](/appendix/glossary/#编程基础与-c-语法第-1011-章)。
+
+### UdonSharp 编译器特性限制（`async` / `yield` / 接口 / 自定义泛型 / `try-catch`）
+
+> 编译器红字会直接告诉你哪个特性不支持，例如 `UdonSharp does not currently support 'try-catch'`。
+
+可能原因：UdonSharp 编译器自身能力的边界。常见的有 `async` / `await`、`yield return`、自定义泛型、`interface`、`event`、自定义 indexer / operator overload、USB 子类里的 `static` 方法、按"普通数据类"思路 `new` 的对象、`switch` 表达式等。
+
+排查步骤：按 [附录 D.2](/appendix/udonsharp-limits/#d2-编译器层udonsharp-还没支持的-c-特性) 一条条比对，每条都给了替代：
+- "过 N 秒做一件事"用 `SendCustomEventDelayedSeconds(nameof(M), N)`。
+- 没有 `try-catch` → 写之前判空 `if (x != null)`。
+- 没有 `List<T>` / `Dictionary` → 优先 `T[]`，不够用上 `DataList` / `DataDictionary`。
+
+相关章节：[第 12 章 · 第二类](/programming/udonsharp-personality/#第二类udonsharp-编译器还没支持的-c-特性)。
+相关词条：[`SendCustomEventDelayedSeconds`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)、[`DataList` / `DataDictionary` / `DataToken`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)。
+
+---
+
+## F.2 Udon 运行时异常
+
+能进世界、Console 没编译错，但脚本一执行就出问题。
+
+### `NullReferenceException` / NRE
+
+> ```text
+> NullReferenceException: Object reference not set to an instance of an object
+> DoorController.Interact () (at Assets/Scripts/DoorController.cs:18)
+> ```
+
+可能原因：
+1. **Inspector 里某个 `public` 字段没拖引用**（最常见）。
+2. 调了一个返回 `null` 的方法（`GetComponent<X>()` 没找到 X 组件），没判空就接着用。
+3. 引用的对象在运行中被销毁了（这种通常报 `MissingReferenceException`，见下条）。
+
+排查步骤：
+1. 双击红字跳到对应 `.cs:行号`，看那一行用了哪个变量。
+2. 回 Unity 编辑器看挂这个脚本的 GameObject，Inspector 里那个变量对应的引用槽是不是 `None`。
+3. 如果是 `GetComponent` 之类的返回值，加 `if (x != null)` 提前判空（参考 [第 40 章 · 第七节](/surviving/debugging-mindset/#第七节先学会判空少一半的事)）。
+4. UdonSharp 没有 `try-catch`——一发生 NRE 当前事件就中断、后面代码不再执行。"按按钮没反应"很常是 `Interact` 第三行 NRE 了，第四行根本没机会跑。
+
+相关章节：[第 40 章 · 第一节 Console 是免费的](/surviving/debugging-mindset/#第一节console-是免费的但要会读)。
+相关词条：[`NullReferenceException` / NRE](/appendix/glossary/#调试与测试第-40-41-章)。
+
+### `UdonBehaviour will be halted`（Udon VM 异常自停）
+
+> ```text
+> Error - [UdonBehaviour] An exception occurred during Udon execution,
+> this UdonBehaviour will be halted.
+> VRC.Udon.VM.UdonVMException: An exception occurred during EXTERN to
+> 'VRCSDK3VideoComponentsBaseBaseVRCVideoPlayer.__GetTime__SystemSingle'.
+> ---> System.NullReferenceException: ...
+> ```
+
+可能原因：当前 `UdonBehaviour` 抛了未捕获异常。Udon 的处理方式是**只熄火当事 `UdonBehaviour`**，不影响其他玩家、其他世界、其他脚本。被熄火的脚本上从此所有事件都不再触发，直到玩家重新进入世界。
+
+"按一次有反应、再按一次没反应""门第一下能开、第二下不动"这类时灵时不灵的问题，多半是中间发生了一次 halted。
+
+排查步骤：
+1. Console 右上角搜 `halted`，把所有这类异常一网打尽。
+2. 读 `--->` 后面的 `InnerException`，找真实根因（多数仍然是 NRE）。
+3. 堆栈里 `EXTERN to '...'` 那条会指出炸在哪个外部 API 调用上。结合调用上下文找到具体哪一行的引用是 `null`。
+4. 修法和 NRE 一样：调用前判空。
+
+相关章节：[第 40 章 · 第三节 Udon 异常自停](/surviving/debugging-mindset/#第三节udon-异常自停找halted)。
+相关词条：[halted](/appendix/glossary/#调试与测试第-40-41-章)、[EXTERN](/appendix/glossary/#调试与测试第-40-41-章)。
+
+### `MissingReferenceException`
+
+> `The object of type 'GameObject' has been destroyed but you are still trying to access it.`
+
+可能原因：代码里 `Destroy(...)` 了一个对象，之后又通过原引用调用它。Unity 引用槽里的"对象已销毁"和 C# 的 `null` 不完全一样——它是一个伪 null（`x != null` 也可能被判为 `false`）。
+
+排查步骤：
+1. 检查代码里有没有 `Destroy()` 或 `SetActive(false)` 之后还在用同一个引用。
+2. VRChat 世界里通常更稳的做法是**不要 `Destroy` 场景里预放好的物体**，用 `SetActive(false)` 替代。
+3. 引用清空时显式赋 `null`：`target = null;`。
+
+相关章节：[第 40 章 · 第六节 · 常见错误的速读表](/surviving/debugging-mindset/#第六节常见错误的速读表)。
+
+### `Cannot find method '...' on UdonBehaviour`
+
+> `[Udon] Cannot find method 'OnButtonPress' on UdonBehaviour 'GameButton (UdonBehaviour)'`
+
+可能原因：
+1. `SendCustomEvent("OnButtonPress")` 字符串方法名拼错了（少了大小写、写错了字母）。
+2. 目标方法是 `private` 的——`SendCustomEvent` 只认 `public` 方法。
+3. 目标脚本上根本没这个方法。
+
+排查步骤：
+1. 把字符串方法名换成 `nameof(OnButtonPress)`——改名后编译器立刻提示，不用等运行时。
+2. 检查目标方法的可见性：要被 `SendCustomEvent` / `SendCustomNetworkEvent` 调用的方法必须 `public`。
+3. 跨脚本调用时确认方法在的是不是你 Inspector 里拖的那个 GameObject。
+
+相关章节：[第 12 章 · 一些惯用法上的小差别](/programming/udonsharp-personality/#一些惯用法上的小差别)、[附录 D.3 · 运行时行为差异](/appendix/udonsharp-limits/#d3-工程化层脚本布局生命周期运行时行为)。
+相关词条：[`SendCustomEvent`](/appendix/glossary/#多人同步所有权网络事件manager-模式第-26-30-章)、[`nameof()`](/appendix/glossary/#拿取座椅镜子animator第-1517-章)。
+
+### 按按钮没反应（不报错也不打日志）
+
+可能原因：
+1. 按钮所在 GameObject 没装 `Collider`，或装了但 `Is Trigger` 和 `Interact` 的预期不匹配。
+2. 脚本没真的挂上去，或挂错了对象。
+3. 脚本上一次跑到一半就 halted 了——所以**这一次根本没触发任何事件**。
+4. `Interact` 在 VRChat 里写法是 `public override void Interact()`，没写 `override` 编译能过但运行时不会被调用。
+
+排查步骤：
+1. 在 `Interact()` 第一行加 `Debug.Log("[Door] Interact 被触发");`，再 Build & Test。日志没出来 = 事件根本没到；出来了 = 事件到了但中间断了。
+2. Console 搜 `halted`，看有没有上一次留下的红字。
+3. 检查方法签名：Unity 标准方法（`Start` / `Update`）不写 `override`；VRChat 事件（`Interact` / `OnPickup` / `OnPlayerJoined`）必须写 `public override`。
+
+相关章节：[第 13 章 · 第一步](/come-alive/press-and-light/#一个-interact-交互需要凑齐三件东西)、[第 40 章 · 第二节 Debug.Log 放在三个位置](/surviving/debugging-mindset/#第二节debuglog-放在三个位置)。
+
+### 协程不工作 / `yield return new WaitForSeconds(...)` 编译过不去
+
+可能原因：UdonSharp 不支持 `yield`，普通 Unity 教程里的协程写法在这里走不通。
+
+排查步骤：把协程改成 `SendCustomEventDelayedSeconds`：
+
+```cs
+// 普通 Unity 协程
+IEnumerator MyCoroutine()
+{
+    yield return new WaitForSeconds(1f);
+    DoNext();
+}
+
+// UdonSharp 替代
+public void DoLater()
+{
+    SendCustomEventDelayedSeconds(nameof(DoNext), 1f);
+}
+public void DoNext() { /* ... */ }   // 必须 public
+```
+
+相关章节：[第 12 章 · 第二类](/programming/udonsharp-personality/#第二类udonsharp-编译器还没支持的-c-特性)、[附录 D.5 替代写法对照](/appendix/udonsharp-limits/#d5-替代写法对照最常用的几条)。
+相关词条：[`SendCustomEventDelayedSeconds`](/appendix/glossary/#udonsharp-限制与替代写法第-12-章)。
+
+---
+
+## F.3 同步与多人
+
+表现差异出现在不同客户端之间。先去 [附录 E · 网络同步决策表](/appendix/networking-decision/) 用 [E.7 常见错配的对照](/appendix/networking-decision/#e7-常见错配的对照)对一眼，下面只列那张表上没展开的细节。
+
+### 自己看到效果，别人没看到
+
+可能原因：脚本里改的是本地字段，没走网络。
+
+排查步骤：
+1. 字段加 `[UdonSynced]`。
+2. 脚本类上加 `[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`（或 `Continuous`）。
+3. 改完字段后调 `RequestSerialization()`。
+4. 非 Owner 在 `OnDeserialization()` 里读新值并刷新本地表现。
+
+相关章节：[第 28 章 · 同步变量四件套](/with-others/tell-everyone/#同步变量四件套)、[附录 E.2.2](/appendix/networking-decision/#e22-一个状态字段开关计数回合玩家选择)。
+
+### 改字段过一会儿被盖回去
+
+可能原因：改字段的人不是 Owner——他改的值只在本机有效，Owner 那份的值下次同步过来就会盖掉。
+
+排查步骤：改字段前先 `Networking.SetOwner(Networking.LocalPlayer, gameObject)`，然后再改 `[UdonSynced]` 字段 + `RequestSerialization()`。或者发 `SendCustomNetworkEvent(NetworkEventTarget.Owner, "改字段的方法")` 让 Owner 自己改。
+
+相关章节：[第 27 章 · 给灯按钮加 SetOwner](/with-others/ownership/#给灯按钮加-setowner)、[附录 E.3.2 什么时候要 SetOwner](/appendix/networking-decision/#e32-什么时候要-setowner)。
+
+### 后来加入的人看不到当前状态
+
+可能原因：状态是用 `SendCustomNetworkEvent` 广播出去的——Late Joiner 收不到那次广播。
+
+排查步骤：把"事件"翻译成"状态字段"。例如把"游戏开始过没有"做成 `[UdonSynced] bool gameStarted`，进 `OnDeserialization` 时刷 UI。如果非用事件不可，在 `OnPlayerJoined` 时由 Owner 主动定向发一份当前状态。
+
+相关章节：[第 29 章 · 同步变量自动追，事件追不上](/with-others/late-joiners/#同步变量自动追事件追不上)、[附录 E.5.2](/appendix/networking-decision/#e52-修法把事件翻译成状态)。
+
+### `RequestSerialization()` 调了但别人没收到
+
+可能原因：调用者不是 Owner——`RequestSerialization` 只有 Owner 调用才有效。
+
+排查步骤：方法开头加 `if (!Networking.IsOwner(gameObject)) return;`。想让谁来改就先 `SetOwner` 给谁。
+
+相关章节：[第 28 章 · 第一步声明同步模式和同步字段](/with-others/tell-everyone/#第一步声明同步模式和同步字段)、[附录 E.7](/appendix/networking-decision/#e7-常见错配的对照)。
+
+---
+
+## F.4 Build & SDK 上传
+
+### 顶部菜单找不到 `VRChat SDK`
+
+可能原因：项目模板不是 World，或者 Worlds SDK 包没装好。
+
+排查步骤：
+1. 关闭 Unity，回 VCC（VRChat Creator Companion）打开项目。
+2. 检查项目类型是 `World`，不是 `Avatar`。
+3. 在 VCC 项目页确认 `VRChat World SDK` 处于"已安装、版本最新"状态，必要时点 `Update`。
+
+相关章节：[第 4 章 · 第三步：用 VCC 创建第一个世界项目](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)、[第 5 章 · Build & Test 不工作时的检查清单](/getting-started/first-world/#第五步build--test)。
+
+### SDK 控制面板缺少 Scene Descriptor
+
+> SDK 控制面板顶部红字：场景里没有 `VRC Scene Descriptor`。
+
+可能原因：当前打开的场景里没挂 `VRC Scene Descriptor` 组件。
+
+排查步骤：
+1. Hierarchy 里检查有没有名为 `WorldDescriptor`（或类似）的 GameObject，身上是不是真挂了 `VRC Scene Descriptor`。
+2. 没有的话：新建一个空物体，`Add Component → VRC Scene Descriptor`，把 Spawn 拖进 `Spawns` 数组的第 0 槽。
+3. 顺手检查：当前打开的场景是不是上传目标场景。换错场景的情况比想象中多。
+
+相关章节：[第 5 章 · 第四步：给场景一张身份证](/getting-started/first-world/#第四步给场景一张身份证)。
+相关词条：[`VRC Scene Descriptor`](/appendix/glossary/#玩家落地世界-ui跨世界传送门第-31-3435-章)、[`Spawns 数组`](/appendix/glossary/#玩家落地世界-ui跨世界传送门第-31-3435-章)。
+
+### 进世界后一直往下掉
+
+可能原因：
+1. `Floor` 身上的 `Box Collider` 被删掉了 / 关闭了。
+2. `Spawn` 的 Y 值落到地板下面去了。
+3. `Floor` 物体本身被禁用（Inspector 顶部的勾掉了）。
+
+排查步骤：
+1. 选中 Floor，确认有 `Box Collider`、`Mesh Collider`，并且勾着启用。
+2. 选中 Spawn，看 Transform 的 Y 是不是在 Floor 上方一点点（如 `0.1` 而不是 `-1`）。
+3. Build & Test 试。
+
+相关章节：[第 5 章 · Build & Test 不工作时的检查清单](/getting-started/first-world/#第五步build--test)。
+
+### 点了 Build & Test 没反应
+
+可能原因：
+1. SDK 控制面板里没登录 VRChat 账号。
+2. 本机没装 VRChat 客户端（Steam 版或官方版都行）。
+3. 顶部 Build Target 切到了 Android 但本机 VRChat 是 PC 版。
+
+排查步骤：
+1. SDK Control Panel 顶部 `Authentication` 标签，登一下账号。
+2. 顶部菜单 `File → Build Settings`，确认 `Platform` 是 `Windows, Mac, Linux`（PC 版）。
+3. 确认本机 VRChat 客户端能正常启动。
+
+相关章节：[第 5 章 · Build & Test 不工作时的检查清单](/getting-started/first-world/#第五步build--test)、[第 41 章 · 第二节 Build & Test 是真正的本地客户端](/surviving/testing-your-world/#第二节build--test-是真正的本地客户端)。
+
+### SDK Validation 红字（上传前）
+
+> SDK 控制面板 `Builder` 标签下方一行行红字，最常见是 Quest 平台。
+
+可能原因：
+1. Shader 不在 Quest 白名单 → 会被替换成 Standard Lite。
+2. 纹理超过 1K → 会被强制压。
+3. 场景里有 `Light` 组件配置不合规、`Reflection Probe` 烘焙数据缺失。
+4. `VRC Scene Descriptor` 字段没填全。
+
+排查步骤：
+1. 一条条点 Validation 里的红字，下方 `Auto Fix` 能修的就修。
+2. 不能 Auto Fix 的，按红字定位的对象修。
+3. PC 版 Validation 通过、Quest 版红一片是常态——Quest 严得多，参见 [第 39 章 · 第五节 Quest 的几条硬规矩](/placeness/pc-and-quest/#第五节quest-的几条硬规矩)。
+
+相关章节：[第 41 章 · 第四节 Friends 私密上传是最后一道关](/surviving/testing-your-world/#第四节friends-私密上传是最后一道关)、[第 44 章 · 第六节 会被退回或下架的几条硬线](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)。
+相关词条：[`SDK Validation`](/appendix/glossary/#调试与测试第-40-41-章)、[Community Labs](/appendix/glossary/#发布商业化与运营第-44-46-章)。
+
+### `This world has no Quest version`（玩家端报错）
+
+可能原因：上传时只 Build 了 PC 平台，Quest 端的 Quest 玩家进不来。
+
+排查步骤：
+1. `File → Build Settings → Switch Platform → Android`。
+2. 等 Unity 重新导入资源（中等大小项目几分钟到十几分钟）。
+3. SDK Control Panel → `Build & Publish` 一次。
+4. 验证：进 VRChat 网页 / 客户端，世界详情应同时显示 `PC` 和 `Android` 两个平台徽章。
+
+相关章节：[理解章 A · 跨平台 PC、Quest、iOS 各一份](/getting-started/world-pipeline/#跨平台pcquestios-各一份)、[第 39 章 · 第七节 维护一份工程做两个版本](/placeness/pc-and-quest/#第七节维护一份工程做两个版本)。
+
+---
+
+## F.5 资源、材质、Quest
+
+### 材质突然变粉色
+
+可能原因：Shader 丢失。Unity 在找不到对应 Shader 时用 Error Shader（紫粉色）兜底。常见情形：换平台后 Shader 不兼容、复制工程时 Shader 路径漂了、Shader 文件被误删。
+
+排查步骤：
+1. 选中变粉的 Material，看 Inspector 顶部 `Shader` 栏，多半显示 `Hidden/InternalErrorShader`。
+2. 临时救场：把 Shader 切回 `Standard`（PC）或 `VRChat/Mobile/Standard Lite`（Quest）。
+3. 根因：Project 里搜原本的 Shader 文件还在不在；不在的话从素材包重新导入。
+
+相关章节：[第 9 章 · 调了但看不出来时](/workbench/materials-light/#调了但看不出来时)、[第 39 章 · 第二节 Quest 强烈建议用 VRChat Mobile Shader](/placeness/pc-and-quest/#第二节quest-强烈建议用-vrchat-mobile-shader)。
+相关词条：[Shader](/appendix/glossary/#材质与贴图进阶第-37-章)、[VRChat Mobile Shader](/appendix/glossary/#quest-与跨平台第-39-章)。
+
+### 烘焙后场景全黑 / 全白
+
+可能原因：
+1. Light Mode 设置和场景里物体 `Static` 标记不一致。
+2. 没有任何 `Mixed` 或 `Baked` 光，且关掉了 `Auto Generate`。
+3. Lightmap 还没烘焙完成。
+4. Quest 平台用了 `Realtime` Light Mode（不支持）。
+
+排查步骤：
+1. 场景里至少留一盏 `Directional Light` 设为 `Mixed`，把要参与烘焙的物体全部勾上 `Static`。
+2. `Window → Rendering → Lighting → Generate Lighting`，等烘焙完成。
+3. Quest：`Lighting Mode` 切到 `Subtractive`，参考 [第 39 章 · 第三节](/placeness/pc-and-quest/#第三节lighting-mode-要换成-subtractive)。
+
+相关章节：[第 36 章 · 烘焙一次 Lightmap](/placeness/light/#烘焙一次-lightmap)、[第 39 章 · 第三节](/placeness/pc-and-quest/#第三节lighting-mode-要换成-subtractive)。
+相关词条：[Lightmap](/appendix/glossary/#光照进阶第-36-章)、[Subtractive](/appendix/glossary/#光照进阶第-36-章)。
+
+### Quest 上传被拒：纹理 / Shader / Triangle 数超规
+
+可能原因：Quest 平台对 Shader 复杂度、纹理总大小、Triangle、Material 数等都有硬上限。SDK Validation 会一行行列出来。
+
+排查步骤：按 SDK Validation 的具体提示一条条修：
+1. **纹理**：超过 1K 的批量改 `Max Size = 1024` 或 `512`（Texture Inspector 顶部）。
+2. **Shader**：把不在 Quest 白名单的 Shader 替换为 `VRChat/Mobile/*` 系列。
+3. **Triangle**：Mesh 用 Mesh Decimator 或建模软件减面。
+4. 整体读 [第 39 章 · 第五节](/placeness/pc-and-quest/#第五节quest-的几条硬规矩) 和 [第 44 章 · 第六节](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)。
+
+相关章节：[第 39 章](/placeness/pc-and-quest/)、[第 44 章 · 第六节](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)。
+相关词条：[ASTC](/appendix/glossary/#quest-与跨平台第-39-章)、[VRChat Mobile Shader](/appendix/glossary/#quest-与跨平台第-39-章)。
+
+### 帧率掉到 30 以下 / Stats 红色
+
+可能原因：常见瓶颈按出现频次排：
+1. **Draw Call / Batches 过高**——材质数太多，没启用 GPU Instancing / Static Batching。
+2. **实时光太多**——VRChat 推荐主光烘焙、动态光用 Light Probe。
+3. **镜子 / VideoPlayer 单独算账**——它们各自相当于额外渲染一次场景。
+4. **Overdraw 高**——半透明物体堆叠。
+
+排查步骤：
+1. `Game` 面板右上 `Stats`，记下 `Batches` / `SetPass calls` / `Tris` / `Verts`。
+2. `Window → Analysis → Profiler` 进 Play Mode，看 CPU / GPU 栏哪条最高。
+3. 按 [第 38 章 · 第九节 性能优化的优先级](/placeness/performance/#第九节性能优化的优先级) 一条条对。
+
+相关章节：[第 38 章 · 全章](/placeness/performance/)、[第 36 章 · 实时光的开销，要克制](/placeness/light/#实时光的开销要克制)。
+相关词条：[Draw Call / Batches](/appendix/glossary/#渲染性能第-38-章)、[GPU Instancing](/appendix/glossary/#渲染性能第-38-章)、[Profiler](/appendix/glossary/#渲染性能第-38-章)。
+
+---
+
+## F.6 工具链 / 环境
+
+### VCC 找不到 Unity / 启动卡在右下角 / Console 红字一片（首启动卡点）
+
+排查步骤：直接对 [第 4 章 · 启动卡点速查](/getting-started/tools/#启动卡点速查)。常见三类：
+- VCC 找不到 Unity：手动指定 `Unity Hub → 安装 → 添加 → 选官方指定版本`。
+- 启动卡在右下角：等就行（Library 第一次构建慢）；过 30 分钟还在卡，关 Unity 删 `Library/`，重开。
+- Console 红字一片：多半是 Unity 版本错。回 VCC 看官方钉死的版本。
+
+相关章节：[第 4 章 · 启动卡点速查](/getting-started/tools/#启动卡点速查)。
+
+### `MAX_PATH` / 中文路径 / 文件存在但读不到 / `.meta` 找不到对应资源
+
+可能原因：Windows 默认路径长度上限 260 字符，VRChat 项目里 `Library/` 下的缓存路径 + 资产相对路径加起来很容易撞上限。表现是部分 `.meta` "看着在但 Unity 找不到对应资源"、Material 引用混乱。
+
+排查步骤：
+1. 把项目挪到短路径下，如 `D:\vrc\MyWorld` 而不是 `C:\Users\长用户名\OneDrive\桌面\VRChat 项目\我的世界\`。
+2. 路径里别带中文（部分 .NET API 还是会因编码出问题）。
+3. Windows 10 1607+ 可以全局开 `LongPathsEnabled` 注册表项，但不要把它当救命药——挪短路径更稳。
+
+相关章节：[第 4 章 · 第三步：用 VCC 创建第一个世界项目](/getting-started/tools/#第三步用-vcc-创建第一个世界项目)。
+相关词条：[`MAX_PATH`](/appendix/glossary/#工具与生态第-4-章)。
+
+### Library 损坏 / 切平台后 Unity 不正常
+
+> 切到 Android 后场景一片粉、Console 飘红、Material 引用全乱。
+
+可能原因：Unity 的 `Library/` 目录是平台相关的二进制缓存。切平台时 Unity 会重建一部分缓存；过程中崩溃 / 杀进程会让 `Library/` 处于半损坏状态。
+
+排查步骤：
+1. 关闭 Unity。
+2. 删除项目根的 `Library/` 整个目录（**不要删 `Assets/` / `Packages/` / `ProjectSettings/`**）。
+3. 重开 Unity，让它从头构建 Library（5–30 分钟，看项目大小）。
+4. `Library/` 已在 `.gitignore` 里，删了不影响 git 仓库。
+
+相关章节：[第 42 章 · 第二节 写一份 Unity .gitignore](/surviving/version-control/#第二节写一份-unity-gitignore)。
+相关词条：[`Library/ScriptAssemblies`](/appendix/glossary/#编程基础与-c-语法第-1011-章)、[`.gitignore`](/appendix/glossary/#版本管理与许可第-42-43-章)。
+
+### 场景 `.unity` 文件 git 冲突难合
+
+可能原因：`.unity` 是 YAML 格式但内部全是 GUID 引用、行号细碎，普通 `git merge` 处理不好。
+
+排查步骤：
+1. 打开 `Edit → Project Settings → Editor`，把 `Asset Serialization Mode` 设为 `Force Text`。
+2. 配 Git 用 UnityYAMLMerge 处理 `.unity` 和 `.prefab` 的合并。
+3. 团队协作时按"一个场景同一时间只一个人改"原则降低冲突频率。
+
+相关章节：[第 42 章 · 第一节 先调两个 Unity 设置](/surviving/version-control/#第一节先调两个-unity-设置)、[第 42 章 · 第五节 场景文件冲突用 UnityYAMLMerge](/surviving/version-control/#第五节场景文件冲突用-unityyamlmerge)。
+相关词条：[Smart Merge / UnityYAMLMerge](/appendix/glossary/#版本管理与许可第-42-43-章)。
+
+---
+
+## 快速导航：读到一句话，去哪一节
+
+| 看到这种关键词 | 直接跳哪 |
+|---|---|
+| `NullReferenceException` / 红字带 `at Assets/...:行号` | [F.2 · NRE](#nullreferenceexception--nre) |
+| `halted` / `UdonVMException` | [F.2 · halted](#udonbehaviour-will-be-haltedudon-vm-异常自停) |
+| `is not exposed in Udon` | [F.1 · 白名单](#udonsharp-xxx-is-not-exposed-in-udon) |
+| `MonoBehaviour` 报错 | [F.1 · MonoBehaviour](#-monobehaviour-报错脚本基类用错) |
+| `script class cannot be found` | [F.1 · GUID 失效](#script-class-cannot-be-found--guid-失效) |
+| `UdonSharpProgramAsset` 警告 | [F.1 · 静态类要进 Plugins](#script-without-udonsharpbehaviour-definition-should-not-have-an-associated-udonsharpprogramasset) |
+| `Cannot find method ... on UdonBehaviour` | [F.2 · SendCustomEvent 找不到方法](#cannot-find-method--on-udonbehaviour) |
+| `MissingReferenceException` | [F.2 · MissingReferenceException](#missingreferenceexception) |
+| 自己看到、别人没看到 | [F.3 · 同步漏配](#自己看到效果别人没看到) |
+| 后来加入的人没看到当前状态 | [F.3 · Late Joiner 修法](#后来加入的人看不到当前状态) |
+| 顶部菜单找不到 VRChat SDK | [F.4 · 找不到 SDK 菜单](#顶部菜单找不到-vrchat-sdk) |
+| Build & Test 没反应 / Scene Descriptor 缺失 / 进世界往下掉 | [F.4 · Build & Test 卡点](#sdk-控制面板缺少-scene-descriptor) |
+| 上传前 Validation 红字 | [F.4 · SDK Validation](#sdk-validation-红字上传前) |
+| `This world has no Quest version` | [F.4 · 没有 Quest 版本](#this-world-has-no-quest-version玩家端报错) |
+| 材质变粉 | [F.5 · 粉色材质](#材质突然变粉色) |
+| 烘焙完场景全黑 | [F.5 · 烘焙黑屏](#烘焙后场景全黑--全白) |
+| 帧率低 / Stats 红 | [F.5 · 性能瓶颈](#帧率掉到-30-以下--stats-红色) |
+| `MAX_PATH` / 中文路径 | [F.6 · 路径长度](#max_path--中文路径--文件存在但读不到--meta-找不到对应资源) |
+| 切平台后 Unity 异常 | [F.6 · Library 损坏](#library-损坏--切平台后-unity-不正常) |
+
+---
+
+## 数据源章节
+
+- [第 4 章 · 装好工具，准备出发](/getting-started/tools/) — VCC / Unity Hub / `MAX_PATH`
+- [第 5 章 · 你的第一个世界](/getting-started/first-world/) — Build & Test 卡点
+- [第 9 章 · 材质和光的第一印象](/workbench/materials-light/) — 粉色材质 / Shader 丢失
+- [第 12 章 · UdonSharp 长得像 C# 但它有脾气](/programming/udonsharp-personality/) — UdonSharp 编译错主源
+- [第 17 章 · 门、机关和状态](/come-alive/doors-and-states/) — Animator 触发顺序坑
+- [第 26–30 章 · 第六部](/with-others/) — 网络同步类报错 / 错配
+- [第 36 章 · 光](/placeness/light/) + [第 38 章 · 性能](/placeness/performance/) + [第 39 章 · PC 和 Quest](/placeness/pc-and-quest/) — 烘焙 / 帧率 / Quest 平台限制
+- [第 40 章 · 调试心态](/surviving/debugging-mindset/) — 主源：Console、Debug.Log、halted 搜索、三段式排错
+- [第 41 章 · 测试你的世界](/surviving/testing-your-world/) — ClientSim、Build & Test、SDK Validation
+- [第 42 章 · 版本管理和备份](/surviving/version-control/) — Library 损坏 / 场景冲突 / `.gitignore`
+- [第 44 章 · 发布你的世界](/publishing/submit-your-world/) — 上传被拒 / 元数据校验
+
+外部参考：
+
+- [VRChat Creator Docs · Debugging Udon Projects](https://creators.vrchat.com/worlds/udon/debugging-udon-projects/)
+- [VRChat Creator Docs · World Debug Views](https://creators.vrchat.com/worlds/udon/world-debug-views/)
+- [VRChat Creator Docs · Class Exposure Tree](https://creators.vrchat.com/worlds/udon/class-exposure/)
+- [Unity Manual · Console Window](https://docs.unity3d.com/Manual/Console.html)
+- [Unity Manual · Build Settings](https://docs.unity3d.com/Manual/BuildSettings.html)
