@@ -23,7 +23,7 @@
 - **第二部 · 认识你的工作台**：理解 GameObject、Component、Prefab、Material、Light，看懂 Unity 的"组合式"设计思路。
 - **后续章节**（持续更新）：UdonSharp 编程、多人同步、交互组件、空间体验、性能优化、发布维护。
 
-完整路线图见 [book-plan-warm.md](./design/book-plan-warm.md) 与线上的 [前言](https://vrchat-world-tutorial.pages.dev/preface/)。
+完整路线图见线上的 [前言](https://vrchat-world-tutorial.pages.dev/preface/)。
 
 ## 适合谁读
 
@@ -87,7 +87,6 @@ src/pages/             非文档页（rss.xml / 404）
 src/assets/images/     教程截图、GIF 和配图
 public/                静态资源（favicon / OG 图 / manifest）
 scripts/               构建脚本（如 OG 图生成）
-design/                书稿规划、SEO 计划、教学法参考等设计资料
 ```
 
 ## 部署

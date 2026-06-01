@@ -126,7 +126,7 @@ import { Steps, FileTree, Tabs, TabItem, CardGrid, Card, LinkCard, Aside, Badge,
 
 ## 3. Asides（提示框）
 
-四种语义，**Markdown 简写**优先（普通 `.md` 也能用），写法对应本书 `.codebuddy/rules.md` 的侧栏系统：
+四种语义，**Markdown 简写**优先（普通 `.md` 也能用）：
 
 ```md
 :::note[扩展阅读]
@@ -415,7 +415,7 @@ frontmatter 字段写错了。常见：
 
 ### 「页面顶部出现 H1 重复」
 
-正文不要写 `# 一级标题`。Starlight 自动从 frontmatter 的 `title` 渲染 H1。正文从 `##` 开始（已写入 `.codebuddy/rules.md`）。
+正文不要写 `# 一级标题`。Starlight 自动从 frontmatter 的 `title` 渲染 H1。正文从 `##` 开始。
 
 ### 「pagefind: doesn't support stemming for zh-cn」
 

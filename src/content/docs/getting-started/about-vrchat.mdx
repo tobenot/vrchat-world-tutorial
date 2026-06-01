@@ -77,13 +77,6 @@ Avatar 项目（含 Avatars SDK）    .vrca    →   CDN 的「头像」槽位
 
 这本书只讲 Worlds。Avatars 是另一个体系，逻辑、约束、社区文化都不一样。后面正文里出现「SDK」二字默认指 Worlds SDK，涉及 Avatars 的地方会明确写出来。
 
-:::caution[踩坑预警]
-两件新手会反复混淆的事：
-
-- Avatar 不能直接当成世界里的 NPC。Avatar 系统只服务于「玩家套在身上的形象」，世界里的 NPC 是普通 GameObject + 模型 + 脚本，跟 Avatar 那一套机制完全无关。想给世界里加个会动的角色，要走 World 这一侧的做法。
-- 从 Booth 下载的 Avatar 包不能直接拖进世界项目。Avatar 包里通常依赖 Avatars SDK 才认得的组件，搬到 Worlds 项目里会出现一片缺失组件、材质变粉红的现象。需要把骨骼、模型、贴图重新装进世界用的 Prefab。
-:::
-
 ## SDK 三件套和它的两代前身
 
 打开 VCC 建好的 World 项目，看 `Packages/` 文件夹，里面有三个 VRChat 的包：
