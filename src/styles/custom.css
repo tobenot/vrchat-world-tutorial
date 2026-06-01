@@ -683,6 +683,7 @@ nav.sidebar-pane,
   gap: 1.25rem;
   align-items: flex-start;
   margin: 0 0 1.5rem;
+  width: 100%;
 }
 
 .vrc-author__avatar {
@@ -700,7 +701,7 @@ nav.sidebar-pane,
 
 .vrc-author__body {
   flex: 1;
-  min-width: 0;
+  min-width: 15rem; /* 避免在父级 flex 或特定浏览器中，中文文本按最小字宽 min-content 收缩成一列单字 */
 }
 
 .vrc-author__body > :first-child {
