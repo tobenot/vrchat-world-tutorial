@@ -113,6 +113,7 @@ function fmtNum(n: number) {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: space-between;
     flex: 1;
     min-width: 8rem;
     gap: 0.25rem;
@@ -123,10 +124,15 @@ function fmtNum(n: number) {
     font-weight: 700;
     color: var(--sl-color-accent);
     line-height: 1.2;
+    min-height: 2.4rem;
+    display: flex;
+    align-items: center;
+    text-align: center;
   }
 
   .word-count-label {
     font-size: 0.8rem;
     color: var(--sl-color-gray-3);
+    text-align: center;
   }
 </style>
