@@ -1,52 +1,378 @@
 ---
 title: 附录 H · 发布检查清单
-description: Build & Publish 之前的勾选清单。第九部第 44 章写完后填充。
+description: 一份按发布流程顺序排好的世界发布清单。从 Builder 之前的硬性前置条件，到 Scene Descriptor、三层测试、元数据、Quest 平台、不能踩的硬线，最后是上传后的第一轮验证。
 sidebar:
   order: 8
-draft: true
-pagefind: false
 ---
 
-:::caution[占位中]
-主数据源是⏳ **第 44 章 · 发布你的世界**。
-:::
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+`Build & Publish` 不可逆的部分是 **World ID** 和首次创建时间。其他元数据（名称、描述、缩略图、容量、可见性）都能事后改，但 World ID 一旦发出来就回不去了。
+
+> 第一次上传等于把世界正式钉到 VRChat 网络上。
+
+附录 H 把第八部 + 第九部的发布相关项汇到一处，按发布流程顺序排：先验证前置条件 → 配置 Scene Descriptor → 跑三层测试 → 填元数据 → 切平台再发一遍 → 检查不能踩的硬线 → 上传后验证 → 公开（Public）前最后扫一眼。
+
+## H.1 进 Builder 之前
+
+下面这八条是「上传那一刻才查就来不及」的前置条件。它们是前面八部攒下来的预算，这里只是汇到一张纸上方便扫一眼。
+
+### H.1.1 编译与 Console
+
+- [ ] Console 没有红色错误（编译错、Missing Reference 全清）
+- [ ] Console 没有 `[UdonSharp]` 红字（白名单 / 编译器限制类）
+- [ ] `Build & Test` 单人本地能进、能走、出生点对
+
+### H.1.2 性能（详细见附录 G）
+
+- [ ] PC 出生点 90 FPS / Quest 72 FPS（社区底线建议 ≥ 45 FPS，否则会被运营关注）
+- [ ] 烘焙了 Occlusion Culling
+- [ ] 烘焙了 Lightmap
+- [ ] 所有 Material 勾了 GPU Instancing
+- [ ] 镜子和视频播放器**默认关**、有玩家可控开关
+- [ ] 多人 + 真实头像测过（≥ 3 人）
+
+### H.1.3 备份与版本
+
+- [ ] 项目目录已 `git commit`（或本地 / 云盘备份）
+- [ ] **切平台之前**先 commit 一次（切 Platform Target 时 Unity 会重新导入所有资源，是一次大改动，中途出问题代价大）
+
+### H.1.4 素材合规
+
+- [ ] 用到的 Booth / Gumroad 模型授权范围**包含「VRChat 上传」**（作者明确写「VRChat NG」的，买了也不能上）
+- [ ] CC BY 类素材在世界 Credits 牌上有署名
+- [ ] 引用的音频 / 字体 / 贴图来源全部在 `LICENSES.md`（或 `Assets/_Credits/CREDITS.md`）有记录
+- [ ] 没有 IP 类资源（动漫角色、商业 BGM、知名游戏地图——除非有官方授权）
+- [ ] AI 生成内容在 Credits 里标出来了
+
+相关章节：[第 40 章 · 调试](/surviving/debugging-mindset/)、[第 38 章 · 性能](/placeness/performance/)、[第 42 章 · 版本管理和备份](/surviving/version-control/)、[第 43 章 · 素材、插件和版权](/surviving/assets-and-licenses/)。
+
+## H.2 VRC Scene Descriptor 的关键字段
+
+世界根物体上挂的 `VRC Scene Descriptor` 是 SDK 识别这个 Unity 场景为「VRChat 世界」的核心组件。第一次上传前每一项都该看一眼。
+
+### H.2.1 Spawns（出生点）
+
+- [ ] **Spawns 数组至少有 1 个 Transform**（空的会被 Builder 直接报红字阻塞）
+- [ ] **Spawn Order** 选好：
+  - `First`：所有玩家从第 0 个进，开发期最稳
+  - `Sequential`：按顺序分配（剧场 / 办公室适用）
+  - `Random`：多数 Chill 世界用这个
+  - `Demo`：room-scale 中心对齐（VR 房型对齐场景）
+- [ ] **Spawn Orientation** 选好：
+  - `Align Player With Spawn Point`（默认推荐）
+  - `Align Room With Spawn Point`（VR 房型场景）
+- [ ] Spawn 的 Z 轴（forward）**指向房间最有信息的一面**，不指墙、不指角、不指关上的门
+- [ ] Spawn 上方至少 2 米空间，下方落点稳固
+- [ ] 第一帧画面里能看见可去的方向（开口、走廊、亮光）
+
+### H.2.2 Respawn Height
+
+- [ ] `Respawn Height -Y` 设到地板 Y 值之下**很多**（地板在 Y=0，这里设 `-50`）。设得太接近地板会出 bug：玩家蹲下走台阶、跳进低洼处都可能触发重生。
+- [ ] `Object Behaviour At Respawn` 选好（多数情况选 `Respawn`：Pickup 物体跟玩家一起回到原位）
+- [ ] `Player Object Behaviour at Respawn` 看场景需要
+
+### H.2.3 Reference Camera 与其他
+
+- [ ] 拖一个相机到 `Reference Camera`（VRChat 摄影模式按 `K` 用这个相机的设置作为默认）
+- [ ] `Forbid User Portals` 按场景需要勾（Chill / Gallery / 剧场建议勾上禁止；游戏 / Hub 留默认）
+- [ ] `Forbid Free Modification` 按场景需要勾
+- [ ] `Interact Passthrough` 按需配置
+
+### H.2.4 Builder 里会扫到的常见阻塞
+
+- [ ] `A VRC Scene Descriptor is required`：场景里没有 → 找根物体加上去
+- [ ] `No spawns set`：Spawns 数组是空的 → 拖至少一个 Transform 进去
+- [ ] `Compile errors detected`：有 C# 编译报错 → 回 Console 修红字
+- [ ] `Mobile incompatible shaders`：Quest 平台用了 PC 限定 Shader → 换成 `VRChat/Mobile/...` 系列
+
+相关章节：[第 31 章 · 出生区的检查清单](/placeness/first-thirty-seconds/#出生区的检查清单)、[第 44 章 · 第二节 VRC Scene Descriptor 的关键字段](/publishing/submit-your-world/#第二节vrc-scene-descriptor-的关键字段)。
+
+## H.3 三层测试：ClientSim → Build & Test → Friends 私密
+
+每发一个版本走一遍这三层。三层是补足关系不是替代关系：每层只能验证一部分事，漏掉某一层而出问题的世界，玩家进去十秒就退是常态。
+
+### H.3.1 ClientSim 层（5–10 分钟）
+
+- [ ] 进入 Play Mode，无 Console 红字
+- [ ] 主路线走一遍：出生点 → 主交互 → 关键 UI
+- [ ] 每个按钮、Pickup、Station、传送门各点一次
+- [ ] 临时禁用一个关键引用，看看场景是否优雅降级（不挂整个场景）
+
+### H.3.2 Build & Test 层（10–30 分钟）
+
+- [ ] `Number of Clients = 2`，两个 VRChat 客户端同时进
+- [ ] 用 `--profile` 至少试一次双账号 Master / Guest
+- [ ] 实时日志（按客户端日志显示快捷键）无红字 `halted`
+- [ ] Stats 浮窗 FPS 90+（PC）/ 72+（Quest）
+- [ ] 关键同步交互：开关灯、抓 Pickup、坐 Station，两端一致
+- [ ] 测 Late Joiner：让一个客户端先按几下按钮、改几个状态，再让第二个客户端加入，确认状态同步过去了
+
+### H.3.3 Friends 私密上传层（30 分钟+）
+
+- [ ] `Build & Publish` 成功，世界设为 **Private** 或 **Friends**
+- [ ] 邀请至少 1 位朋友进，全程开语音通话
+- [ ] 测真实公网延迟：朋友按按钮，自己看到的反应时间是不是接受范围内
+- [ ] 测 Late Joiner：朋友先进、自己后进
+- [ ] 测随机崩溃：朋友重启 VRChat 客户端再加入
+- [ ] 平台抽测：用 **Quest 头显**（或 Android 客户端）进一遍
+- [ ] 跨平台测试：PC 玩家和 Quest 玩家在同一实例里能正常互动
+
+相关章节：[第 41 章 · 测试你的世界](/surviving/testing-your-world/)、[第 41 章 · 第六节 发布前的分层测试清单](/surviving/testing-your-world/#第六节发布前的分层测试清单)。
+
+## H.4 元数据填报
+
+SDK Builder 面板的 **World** 区填这些字段。每一项的注意事项都在这里汇成一张可勾选清单。
+
+### H.4.1 Name（名称）
+
+- [ ] 长度 **12–30 字**（太短没辨识度，太长会被截断）
+- [ ] **不含**「VRChat」「Official」「Test」这类被搜索算法降权或误判的词
+- [ ] 头像世界（Avatar World）的标题里**包含** `avatar` / `avatars` / `avi` / `avis`（否则不会被归到 Avatar 类别）
+
+### H.4.2 Description（描述）
+
+- [ ] **第一句话**放核心体验（30 字以内，会出现在世界列表的预览里）
+- [ ] 后面段落给：玩法 / 特色 → 推荐人数 → 是否支持 Quest → 致谢
+- [ ] 链接到外部 Discord / Twitter（如有）放在末尾
+
+### H.4.3 Image（缩略图）
+
+- [ ] 推荐 **1200 × 900 像素**（4:3 比例，比例错了 SDK 会自动裁剪）
+- [ ] 用世界里**能看到的真实画面**（Photoshop 拼贴或外部素材会让玩家发现「跟图不一样」，VRChat 提交规则明确写不能用误导性预览图）
+- [ ] 第一张图选最有标识性的角度（玩家在世界列表里大都先看图再读名字）
+
+### H.4.4 Tags（标签）
+
+- [ ] 只勾跟世界**实质相符**的几个：`game` / `avatar` / `chill` / `event` / `social` / `gallery` / `pvp` / `horror` / `mystery` 等
+- [ ] **不要滥用**（一座 Chill 世界硬贴 `game` 标签 → 后台直接移除标签或对账号做处罚）
+
+### H.4.5 Capacity（容量）
+
+> SDK 上传面板把容量拆成了两个字段——`Recommended Capacity` 是公开实例的推荐人数（达到后从公共列表隐去）；`Maximum Capacity` 是实例硬上限（达到后新玩家加不进来）。
+
+- [ ] 按世界类型选：
+
+| 世界类型 | Recommended | Maximum |
+| :--- | :--- | :--- |
+| Chill / 小屋 | 8 - 16 | 16 - 24 |
+| Social Hub | 24 - 40 | 32 - 64 |
+| Game World（小型） | 4 - 8 | 8 - 16 |
+| Event World（演出） | 40 - 60 | 60 - 80 |
+| Tool World（个人用） | 2 - 4 | 4 - 8 |
+
+- [ ] **Recommended 的真正上限 = 第 38 章测试过的「同时多少人进来还能跑」**。Recommended 写 32 但性能撑不住 32 人 = 把人引到一个会卡的实例。
+- [ ] **Maximum 一般 ≥ Recommended** 一些。
+
+### H.4.6 Visibility（可见性）
+
+第一次上传按这个顺序走：
+
+- [ ] **Private**：只有自己 + 邀请的人能进。第一次上传选这个最稳，先自己跑一遍。
+- [ ] **Friends**：好友可见。第二轮，让朋友进来打 bug。
+- [ ] **Group**：群组成员可见（如果是社群运营）。
+- [ ] **Public**：发布到 Community Labs。这是「上架」的那一下——准备好了再按。
+
+### H.4.7 注意：Content Warnings 已废弃
+
+::::caution[Content Warnings 不再起作用]
+2026 年的官方公开提交页明确写：**Content Warnings are deprecated and not used at this time.** 即使勾了 warning，违反 Community Guidelines / ToS 的内容仍会被处理。它**不是**「打了标就可以上」的免责机制。
+::::
+
+相关章节：[第 44 章 · 第四节 填元数据](/publishing/submit-your-world/#第四节填元数据)、[第 44 章 · 第六节 会被退回或下架的几条硬线](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)。
+
+## H.5 Quest / Android 平台版（如果做了）
+
+PC 平台 `Build & Publish` 完成后，再来这一节。Quest 版用的是同一个 World ID，VRChat 后台会自动把两个平台关联起来。
+
+- [ ] PC 平台已经 `Build & Publish` 完成、世界已上线
+- [ ] **切平台前已 commit / 备份**
+- [ ] SDK Control Panel `Platform Target` 切到 `Android`
+- [ ] Unity 重新导入资源完成（首次 5–30 分钟，之后切回来用 Library 缓存几秒）
+- [ ] Builder 扫一遍，所有 Android 兼容性问题已修：
+  - Shader 不在 `VRChat/Mobile/...` 系列里 → 换
+  - 纹理超过 1K → Android Max Size 设 1024
+  - Lightmap Mode 不是 Subtractive → 切并重烘
+  - 有 Cloth / Post Processing / Realtime Light → 删
+- [ ] **Build Estimate ≤ 100 MB**（硬上限，超会被退）
+- [ ] 用 [VRWorld Toolkit](https://github.com/oneVR/VRWorldToolkit) 跑过一次 Quick Audit
+- [ ] 实际在 Quest 设备上测过 FPS ≥ 72
+- [ ] 跨平台测试（PC 玩家和 Quest 玩家在同一实例里能正常互动）
+- [ ] `Build & Publish` 上传 Quest 版完成
+- [ ] 回 VRChat 客户端确认世界页面同时有 `PC` 和 `Android` 两个标识
+
+详细见 [附录 G · G.6 Quest / Android 专项](/appendix/performance-checklist/#g6-quest--android-专项) 和 [第 39 章 · 第七节 维护一份工程做两个版本](/placeness/pc-and-quest/#第七节维护一份工程做两个版本)。
+
+## H.6 不能踩的硬线
+
+下面这些是 [VRChat 官方提交页](https://creators.vrchat.com/worlds/submitting-a-world/) 列的硬线，违反会从 Public 或 Labs 移除，重复违规会升级到账号处罚。
+
+### H.6.1 占位头像欺骗（Avatar World 专项）
+
+::::caution[这是会被处罚的硬规矩]
+头像世界里展示的头像必须跟用户最终下载到的是同一个。社区里的常见骗术是上传时摆「干净头像」让世界先公开，公开之后再换成违规头像。
+
+VRChat 抓到这种行为：**该账号往 Community Labs 提交新世界的能力会被暂停一段时间，重复违规升级为应用内处罚（in-app moderation action）**。
+::::
+
+- [ ] 头像世界里展示的头像 = 用户实际能下载到的头像
+- [ ] 没有「先发干净版、过审后偷换」的计划
+
+### H.6.2 文件过大
+
+- [ ] PC 包体 ≤ **200 MB**（VRChat 软建议 `Try to keep your worlds under 200MB`，超过不会自动拒绝但运营可能要求缩减并临时下架）
+- [ ] Quest 包体 ≤ **100 MB**（硬上限）
+- [ ] 检查未压缩纹理 / 未清理的导入素材 / 过高 Lightmap 分辨率
+
+### H.6.3 性能严重不达标
+
+- [ ] VR 单人出生点 ≥ **45 FPS**（社区底线）
+- [ ] 长期低于 45 FPS 的世界容易被运营关注、被要求缩减
+- [ ] 实务目标仍是 **90 FPS（PC）/ 72 FPS（Quest）**
+
+### H.6.4 TOS / 社区准则
+
+- [ ] 没有未授权电影 / 电视片段
+- [ ] 没有未授权音乐
+- [ ] 没有露骨 / 仇恨 / 骚扰内容（无论是否「标注过」）
+- [ ] 标题、描述、缩略图跟实际世界一致（不是误导性宣传）
+
+### H.6.5 镜子 / 视频默认关
+
+- [ ] 所有镜子默认 `enabled = false`，玩家手动开
+- [ ] 所有视频播放器默认不播放，玩家手动启
+- [ ] 不依赖玩家「自己关镜子」（多数玩家不会）
+
+### H.6.6 标签滥用
+
+- [ ] Tags 跟世界类型实质相符（详见 H.4.4）
+- [ ] 没有为骗曝光贴不相干的标签
+
+相关章节：[第 44 章 · 第六节 会被退回或下架的几条硬线](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)、[第 43 章 · 第七节 VRChat 服务条款里几条直接相关的硬规矩](/surviving/assets-and-licenses/#第七节vrchat-服务条款里几条直接相关的硬规矩)、[附录 F · F.4 Build & SDK 上传](/appendix/errors/#f4-build--sdk-上传)。
+
+## H.7 上传后第一轮验证
+
+Builder 面板提示上传成功后，回 VRChat 客户端做一次完整的「装作不知道这是自己世界」走一遍。
+
+### H.7.1 客户端基础检查
+
+- [ ] `Esc` → `Worlds` → `Mine`，能看到刚上传的世界
+- [ ] 缩略图、名称、描述都对
+- [ ] 启动一个 Friends Only 实例进去：
+  - Spawn 落点对，朝向对
+  - 灯亮、声音响、地板能踩
+  - 关键交互（按按钮、坐椅子、传送门）能用
+  - 镜子默认是关的
+- [ ] 退出去，从 `Worlds` 列表搜自己的世界名，能搜到
+- [ ] 网页 `vrchat.com` 找到这座世界，World ID、上传时间、容量都对
+
+### H.7.2 元数据回检
+
+- [ ] World ID 是 `wrld_` 开头的串
+- [ ] 平台标识：PC 已显示，Quest（如果发了）也显示
+- [ ] Capacity（Recommended / Maximum）跟填的一致
+- [ ] Visibility 状态符合预期
+
+### H.7.3 多人快速验
+
+- [ ] 邀请 1–2 位朋友进 Friends 实例
+- [ ] 让朋友走主路线、按主交互一遍
+- [ ] 观察网络同步无延迟异常、无 desync
+
+如果有不对的地方：在 SDK 里改完场景，再次 `Build & Publish` 就是更新（**不会**生成新 World ID，玩家收藏不丢）。
+
+相关章节：[第 44 章 · 第七节 上传完去验证一遍](/publishing/submit-your-world/#第七节上传完去验证一遍)。
+
+## H.8 公开（Public）之前最后扫一眼
+
+`Public` 之后世界进入 Community Labs，opt-in 玩家立刻能看到。这是「上架」的那一下，按之前最后扫一遍。
+
+**前置条件**
+
+- [ ] 已经在 `Friends` 或 `Private` 状态下完整测过一轮
+- [ ] 朋友反馈的卡点都修了
+- [ ] 准备好接收公网访客 / Bug 报告
+
+**Builder 状态**
+
+- [ ] Console 没有红色错误
+- [ ] `Build & Test` 单人通过
+- [ ] 多人 + 真实头像测过
+- [ ] PC 出生点 90 FPS / Quest 72 FPS（社区底线 ≥ 45 FPS）
+- [ ] Occlusion Culling 已烘
+- [ ] Lightmap 已烘
+- [ ] 镜子和视频播放器默认关、有开关
+
+**Scene Descriptor**
+
+- [ ] Spawns / Respawn Height / Reference Camera 都填
+- [ ] Respawn Height 设到地板之下很多
+
+**元数据**
+
+- [ ] World Name / Description / Image / Tags 都准备好（H.4 节）
+- [ ] Maximum Capacity / Recommended Capacity 跟实测多人帧率一致
+- [ ] Description 第一句话是 30 字以内的核心体验
+
+**Quest（如果做了）**
+
+- [ ] Quest 版的 Shader / 包大小 / 纹理符合 Android 限制
+- [ ] Quest 设备上实测过 FPS ≥ 72
+
+**版本与备份**
+
+- [ ] 项目已 commit / 备份
+- [ ] 上传前的最后一份 Backup 留着，万一公开后回退方便
+
+**心理准备**
+
+- [ ] 接受 Community Labs 阶段的「冷启动慢」是设计的一部分（参见 [第 44 章 · 第五节](/publishing/submit-your-world/#第五节community-labs-是什么)），不是 bug
+- [ ] 7 天内不再投另一座新世界（每个账号每 7 天只能往 Labs 投一座新世界）
+- [ ] 公开后头几天定期看 Bug 反馈
+
+每一项都能勾上，再按 `Build & Publish` 把 Visibility 改到 `Public`。
 
 ---
 
-## 计划骨架
+## 数据源章节
 
-### H.1 元信息
+| 节 | 主源 | 辅源 |
+|---|---|---|
+| H.1 进 Builder 之前 | 第 44 章 § 1 | 第 38 / 40 / 42 / 43 章 |
+| H.2 Scene Descriptor | 第 44 章 § 2、§ 3 | 第 31 章 |
+| H.3 三层测试 | 第 41 章 全章 | 第 38 章 § 10 |
+| H.4 元数据 | 第 44 章 § 3、§ 4 | — |
+| H.5 Quest 平台 | 第 44 章 § 8 | 第 39 章 全章、附录 G.6 |
+| H.6 不能踩的硬线 | 第 44 章 § 6 | 第 38 章、第 43 章 § 7 |
+| H.7 上传后验证 | 第 44 章 § 7 | — |
+| H.8 公开前最后扫一眼 | 第 44 章 § 5、汇总 H.1–H.7 | — |
 
-- [ ] 世界名（不踩 ToS）
-- [ ] 世界描述
-- [ ] Tags（合规 / 描述准确）
-- [ ] Capacity（容量）
-- [ ] Thumbnail（缩略图，分辨率与构图）
+## 外部参考
 
-### H.2 多平台
-
-- [ ] PC 版本已上传
-- [ ] Quest 版本已切 Build Target 并上传
-- [ ] iOS 版本（如适用）
-
-### H.3 体验自检
-
-- [ ] 出生点朝向 / 位置合理（前三十秒体验章候补）
-- [ ] 玩家进来三十秒内能找到方向
-- [ ] 镜子不会默认占满帧率
-- [ ] 音乐 / 音效音量不刺耳
-
-### H.4 法律 / 合规
-
-- [ ] 用到的 Booth / Gumroad 资产授权允许 VRChat 上传
-- [ ] 引用的音频 / 字体 / 贴图来源清楚
-
----
-
-## 数据源
-
-- 第 31 章（前三十秒）
-- 第 43 章（素材和版权）
-- 第 44 章（发布）
-- [Submitting a World 官方文档](https://creators.vrchat.com/worlds/submitting-a-world/)
+- [VRChat Creator Docs：Submitting Your World](https://creators.vrchat.com/worlds/submitting-a-world/)
+- [VRChat Creator Docs：World Creation, Optimization, and Community Labs Tips](https://creators.vrchat.com/worlds/submitting-a-world-to-be-made-public/)
+- [VRChat Creator Docs：VRC Scene Descriptor](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)
+- [VRChat Creator Docs：Community Labs](https://docs.vrchat.com/docs/vrchat-community-labs)
 - [VRChat ToS](https://hello.vrchat.com/legal/tos)
+- [VR Creators：How to Upload a World in VRChat（2026-05 修订）](https://vrcreators.net/docs/vrchat/how-to-upload-a-world-in-vrchat)
+- [VRCD 文档库：上传为世界（中文）](https://docs.vrcd.org.cn/books/vrchat/page/3-HV2)
+
+## 关联附录
+
+<CardGrid>
+  <LinkCard
+    title="附录 G · 性能检查清单"
+    href="../performance-checklist/"
+    description="发布清单的 H.1.2 / H.5 / H.8 都依赖性能预算，详细数字在 G 里。"
+  />
+  <LinkCard
+    title="附录 F · 报错排查"
+    href="../errors/"
+    description="F.4 节专门讲 Build & SDK 上传时遇到的红字（找不到 Scene Descriptor、SDK Validation 红字、Quest 版被退）。"
+  />
+  <LinkCard
+    title="附录 D · UdonSharp 限制"
+    href="../udonsharp-limits/"
+    description="编译错和 halted 类问题如果在 H.1 那一关就出，回 D 查具体写法限制。"
+  />
+</CardGrid>

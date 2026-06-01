@@ -279,12 +279,18 @@ nav.sidebar-pane,
   box-shadow: var(--vrc-shadow), 0 0 0 1px var(--vrc-border);
 }
 
-/* Home Intro Text Styling */
+/* Home Intro Text Styling
+   注意：MDX 把每段空行隔开的内容包成独立 <p>。
+   先用 margin:0 清掉默认间距，再用 p+p 自己写节奏，避免段落挤成一坨。 */
 .home-intro p {
   margin: 0;
   line-height: 1.85;
   color: var(--sl-color-gray-1);
   font-size: 1.02rem;
+}
+
+.home-intro p + p {
+  margin-top: 0.9rem;
 }
 
 .home-intro strong {
@@ -410,7 +416,58 @@ nav.sidebar-pane,
     var(--vrc-surface-1);
 }
 
-.progress-panel strong {
+/* 顶上一行：标题 + 状态徽标，左右对齐成一条整齐的线 */
+.progress-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.progress-panel__title {
+  color: var(--vrc-cyan);
+  font-weight: 750;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+.progress-panel__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--vrc-border-strong);
+  border-radius: 999px;
+  background: rgba(31, 210, 196, 0.08);
+  color: var(--vrc-cyan);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.progress-panel__badge::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--vrc-cyan);
+  box-shadow: 0 0 8px var(--vrc-cyan-glow);
+  /* 心跳呼吸：暗示「还在写」是一个动态过程 */
+  animation: progress-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.78); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-panel__badge::before { animation: none; }
+}
+
+/* 沿用旧标记（裸 <strong>）的兼容样式，避免破坏其他可能的写法 */
+.progress-panel > strong {
   display: block;
   margin-bottom: 0.4rem;
   color: var(--vrc-cyan);
@@ -422,6 +479,10 @@ nav.sidebar-pane,
   margin: 0;
   color: var(--sl-color-gray-2);
   line-height: 1.7;
+}
+
+.progress-panel p + p {
+  margin-top: 0.55rem;
 }
 
 .progress-panel a {

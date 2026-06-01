@@ -37,23 +37,193 @@ pagefind: true
 | 在 Hierarchy 创建 3D 物体 | 右键 `3D Object → Cube/Sphere/...` | [第 5 章](/getting-started/first-world/#第二步解决踩地创建地板) |
 | 切换工具：移动 / 旋转 / 缩放 | `W` / `E` / `R` | — |
 | Play 模式启停 | `Ctrl + P` | [第 7 章](/workbench/components/#play-mode-调参的陷阱) |
+| 打开 Animation 窗口 | `Ctrl + 6` | [第 17 章](/come-alive/doors-and-states/) |
+| 聚焦 / 框选选中物体到 Scene 视图 | `F` | — |
 
 ---
 
-## 菜单路径
+## 菜单路径速查
+
+按使用频率分组。
+
+### 场景与文件
 
 | 菜单 | 路径 | 出处 |
 |---|---|---|
+| 新建场景 | `File → New Scene` | [第 5 章](/getting-started/first-world/#第一步新建并保存场景) |
 | 打开 SDK 控制面板 | `VRChat SDK → Show Control Panel` | [第 5 章 · 第五步](/getting-started/first-world/#第五步build--test) |
 | 设置 Playmode tint | `Edit → Preferences → Colors → Playmode tint` | [第 7 章](/workbench/components/#play-mode-调参的陷阱) |
-| 新建场景 | `File → New Scene` | [第 5 章](/getting-started/first-world/#第一步新建并保存场景) |
+
+### 项目设置（与版本控制相关）
+
+| 菜单 | 路径 | 作用 / 出处 |
+|---|---|---|
+| Asset 序列化模式 | `Edit → Project Settings → Editor → Asset Serialization → Mode` | 必须改成 `Force Text`，YAML 文本才能 diff / merge。[第 42 章](/surviving/version-control/#asset-serialization-mode--force-text) |
+| Meta 文件可见性 | `Edit → Project Settings → Editor → Version Control → Mode` | 默认是 `Visible Meta Files`，确认一遍。[第 42 章](/surviving/version-control/#version-control-mode--visible-meta-files) |
+| Static Batching 总开关 | `Edit → Project Settings → Player → Other Settings → Static Batching` | 默认勾上。[第 38 章](/placeness/performance/#static-batching静态批处理) |
+
+### 资源与重建
+
+| 菜单 | 作用 |
+|---|---|
+| `Assets → Reimport All` | 强制重导入所有资源；`Library/` 异常时的修复入口。[第 42 章](/surviving/version-control/) |
+| `Assets → Refresh`（`Ctrl+R`） | 让 Unity 重新扫描 `Assets/`，触发脚本编译 |
+
+---
+
+## Lighting 窗口（光照与烘焙）
+
+打开：`Window → Rendering → Lighting`。
+
+`Scene` 选项卡里几个关键字段（默认值适合 VRChat 新世界）：
+
+| 字段 | 推荐起点 | 作用 |
+|---|---|---|
+| `Mixed Lighting → Lighting Mode` | `Shadowmask` | 直接光实时 + 间接光烘焙，性价比最高 |
+| `Mixed Lighting → Baked Global Illumination` | 开 | 必须开才有间接光 |
+| `Lightmapping Settings → Lightmapper` | `Progressive GPU` | GPU 烘焙比 CPU 快很多（看显卡） |
+| `Lightmapping Settings → Lightmap Resolution` | 30–50 texels/unit | 细节越多数值越大，烘焙时间指数增长 |
+| `Environment → Skybox Material` | 默认或自定义 | 决定室外天光颜色 |
+| `Environment → Ambient Mode` | `Baked` | 配合烘焙 |
+
+烘焙按钮：面板**右下角** `Generate Lighting`。  
+旁边的下拉箭头：
+
+- `Bake Reflection Probes` — 只重烘 Reflection Probe（[第 36 章](/placeness/light/#reflection-probe让金属表面真的反光)）
+- `Clear Baked Data` — 旧 Lightmap 没清掉时强制清
+
+详见 [第 36 章 · 烘焙一次 Lightmap](/placeness/light/#烘焙一次-lightmap)。
+
+---
+
+## Animator 编辑器
+
+打开：选中物体 → `Window → Animation → Animation`（`Ctrl+6`）。
+
+第一次给某物体新建 Animation Clip 时，Unity 会**同时**：
+
+1. 给该 GameObject 添加一个 `Animator` 组件；
+2. 新建一个 `Animator Controller` 资产并自动挂到 Animator 上；
+3. 把新建的 Animation Clip 作为该 Controller 的第一个 State。
+
+之后双击 Animator Controller 资产打开 **Animator 窗口**（状态机视图）：
+
+| 区域 | 作用 |
+|---|---|
+| **网格视图** | 拖拽编辑 State、Transition |
+| **Layers 标签** | 多动画层（VRChat 世界开发用得少） |
+| **Parameters 标签** | `+` 新增 Bool / Int / Float / Trigger |
+
+常见操作：
+
+- 右键空白 → `Create State → Empty` 新建 State
+- 右键 State → `Make Transition` → 拖到目标 State 创建 Transition
+- 右键 State → `Set as Layer Default State` 设默认（橙色）
+- 选中 Transition：Inspector 里调 `Has Exit Time` / `Conditions`（**Has Exit Time 默认勾着，开关响应式动画一定要取消**）
+
+详见 [第 17 章 · 门、机关和状态](/come-alive/doors-and-states/)。
+
+---
+
+## 性能分析窗口
+
+### Stats 窗口（最便宜）
+
+打开：`Game` 视图右上角 `Stats` 按钮。
+
+主要看：`FPS`、`Batches`、`Tris`、`Verts`、`Saved by batching`、`Shadow casters`、`SetPass calls`。Editor 里数字会比 Build 后略高，看趋势就行。
+
+详见 [第 38 章 · 第一节：Stats 窗口](/placeness/performance/#第一节stats-窗口)。
+
+### Profiler
+
+打开：`Window → Analysis → Profiler`（独立窗口）。
+
+主要看三块：`CPU Usage`（脚本 / 渲染 / 物理 / UI 各耗时）、`GPU Usage`、`Memory`。点 `Game → Play` 之后开始记录。锁定某一帧（`Ctrl+点击时间轴`）能看 Hierarchy 视图里逐方法耗时。
+
+详见 [第 38 章 · 第二节：Profiler 找具体瓶颈](/placeness/performance/#第二节profiler-找具体瓶颈)。
+
+### Frame Debugger
+
+打开：`Window → Analysis → Frame Debugger`。
+
+按帧拆开 Draw Call 序列，能看到「这一帧第几次 Draw Call 画的是谁、用的什么 Shader」。找 Overdraw / 透明物体批次很有用。**比 Profiler 更深一层**，平时不开。
+
+### Occlusion Culling 窗口
+
+打开：`Window → Rendering → Occlusion Culling`。
+
+烘焙顺序：先把场景里**不动的物体**全部标 `Static`（Inspector 右上角 `Static ▾`）→ 打开本窗口 → 底部 `Bake` 按钮 → 等几分钟 → 烘焙数据存到场景里。
+
+详见 [第 38 章 · 第四节：Occlusion Culling 烘焙](/placeness/performance/#第四节occlusion-culling-烘焙)。
+
+---
+
+## VRChat SDK Control Panel
+
+打开：`VRChat SDK → Show Control Panel`。常用四个标签：
+
+| 标签 | 用途 |
+|---|---|
+| `Authentication` | 登录 / 登出 VRChat 账号 |
+| `Builder` | 构建 / Test / Upload 世界 |
+| `Content Manager` | 管理已上传的世界（数据来自 VRChat 服务器） |
+| `Settings` | SDK 行为开关、ClientSim 入口 |
+
+`Builder` 标签下：
+
+- `Build & Test`（在本机起一个 VRChat 客户端测试）
+- `Build & Publish for Windows`（上传 PC 版）
+- 切平台后是 `Build & Publish for Android`（上传 Quest 版）
+
+`Settings` 标签下还能找到 **`Udon → Class Exposure Tree`**：写 UdonSharp 时查"这个 API 在不在白名单"的入口（[第 12 章](/programming/udonsharp-personality/#第一类unity--c-的某些-api-没被-udon-暴露)）。
+
+---
+
+## UdonSharp 编译触发
+
+UdonSharp 脚本在以下时机会触发重新编译：
+
+| 触发条件 | 说明 |
+|---|---|
+| 修改 `.cs` 文件并保存（IDE 里 Ctrl+S） | Unity 检测到文件变化 → 普通 C# 编译 → UdonSharp 把 IL 翻成 Udon Assembly |
+| 在 Unity 编辑器里手动 `Ctrl+R`（Refresh） | 强制重扫资产 |
+| 进入 Play 模式（`Ctrl+P`） | 编译失败时 Play 不会启动 |
+| 切平台（PC ↔ Android） | 切完会全量重编译一次 |
+
+编译产物：`Assets/Resources/SerializedUdonPrograms/` 下生成的 `.asset` 文件（Udon 字节码缓存）。这个目录可以 `.gitignore`，每次拉项目重编自动重新生成（[第 42 章](/surviving/version-control/#第六节vrchat--vcc-特殊事项)）。
+
+详见 [第 12 章](/programming/udonsharp-personality/)。
+
+---
+
+## 资源管理（VCC 与 Package Manager）
+
+VRChat 世界项目用 **VCC（Creator Companion）** 管理 SDK 与社区包，**不**用 Unity 自带 Package Manager 装 VRChat 相关包：
+
+- VCC 修改的是项目根 `Packages/manifest.json` 与 `Packages/vpm-manifest.json`。
+- Unity Package Manager（`Window → Package Manager`）仍可以装 Unity 官方的非 VRChat 包（如 TextMeshPro、Cinemachine）。
+
+这两份 `manifest.json` **要进版本控制**，记录了项目依赖。`Library/` 不进版本控制，新机器拉下后 Unity / VCC 会按 manifest 重建（[第 42 章 · VRChat / VCC 特殊事项](/surviving/version-control/#第六节vrchat--vcc-特殊事项)）。
+
+### `.meta` 文件处理
+
+每个资源都有同名 `.meta` 文件（存 GUID + 导入设置）。规则：
+
+- **`.meta` 跟资源文件一起提交、一起删除**。`.gitignore` 里**不要**写 `*.meta`。
+- 在 Unity 编辑器里删资源（Unity 会同步删 `.meta`），别在资源管理器里手动删。
+- 拉到别人的项目"所有引用都变成 None"时，第一反应：他没提交 `.meta`。
+
+详见 [第 42 章 · Version Control Mode = Visible Meta Files](/surviving/version-control/#version-control-mode--visible-meta-files)。
 
 ---
 
 ## TODO（按章节进度补充）
 
-- ⏳ 第 12 章后：UdonSharp 脚本编译触发条件
-- ⏳ 第 17 章后：Animator 编辑器（Animator Controller / State / Transition）
-- ⏳ 第 36 章后：Lighting 窗口、Bake 流程
-- ⏳ 第 38 章后：Profiler、Stats 窗口、Frame Debugger
-- ⏳ 第 42 章后：Package Manager、`.meta` 文件处理
+主线常用编辑器入口已基本到位。下一阶段补的小项：
+
+- ⏳ Audio Mixer 窗口（如果未来章节涉及音轨混音）
+- ⏳ Asset Bundle Browser（VRChat 世界用得少，按需）
+- ⏳ Cinemachine 工作流（非主线）
+
+新增窗口按 `encyclopedia-plan.md` 第 5.1 节工作流补。

@@ -1,50 +1,288 @@
 ---
 title: 附录 G · 性能检查清单
-description: 跑前 / 上传前的性能项勾选清单。第七部第 38 章写完后填充。
+description: 一份可直接照着勾的世界性能清单。从测量先于优化、到烘焙 / 材质 / 镜子 / Quest / 脚本 / 多人测试，最后是上传前最后一遍。
 sidebar:
   order: 7
-draft: true
-pagefind: false
 ---
 
-:::caution[占位中]
-主数据源是⏳ **第 38 章 · 性能，跑得动才是好** 和⏳ **第 39 章 · PC 和 Quest**。
-:::
+import { LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+「世界跑得好」是一种独立的能力，跟「世界看着好」是两件事。这份清单把第 36 / 37 / 38 / 39 章里散落的性能项汇到一处，可以直接对着场景勾。
+
+附录 G 的服务对象是两类时刻：
+
+- **优化中**：FPS 卡住，照着 G.1 → G.7 一节一节排，多数瓶颈不在第一直觉里。
+- **上传前**：场景做完准备 `Build & Publish`，照 G.9 那一份完整清单一次扫完。
+
+不打算抠的项可以跳过。但 [VRChat 官方提交页](https://creators.vrchat.com/worlds/submitting-a-world-to-be-made-public/) 反复强调的「不可让世界严重影响玩家性能」是底线——单人出生点 PC 上至少 45 FPS，否则上线后会被运营关注。
+
+## G.1 测量先于优化
+
+> 第 38 章第一句话：测量先于猜测。
+
+凭感觉优化的最大代价不是没效果，是花两小时改 X、结果真正慢的是 Y。
+
+- [ ] 跑 Stats 窗口（Game 视图右上角 `Stats` 按钮）记下基线：FPS / Batches / SetPass calls / Tris / Verts / Shadow casters。
+- [ ] 跑 Profiler（`Window` → `Analysis` → `Profiler`）按一帧看 CPU 各类工作的占比，确认瓶颈是 Rendering / Scripts / Physics / GPU 哪一块。
+- [ ] **优化任何一项之前**，先记下当前数。优化一项之后再记一次。两份数对比，确认改动真的让数下降了。
+- [ ] 编辑器里的数只是参考，最终以 `Build & Test` 之后的真实运行时数为准（编辑器有 overhead）。
+
+相关章节：[第 38 章 · 第一节 Stats 窗口](/placeness/performance/#第一节stats-窗口)、[第 38 章 · 第二节 Profiler 找具体瓶颈](/placeness/performance/#第二节profiler-找具体瓶颈)、[第 38 章 · 第九节 性能优化的优先级](/placeness/performance/#第九节性能优化的优先级)。
+
+## G.2 通用性能预算
+
+下面是社区共识的「不太会塌」预算，不是 VRChat 官方硬阈值。把它当工作起点，最终以多人 + 真实头像下的实测为准。
+
+### G.2.1 数字预算（PC）
+
+- [ ] FPS（VR 顺滑下限）：≥ **90**
+- [ ] Batches（Draw Call 批次）：< **200**
+- [ ] SetPass calls（Shader 切换次数）：< **100**
+- [ ] Tris（三角面数）：< **500k**
+- [ ] Verts（顶点数）：< **600k**
+- [ ] Shadow casters（投阴影物体数）：< **100**
+
+### G.2.2 数字预算（Quest / Android）
+
+第 38 章预算打 **1/4 ~ 1/3 折扣**：
+
+- [ ] FPS：≥ **72**
+- [ ] Batches：< **100**
+- [ ] SetPass calls：< **50**
+- [ ] Tris：≤ **250k**（VRChat 官方 Quest 优化建议）
+- [ ] Verts：< **300k**
+- [ ] Shadow casters：< **30**
+
+### G.2.3 共性事项（PC + Quest 都看）
+
+- [ ] 所有不动的物体勾了 **Static**（让 Static Batching / Occlusion / Lightmap 同时生效）。
+- [ ] 烘焙了 **Occlusion Culling**（`Window` → `Rendering` → `Occlusion Culling` → `Bake`）。改了场景结构（拆墙、加房间）后要重烘。
+- [ ] 所有 Material 勾了 **Enable GPU Instancing**（这是性价比最高的一步，100 棵相同的树从 100 个 Draw Call 降到 1 个）。
+- [ ] 透明物体（Transparent Render Queue）数量最少化。能用 Alpha Cutoff 的不用 Transparent。
+- [ ] `Edit` → `Project Settings` → `Player` → `Other Settings` → `Static Batching` 默认勾上，确认没被关掉。
+
+相关章节：[第 38 章 · 第一节](/placeness/performance/#第一节stats-窗口)、[第 38 章 · 第三节 Draw Call 是怎么变多的](/placeness/performance/#第三节draw-call-是怎么变多的)、[第 38 章 · 第四节 Occlusion Culling 烘焙](/placeness/performance/#第四节occlusion-culling-烘焙)、[第 38 章 · 第六节 透明物体](/placeness/performance/#第六节透明物体alpha)。
+
+## G.3 灯光与烘焙
+
+烘焙做对了，运行时几乎不算光；做不对，烘焙做了等于没做。
+
+- [ ] 主光源 = **Mixed**，装饰光 = **Baked**，开关灯 = **Realtime**。
+- [ ] 实时光（Realtime + Mixed 中走实时部分）总数 ≤ **4**（Quest 上推荐 = 0）。
+- [ ] 实时光大多数关了 `Cast Shadows`（保留烘焙阴影即可）。只有一两盏「核心戏剧化效果灯」开阴影。
+- [ ] 不必要的小物体 Mesh Renderer 的 `Cast Shadows` 设成 **Off**（装饰小物件不投影没差）。
+- [ ] Lightmap UVs 在所有静态 Mesh 上勾 `Generate Lightmap UVs`（fbx Import Settings）。
+- [ ] 撒了一组 Light Probe，覆盖玩家会走的所有空间（避免动态物体 / 玩家头像发灰）。
+- [ ] 每个独立空间至少一个 Reflection Probe（金属感强的世界必备；纯卡通可以省）。
+- [ ] 烘焙完没有明显的 UV 缝、亮斑、漏光。
+- [ ] Quest 版本 Lighting Mode 切到 **Subtractive**，重新烘 Lightmap（Quest 的 Lightmap 是 per-platform 的，必须切平台后单独烘）。
+
+相关章节：[第 36 章 · 烘焙发布前检查清单](/placeness/light/#一份烘焙发布前检查清单)、[第 38 章 · 第七节 阴影投射数量](/placeness/performance/#第七节阴影投射数量)、[第 39 章 · 第三节 Lighting Mode 要换成 Subtractive](/placeness/pc-and-quest/#第三节lighting-mode-要换成-subtractive)。
+
+## G.4 材质与贴图
+
+最容易让 Draw Call 失控的不是 Mesh 数量，而是材质数量。Unity 的批处理是按**材质**分组的：100 个 Mesh 用 1 种材质 = 1 批；1 个 Mesh 用 50 种材质 = 50 批。
+
+- [ ] **材质合并**优先：从 Blender 导入的角色 / 道具检查一下是不是每个零件一个独立材质。先合材质，再合 Mesh。
+- [ ] 重复使用的材质用同一个材质资产，不要复制十份。
+- [ ] 所有 Material 勾了 `Enable GPU Instancing`。
+- [ ] Albedo / Detail Albedo 勾了 sRGB；Normal / Metallic / AO 没勾 sRGB。
+- [ ] 所有 Normal Map 的 Texture Type = **Normal map**（不是 Default）。
+- [ ] 所有贴图 Max Size 设到「够用就好」（不是默认 2048）。装饰用的 512、墙面用的 1024、关键近景才上 2048。
+- [ ] Quest 版本贴图全部 Android Max Size = **1024**（Texture Inspector 里 `Android` 标签下单独设）。
+- [ ] Quest 版音频压缩格式 = **Vorbis** 或 **MP3**，不要用 WAV。
+- [ ] 同一物体不混用 PBR Standard 和 Unlit（容易出色调割裂）。
+
+相关章节：[第 37 章 · 一份发布前材质检查](/placeness/surfaces/#一份发布前材质检查)、[第 38 章 · 第三节](/placeness/performance/#第三节draw-call-是怎么变多的)、[第 39 章 · 第四节 纹理和包体限制](/placeness/pc-and-quest/#第四节纹理和包体限制)。
+
+## G.5 镜子、视频器、特效
+
+镜子和视频器是单独算账的——一面镜子 = 多渲一次场景，Stats 里 Batches 几乎翻倍。开多个镜子线性叠加。
+
+### G.5.1 镜子
+
+- [ ] 默认 `enabled = false`，玩家手动开关（按按钮 / 走进区域才生效）。
+- [ ] `Reflect Layers` 只勾 **Player**（包括 PlayerLocal 和 Player）。其他层不反射，省掉墙壁、家具的二次渲染。
+- [ ] `Mirror Resolution` ≤ **1024**（`Auto` 也可以；`Unlimited` 在 Quest 上会卡死）。
+- [ ] `Disable Pixel Lights` 勾上，镜中实时灯不算。
+- [ ] 同一房间内同时开镜数量 ≤ **1**（多个镜子只允许装在不同房间，避免叠加渲染）。
+
+### G.5.2 视频播放器
+
+- [ ] 默认关闭 / 静默状态（不主动播放，等玩家点）。
+- [ ] 同一房间视频播放器数量 ≤ **1**。
+- [ ] 长视频用低分辨率（720p 已经够用）。
+
+### G.5.3 特效（粒子 / Cloth / Post Processing）
+
+- [ ] PC 上粒子量克制（屏占比 ≤ 1/4 屏）；Quest 上粒子最少化。
+- [ ] **Quest 上 Cloth = 0**（必须）。
+- [ ] **Quest 上 Post Processing = 0**（必须，Android 版 SDK 不支持）。
+- [ ] 透明物体（玻璃 / 烟雾 / 粒子）多层叠加避免——两层重叠的玻璃就是双倍 Fillrate。
+
+相关章节：[第 38 章 · 第五节 镜子和视频播放器是单独算账的](/placeness/performance/#第五节镜子和视频播放器是单独算账的)、[第 39 章 · 第五节 Quest 的几条硬规矩](/placeness/pc-and-quest/#第五节quest-的几条硬规矩)。
+
+## G.6 Quest / Android 专项
+
+Quest 是渲染预算大约只有中端 PC 1/10 的 Android 设备。下面这些是 [VRChat 官方 Quest 内容优化文档](https://creators.vrchat.com/platforms/android/quest-content-optimization/) 列的硬规矩。
+
+### G.6.1 必须项（违反会被退回 / 不能上传）
+
+- [ ] **包体 ≤ 100 MB**（Estimate Build Size 在 Builder 面板里看）。
+- [ ] **Cloth 组件 = 0**。
+- [ ] **Post Processing = 0**。
+
+### G.6.2 强烈建议项（违反能上传，但跑起来会塌）
+
+- [ ] 实时光数量 = **0**（全部 Mode = Baked）。
+- [ ] 单世界三角面 ≤ **250,000**（再小更稳）。
+- [ ] 贴图最大尺寸 ≤ **1024**。
+- [ ] 所有 Material Shader 改成 `VRChat/Mobile/...` 系列：
+  - `VRChat/Mobile/Lightmapped`（性能最好，配合 Subtractive 用）
+  - `VRChat/Mobile/Bumped Diffuse`（带 Normal Map）
+  - `VRChat/Mobile/Toon Lit`（最便宜的卡通着色）
+  - `VRChat/Mobile/Standard Lite`（简化版 PBR）
+  - `VRChat/Mobile/MatCap Lit`（卡通 / Anime 风）
+- [ ] 透明物体几乎为 **0**（移动 GPU 上半透明像素的代价远高于桌面 GPU）。
+- [ ] 烘焙了 Occlusion Culling。
+- [ ] 所有 Material 勾了 GPU Instancing。
+- [ ] Skinned Mesh 数量低（玩家头像已经吃掉一份预算，世界自身少留几份）。
+- [ ] 用 [VRWorld Toolkit](https://github.com/oneVR/VRWorldToolkit) 跑过 `Quick Audit` 没红字。
+
+### G.6.3 维护一份工程做两个版本
+
+- [ ] 同一个 Unity 工程，PC 和 Quest 共享 Hierarchy。
+- [ ] Quest 不需要的物体（复杂粒子、装饰）打 `Tag = EditorOnly`，构建时被剥离。
+- [ ] 关键资源用 per-platform 设置（贴图分别设 Default / Android Max Size）。
+- [ ] **从一开始就考虑 Quest 适配**，不要「先做 PC 版、发布后再做 Quest 版」——后者多数会变成「重新搭一份」。
+
+相关章节：[第 39 章 · 第五节 Quest 的几条硬规矩](/placeness/pc-and-quest/#第五节quest-的几条硬规矩)、[第 39 章 · 第七节 维护一份工程做两个版本](/placeness/pc-and-quest/#第七节维护一份工程做两个版本)、[第 39 章 · Quest 发布前清单](/placeness/pc-and-quest/#一份-quest-发布前清单)。
+
+## G.7 脚本（UdonSharp）性能
+
+UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级。`Update` 里的开销会被放大。
+
+- [ ] `Update` 里**没有** `GetComponent` / `FindObjectOfType`（这两个调用每次遍历场景，每帧 60 次直接拖卡）。改成 `Start` 一次性获取并存到 `public` 字段。
+- [ ] `Update` 里**没有**字符串拼接 / `new` 数据类（触发 GC，UdonSharp 的 GC 比标准 C# 慢）。
+- [ ] `Update` 里**没有**大循环（100 个物体每帧每个查一次直接成性能瓶颈）。
+- [ ] 不必要的 `Update` 删掉——脚本只在玩家点击时做事，就只放在 `Interact` 里。
+- [ ] 用事件（`Interact` / `OnPlayerTriggerEnter`）或定时器（`SendCustomEventDelayedSeconds`）替代不必要的轮询。
+- [ ] 引用槽用 `public` 字段在 Inspector 里指定，不靠运行时查找。
+
+相关章节：[第 38 章 · 第八节 脚本性能](/placeness/performance/#第八节脚本性能)、[附录 D · UdonSharp 限制 · D.4 性能层](/appendix/udonsharp-limits/#d4-性能层量级与高成本写法)。
+
+## G.8 多人 + 真实头像下测一遍
+
+第 38 章那句反复强调的话：
+
+> 单人空场景里看着流畅的世界，不代表多人 + 真实头像下也流畅。
+
+玩家头像可能是 100k+ 顶点带粒子带动态骨骼的复杂模型。10 个玩家进来光头像就吃掉几万顶点几十个 Draw Call。世界自身的预算要给玩家头像让路。
+
+- [ ] 用第二个 VRChat 账号 + 一个常用复杂头像进自己的世界，加上自己一共两人。
+- [ ] 邀请 3–5 个朋友各带自己常用头像进来，看 FPS。
+- [ ] VRChat 客户端按帧率显示快捷键（具体快捷键以版本为准）开 Stats 浮窗，实时看帧率。
+- [ ] 如果发现「单人 80 FPS、5 人 30 FPS」，世界自身预算太紧，回头继续压。
+- [ ] 用 **Quest 头显**（或 Android 客户端）实测一次。手头没 Quest 设备的话，找个有的朋友帮忙测一次。
+
+相关章节：[第 38 章 · 第十节 测试一定要在多人 + 真实头像下做](/placeness/performance/#第十节测试一定要在多人--真实头像下做)、[第 41 章 · 第五节 Quest / Android 必须单独测一遍](/surviving/testing-your-world/#第五节quest--android-必须单独测一遍)。
+
+## G.9 上传前最后一遍（一页纸版）
+
+`Build & Publish` 之前最后扫一眼。每条都能勾上再按 Upload。
+
+**测量与基线**
+
+- [ ] Stats 显示 FPS ≥ 90（PC）/ ≥ 72（Quest）
+- [ ] Profiler 跑过，CPU 各类工作占比无明显异常
+- [ ] Batches < 200（PC）/ < 100（Quest）
+- [ ] SetPass calls < 100（PC）/ < 50（Quest）
+- [ ] Tris < 500k（PC）/ ≤ 250k（Quest）
+
+**烘焙与场景**
+
+- [ ] 所有不动的物体已 Static
+- [ ] 烘焙了 Occlusion Culling
+- [ ] 烘焙了 Lightmap，没有明显 UV 缝 / 亮斑 / 漏光
+- [ ] 撒了一组 Light Probe
+- [ ] 实时光 ≤ 4（PC）/ = 0（Quest），多数关 `Cast Shadows`
+
+**材质与贴图**
+
+- [ ] 所有 Material 勾了 GPU Instancing
+- [ ] 重复材质合并到同一份资产
+- [ ] 贴图 Max Size 不是默认 2048（按需降到 1024 / 512）
+- [ ] Quest 版贴图 Android Max Size = 1024
+- [ ] 同一物体不混用 PBR Standard 和 Unlit
+
+**镜子与视频**
+
+- [ ] 镜子默认关，玩家可开关
+- [ ] 镜子 `Reflect Layers` 只勾 Player
+- [ ] `Mirror Resolution` ≤ 1024
+- [ ] 视频播放器单房间不超过 1 个
+
+**Quest 专项**
+
+- [ ] 切到 Android 平台，重新烘 Lighting（Subtractive）
+- [ ] 所有 Material Shader 改成 VRChat/Mobile 系列
+- [ ] 没有 Cloth / Post Processing / Realtime Light
+- [ ] Build Estimate ≤ 100 MB
+- [ ] 用 VRWorld Toolkit 跑一次 Quick Audit
+
+**脚本**
+
+- [ ] `Update` 里没有 `GetComponent` / `Find` / 字符串拼接 / 大循环
+- [ ] 不必要的 `Update` 删了
+
+**多人测试**
+
+- [ ] 多人 + 真实头像测过（≥ 3 人，常用复杂头像）
+- [ ] 用 Quest 头显或 Android 客户端实测过 FPS
+
+每一项都能勾上，再考虑上传。
 
 ---
 
-## 计划骨架
+## 数据源章节
 
-填充后大致结构：
+| 节 | 主源 | 辅源 |
+|---|---|---|
+| G.1 测量先于优化 | 第 38 章 § 1、§ 2、§ 9 | — |
+| G.2 通用预算 | 第 38 章 § 1、§ 3、§ 4、§ 6 | 第 39 章 § 5 |
+| G.3 灯光与烘焙 | 第 36 章 检查清单、第 38 章 § 7 | 第 39 章 § 3 |
+| G.4 材质与贴图 | 第 37 章 检查清单、第 38 章 § 3 | 第 39 章 § 4 |
+| G.5 镜子 / 视频 / 特效 | 第 38 章 § 5、§ 6 | 第 16 章 镜子默认关 |
+| G.6 Quest 专项 | 第 39 章 全章 | 附录 G.4、G.5 |
+| G.7 脚本性能 | 第 38 章 § 8 | 附录 D · D.4 |
+| G.8 多人 + 真实头像 | 第 38 章 § 10、第 41 章 § 5 | 第 41 章 § 6 |
+| G.9 一页纸 | 上面八节汇总 | — |
 
-### G.1 通用性能（PC + Quest 都看）
+## 外部参考
 
-- [ ] Draw Call 数量（< X 个）
-- [ ] 实时灯光数量（< X 盏）
-- [ ] 实时投影灯光数量（< X 盏）
-- [ ] 镜子是否默认禁用 / 玩家手动启用
-- [ ] 静态物体是否标记 Static（让 Static Batching 生效）
-- [ ] 大场景是否做了 Occlusion Culling
+- [VRChat Creator Docs：Quest Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
+- [VRChat Creator Docs：Mobile Best Practices](https://creators.vrchat.com/platforms/android/mobile-best-practices/)
+- [VRChat Creator Docs：UdonSharp Performance Tips](https://creators.vrchat.com/worlds/udon/udonsharp/performance-tips/)
+- [Unity Manual：Profiler Window](https://docs.unity3d.com/Manual/Profiler.html)
+- [VRCreators：World Optimization Checklist（2026-05 修订）](https://vrcreators.net/docs/vrchat/world-optimization-checklist)
+- [VRWorld Toolkit · GitHub](https://github.com/oneVR/VRWorldToolkit)
 
-### G.2 Quest 专项
+## 关联附录
 
-- [ ] 实时灯光 ≤ X 盏
-- [ ] 不使用不在 Quest 白名单上的 Shader
-- [ ] 贴图最大尺寸 ≤ X
-- [ ] 单个材质贴图数量
-- [ ] 总体面数
-
-### G.3 VRChat Performance Rank
-
-把 SDK 控制面板里的 Performance Rank 解读拆出来。
-
----
-
-## 数据源
-
-- [VRChat Performance Tips](https://creators.vrchat.com/worlds/performance-tips/)
-- [Quest Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
-- 第 36 章（光照烘焙）
-- 第 37 章（Shader 选型）
-- 第 38 章（性能主章）
-- 第 39 章（跨平台限制）
+<CardGrid>
+  <LinkCard
+    title="附录 D · UdonSharp 限制"
+    href="../udonsharp-limits/"
+    description="D.4 节专门讲 UdonSharp 在 Update 里的额外开销和写法对策。"
+  />
+  <LinkCard
+    title="附录 H · 发布检查清单"
+    href="../release-checklist/"
+    description="性能预算只是发布前一半的功课，另一半在 H 里：元数据、可见性、平台标记、TOS。"
+  />
+  <LinkCard
+    title="附录 F · 报错排查"
+    href="../errors/"
+    description="性能撑不住时常伴随报错（halted、GC spike），F.5 节给了对应排查路径。"
+  />
+</CardGrid>

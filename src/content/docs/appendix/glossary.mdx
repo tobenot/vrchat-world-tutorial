@@ -798,6 +798,10 @@ C# 内置运算符，返回标识符的字符串名（`nameof(IsOpen)` 等于 `"
 玩家加入 / 离开实例时被调用的事件，形参 `VRCPlayerApi player` 是当事人。所有客户端都会收到一次，常用来播提示音、刷新玩家名单。  
 首次出现：[第 26 章 · VRChat 网络模型的最小心智模型](/with-others/you-see-others-dont/#vrchat-网络模型的最小心智模型)。
 
+**`OnPlayerRestored`**  
+`Player Persistence API` 的回调事件：本地玩家的持久化数据从 VRChat 服务端取回完成、可以读取时触发。读 PlayerData 字段、应用到世界状态（比如恢复"上次坐过哪把椅子"）应该在这个事件里做，不要在 `OnPlayerJoined` 或 `Start` 里抢跑。  
+首次出现：[第 24 章 · Tool World](/world-types/tool-world/)、详细在第 27 章 Persistence 段落。
+
 **`Networking`**（静态类）  
 VRChat SDK 全局工具类，命名空间 `VRC.SDKBase`。所有「玩家是不是 Owner」「拿当前玩家」「拿服务器时间」「转移所有权」类操作都从它出发：`Networking.LocalPlayer`、`Networking.IsOwner(...)`、`Networking.SetOwner(...)`、`Networking.GetServerTimeInSeconds()`。  
 首次出现：[第 27 章 · Owner 是什么、不是什么](/with-others/ownership/#owner-是什么不是什么)。
@@ -884,6 +888,10 @@ VRChat 的空间音频算法，按声源相对玩家的 3D 位置计算左右耳
 
 **增益**（Gain）  
 在原始音量之上额外加或减多少 dB。VRChat 世界 Audio Source 默认有 `+10 dB` 增益，所以素材本身太响时要降。  
+首次出现：[第 33 章](/placeness/sound-and-mood/)。
+
+**`Audio Listener`**  
+Unity 接收音频的"耳朵"组件。Unity 默认场景里 `Main Camera` 自带一个；**VRChat 世界里不要自己再挂**——VRChat 客户端会在玩家头部放置 Listener，世界里多挂一个会冲突或被忽略。  
 首次出现：[第 33 章](/placeness/sound-and-mood/)。
 
 ---
@@ -1138,6 +1146,14 @@ Git 的大文件扩展。仓库里只保留指针，实际的大模型、PSD、H
 Unity 自带的智能合并工具，能按 GameObject / Component 等对象结构合并 `.unity`、`.prefab` 这类 YAML 文件。它比普通文本行合并更适合 Unity 场景冲突。  
 首次出现：[第 42 章](/surviving/version-control/)。
 
+**`Force Text`**（资产序列化模式）  
+Unity 项目设置 `Edit → Project Settings → Editor → Asset Serialization → Mode` 的一个选项。改成 `Force Text` 后，`.unity` / `.prefab` / `.asset` 等文件以 YAML 文本写入，能 diff、能合并。VRChat 模板默认是 Force Text，但合作开发时拉别人项目要确认一遍。  
+首次出现：[第 42 章 · Asset Serialization Mode = Force Text](/surviving/version-control/#asset-serialization-mode--force-text)。
+
+**`Visible Meta Files`**（meta 文件可见模式）  
+Unity 项目设置 `Edit → Project Settings → Editor → Version Control → Mode` 的默认选项。每个资源旁边可见同名 `.meta` 文件，存 GUID + 导入设置；`.meta` 必须跟资源一起进版本控制，**漏一个就引用断**。  
+首次出现：[第 42 章 · Version Control Mode = Visible Meta Files](/surviving/version-control/#version-control-mode--visible-meta-files)。
+
 **`EULA`**（End User License Agreement，最终用户许可协议）  
 规定用户买到或下载到一份素材后能做什么、不能做什么。Unity Asset Store 素材统一受 Asset Store EULA 约束。  
 首次出现：[第 43 章 · 素材、插件和版权](/surviving/assets-and-licenses/)。
@@ -1201,6 +1217,14 @@ Creator Economy 的四件套：Products 是买家最终拥有的内容，Listing
 **`Dark Patterns`**（暗黑模式）  
 诱导用户做出不利选择的界面或流程设计，如隐藏取消按钮、虚假倒计时、强制订阅等。VRChat Creator Economy 明确禁止这类做法。  
 首次出现：[第 45 章](/publishing/creator-economy/)。
+
+**`Recommended Capacity` / `Capacity` (Hard Cap)**  
+`VRC Scene Descriptor` 上的两档实例容量字段。`Recommended Capacity` 是软上限，达到后实例在公开浏览中曝光下降；`Capacity` 是硬上限（Hard Cap），达到后新玩家不能再加入（少数 Group / 创建者例外）。Event 世界常把容量调到 60+，实际可用上限受 SDK 与平台性能影响。  
+首次出现：[第 23 章 · Event World](/world-types/event-world/)、应用在第 44 章发布元数据。
+
+**`Networking.OpenURL`**  
+VRChat 提供的"打开外部网址"API，签名 `Networking.OpenURL(VRCUrl url)`。**不能强制打开**，VRChat 客户端会先弹出确认框让玩家同意。常用于 Commercial World 跳转外部商店、Tool World 跳到说明文档。  
+首次出现：[第 25 章 · Commercial World](/world-types/commercial-world/)。
 
 **`backlog`**  
 待处理清单。维护世界时常用它收集反馈和想法，再按必修、应修、看情况等优先级排队。  
