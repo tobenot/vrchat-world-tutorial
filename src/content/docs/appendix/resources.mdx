@@ -88,3 +88,54 @@ pagefind: true
 | [Unity Asset Store](https://assetstore.unity.com/) | Unity 官方商店，注意挑选授权允许商用 / 上传到 VRChat 的 |
 
 详细的素材授权讨论见[第 43 章 · 素材、插件和版权](/surviving/assets-and-licenses/)。
+
+---
+
+## C# 语言
+
+| 入口 | 用法 |
+|---|---|
+| [Microsoft C# Docs](https://learn.microsoft.com/dotnet/csharp/) | C# 语法和标准库权威参考。UdonSharp 的 C# 语法基础查这里 |
+| [C# Tour](https://learn.microsoft.com/dotnet/csharp/tour-of-csharp/) | 语言速览。写 UdonSharp 之前想快速复习 C# 某个语法点时翻这个 |
+
+UdonSharp 能用的 C# 子集有限（详见[附录 D](/appendix/udonsharp-limits/)），但语法本身的权威说明在 Microsoft Docs。
+
+---
+
+## 视频和中文内容创作者
+
+| 入口 | 用法 |
+|---|---|
+| [Bilibili 搜「VRChat 世界」](https://search.bilibili.com/all?keyword=VRChat%20%E4%B8%96%E7%95%8C) | 中文圈 VRChat 内容主场。搜「VRChat 世界」「Udon 教程」「VRC 世界制作」能找到不少实操视频 |
+| [VRC School](https://vrc.school/) | 由 JustSleightly 和 VRLabs 维护的 Avatar 3.0 系统教程站。**注意**：本书讨论世界开发，VRC School 主要面向 Avatar 创作；只在你需要补 Animator 状态机这类 Avatar 通用知识时翻它 |
+
+以下是几位在 VRChat 世界开发领域持续产出内容的个人创作者（排名不分先后）：
+
+| 创作者 | 平台 | 内容类型 |
+|---|---|---|
+| Vowgan | [Gumroad](https://vowgan.gumroad.com/) / [GitHub](https://github.com/VirtualVisions/VowganPrefabs) | World 用 Prefab（菜单、本地化等），社区认可度高，多数免费 |
+| Liya 荔吖 | [Bilibili](https://space.bilibili.com/1577887829) | 中文「零基础 VRChat 地图制作」系列，覆盖 SDK3.0 / Udon |
+
+个人创作者的内容更新频率和准确性不如官方文档稳定，作为学习参考时注意看发布日期。Avatar 向的知名创作者（JustSleightly 等）资源丰富但本书不深入引用，等你做完世界想转头研究 Avatar 时再去顺藤摸瓜。
+
+---
+
+## 可学习的示例项目
+
+| 入口 | 用法 |
+|---|---|
+| UdonExampleScene（SDK 自带） | VCC 创建新项目时包含的官方示例场景。覆盖 Interact、Pickup、同步等基础交互，是拆解学习的第一站 |
+| [GitHub 搜 `udonsharp`](https://github.com/search?q=udonsharp&type=repositories) | 大量开源 UdonSharp 项目。按 Star 排序能找到社区认可度高的参考实现 |
+| [VRChat 官方 GitHub 模板](https://github.com/vrchat-community) | 官方维护的世界模板和工具，代码质量有保障 |
+
+读别人的代码是学编程最快的方式之一。进到一个喜欢的开源世界，把它的 UdonSharp 脚本拆开看，比从零写更容易建立心智模型。
+
+---
+
+## 旧版文档
+
+| 入口 | 用法 |
+|---|---|
+| [VRChat 旧版文档](https://docs.vrchat.com) | SDK2 时代留下的文档站。Community Labs、Trust Rank 等运营 / 平台规则相关内容仍以这里为权威。**注意**：原站点近期访问可能不稳定，可改用[汉化镜像 `docs.vrczh.org`](https://docs.vrczh.org/docs.vrchat.com/) 查看同样的内容（路径结构一致，去掉 `docs.vrchat.com/` 前缀） |
+
+旧版文档里涉及 SDK 和 Udon 的技术内容以 Creator Docs 主站为准。只有当 Creator Docs 里搜不到某个运营 / 平台规则时，才回旧版文档查。
