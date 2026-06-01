@@ -17,7 +17,7 @@ pagefind: true
 ## 平台与生态
 
 **`VRChat`**  
-社交 VR 平台，用户上传虚拟世界和化身后供他人加入。客户端跑在 PC、Meta Quest、iOS 上。  
+社交 VR 平台，用户上传虚拟世界和化身后供他人加入。客户端跑在 PC（Windows）、Meta Quest，以及移动端 iOS / Android。  
 首次出现：[第 2 章 · VRChat 这家公司和这个引擎](/getting-started/about-vrchat/)。
 
 **`VRChat Inc.`**  
@@ -293,15 +293,15 @@ VRChat 后端给每个发布过的世界分配的全局唯一 ID。`Build & Publ
 首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
 
 **对象存储**  
-可以理解成云端文件仓库，负责存放 `.vrcw` 这种世界包文件。VRChat 当前主要使用 Cloudflare R2 存这些文件。  
-首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
+可以理解成云端文件仓库，负责存放 `.vrcw` 这种世界包文件。VRChat 使用的具体云服务商 / CDN 没有公开声明，社区抓包观察到 `files.vrchat.cloud` 域名走第三方 CDN 分发。  
+首次出现：[第 2 章 · VRChat 是 Unity 之上的一层「世界格式」](/getting-started/about-vrchat/#vrchat-是-unity-之上的一层世界格式)。
 
 **`CDN`**（Content Delivery Network，内容分发网络）  
 可以理解成分布在各地的下载仓库。玩家加入世界时，不是从作者电脑下载，而是从 CDN 拉取 `.vrcw`；世界越大，第一次加载越慢。  
 首次出现：[理解章 A · 正式上传：到 VRChat 云](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
 
 **`Cloudflare R2`**  
-Cloudflare 的对象存储服务。这里可以先把它理解成 VRChat 用来存放 `.vrcw` 文件的云端仓库之一。  
+Cloudflare 的对象存储服务。社区里有时看到这个名字出现在 VRChat 相关讨论中，用作 CDN / 对象存储的一类典型选项理解；VRChat 没有公开声明具体后端。  
 首次出现：[理解章 A](/getting-started/world-pipeline/#正式上传到-vrchat-云)。
 
 **`Instance`**（实例）  
@@ -606,8 +606,8 @@ VRChat 主力平台，SteamVR / Oculus 头显或纯 Desktop 模式都能玩。
 独立 VR 头显，跑 Android。GPU 是 PC 中端的 1/10 量级，内容预算受严格限制。  
 首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见[第 39 章 · PC 和 Quest](/placeness/pc-and-quest/)。
 
-**`iOS`**（VRChat 端）  
-2024 年上线。触屏、无 VR。  
+**`iOS`** / **`Android`**（VRChat 移动端）  
+2024 年起进入 beta，2025 年 10 月正式登陆 App Store 和 Google Play。触屏、无 VR，2D 平面模式。  
 首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
 
 **`Steam Early Access`**  
