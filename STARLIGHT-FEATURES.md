@@ -369,7 +369,7 @@ GIT_DEPTH = 0
 
 | 插件 | 作用 | 配置 |
 | :--- | :--- | :--- |
-| `starlight-image-zoom` | 截图点击放大 | 默认全站启用 |
+| `starlight-image-zoom` | 图片点击放大（目前暂无配图，插件已预装，后续添加图片即可生效） | 默认全站启用 |
 | `starlight-links-validator` | 构建时死链检查 | 仅在生产构建启用，参见 §11 |
 
 未来想再加：

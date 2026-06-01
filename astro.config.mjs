@@ -94,7 +94,7 @@ export default defineConfig({
       },
       // 组件覆盖：
       //  · Head：注入 JSON-LD 结构化数据（WebSite / TechArticle / BreadcrumbList）
-      //  · SiteTitle：顶栏书名后追加当前章节标题（截图时一眼看出在哪章）
+      //  · SiteTitle：顶栏书名后追加当前章节标题（分享或截图时一眼看出在哪章）
       //  · PageTitle：在标题下方加阅读时间 / 难度 / 章节类型徽章
       //  · Footer：追加反馈条 + Mermaid 运行时 + 外站链接新标签页处理
       components: {
