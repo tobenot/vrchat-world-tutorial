@@ -8,7 +8,7 @@ pagefind: true
 
 正文按教学顺序展开，所以同一个术语可能直到下一章才被命名。这一份按主题分类，方便读到一半回来查。
 
-每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖第 1–2 部基础词，以及第 5–9 部新增门槛词。
+每个词条尽量保持短：1–2 句客观定义 + 首次出现章节回链。深度解释回各自章节看。词条会随正文一起长大，目前覆盖第 1–2 部基础词、第 4 部（10–17 章）的编程基础与交互词、第 6 部（26–30 章）的多人同步词，以及第 7–9 部新增门槛词。
 
 未覆盖的术语，[`design/encyclopedia-plan.md`](https://github.com/tobenot/vrchat-world-tutorial/blob/main/design/encyclopedia-plan.md) 里逐章登记了"等哪一章写完就该补什么"。
 
@@ -91,6 +91,118 @@ VRChat 脚本必须继承的基类，对应普通 Unity 的 `MonoBehaviour`。�
 **`MonoBehaviour`**  
 Unity 通用脚本基类。VRChat 世界脚本不用它，用 `UdonSharpBehaviour`。出现在搜到的 Unity 教程里很正常，但贴进 VRChat 项目要换。  
 首次出现：[第 3 章](/getting-started/ai-partner/#它会什么不会什么)。
+
+---
+
+## 编程基础与 C# 语法（第 10–11 章）
+
+**变量**（Variable）  
+程序里给一块数据起的名字。`int score = 0;` 等于「开一个叫 `score` 的盒子，里面先放 0」。  
+首次出现：[第 10 章 · 三种最基本的指令](/programming/basics-no-code/#三种最基本的指令)。
+
+**条件判断 `if` / `else`**  
+按当前情况选一条路。Udon 脚本里大部分判断（`if (player.isLocal)`、`if (gameStarted)`）都靠它。  
+首次出现：[第 10 章](/programming/basics-no-code/#三种最基本的指令)、[第 11 章 · 控制流：if / else / for / while](/programming/csharp-just-enough/)。
+
+**循环 `for` / `while`**  
+把一段事重复做。`for` 适合「重复固定次数」，`while` 适合「直到某条件不成立才停」。UdonSharp 不支持 `foreach`。  
+首次出现：[第 10 章](/programming/basics-no-code/#三种最基本的指令)、[第 11 章](/programming/csharp-just-enough/)。
+
+**函数 / 方法**（Function / Method）  
+把一段步骤打包起来起个名字，将来一句话调用。脚本里的 `Start()`、`Interact()` 都是方法。  
+首次出现：[第 10 章 · 把一段流程打包：函数](/programming/basics-no-code/#把一段流程打包函数)、[第 11 章 · 方法](/programming/csharp-just-enough/#方法)。
+
+**类**（Class）  
+把相关的字段和方法装在一起的容器。一个 `.cs` 文件通常就是一个类，VRChat 世界脚本里这个类继承自 `UdonSharpBehaviour`。  
+首次出现：[第 10 章 · 把相关的东西归在一起：类](/programming/basics-no-code/#把相关的东西归在一起类)、[第 11 章 · 类](/programming/csharp-just-enough/#类)。
+
+**字段**（Field）  
+类里直接写出来的变量，整个类的方法都能访问它。设了 `public` 或加 `[SerializeField]` 后，Inspector 也能看到和拖引用。  
+首次出现：[第 11 章 · 字段、属性和局部变量](/programming/csharp-just-enough/#字段属性和局部变量)。
+
+**局部变量**（Local Variable）  
+方法内部 `{ ... }` 里临时声明的变量，方法跑完就消失。生命周期短、不出现在 Inspector。  
+首次出现：[第 11 章](/programming/csharp-just-enough/#字段属性和局部变量)。
+
+**`int` / `float` / `bool` / `string`**  
+C# 基础类型。`int` 整数，`float` 带小数点的浮点数（写值要加 `f`，例如 `1.5f`），`bool` 真假，`string` 文字。  
+首次出现：[第 11 章 · 变量和类型](/programming/csharp-just-enough/#变量和类型)。
+
+**`Vector3`**  
+表示 3D 空间里一个位置或方向的结构体，含 `x` / `y` / `z` 三个 `float`。`transform.position`、`Networking.LocalPlayer.GetPosition()` 都是 `Vector3`。  
+首次出现：[第 11 章](/programming/csharp-just-enough/#变量和类型)。
+
+**`null`**  
+"什么都不指向"的特殊值。Inspector 引用槽空着、`GameObject.Find` 没找到时都会得到 `null`，再去 `.something` 就会抛 `NullReferenceException`。  
+首次出现：[第 11 章 · 引用其他物体](/programming/csharp-just-enough/#引用其他物体)。
+
+**`public` / `private` / `[SerializeField]`**  
+访问修饰符。`public` 字段对其他类和 Inspector 都可见；`private` 只在本类内部可见；`[SerializeField] private xxx` 是 VRChat 项目里推荐的中庸写法——Inspector 能拖，但代码外部碰不到。  
+首次出现：[第 11 章 · 字段、属性和局部变量](/programming/csharp-just-enough/#字段属性和局部变量)。
+
+**`using` 指令**  
+脚本顶部的 `using UnityEngine;`、`using VRC.SDKBase;` 等行，告诉编译器「下面的代码可以省略这些命名空间前缀」。AI 给的代码缺命名空间引用时第一处要补的就是这里。  
+首次出现：[第 11 章 · 一段最小脚本长什么样](/programming/csharp-just-enough/#一段最小脚本长什么样)。
+
+**`Start()` / `Update()`**  
+Unity 生命周期方法。`Start` 在物体启用后第一帧调一次，常用来初始化引用；`Update` 每帧调一次，开销最敏感的方法之一。  
+首次出现：[第 11 章](/programming/csharp-just-enough/#一段最小脚本长什么样)。
+
+**大驼峰 / 小驼峰**（PascalCase / camelCase）  
+C# 命名约定：类名、方法名、`public` 字段用大驼峰（`GameManager`、`Interact`、`PlayerCount`）；局部变量、`private` 字段用小驼峰（`playerCount`、`localScore`）。  
+首次出现：[第 11 章 · 三件 C# 的语法基本功](/programming/csharp-just-enough/#三件-c-的语法基本功)。
+
+**`Time.deltaTime`**  
+上一帧到这一帧之间过了多少秒。脚本里要做"每秒移动 N 米"这类与时间挂钩的运算就乘以它，否则会被高帧率显卡跑得过快。  
+首次出现：[第 11 章](/programming/csharp-just-enough/)。
+
+**`Mathf`**  
+Unity 的数学工具静态类，提供 `Mathf.Clamp`、`Mathf.Lerp`、`Mathf.Sin` 等常用函数。在 Udon 白名单内，可以直接用。  
+首次出现：[第 11 章](/programming/csharp-just-enough/)。
+
+**`GameObject.Find`**  
+按名字在场景里搜物体的方法。性能差且容易因改名失效，VRChat 项目里通常改用 `[SerializeField]` 在 Inspector 拖引用。  
+首次出现：[第 11 章 · 引用其他物体](/programming/csharp-just-enough/#引用其他物体)。
+
+**`[Tooltip]`**  
+字段上方加的 attribute，会让 Inspector 鼠标悬浮时显示一行说明文字。给协作者或几个月后的自己留提示用。  
+首次出现：[第 11 章 · 字段、属性和局部变量](/programming/csharp-just-enough/#字段属性和局部变量)。
+
+---
+
+## UdonSharp 限制与替代写法（第 12 章）
+
+**`SendCustomEventDelayedSeconds`**  
+`UdonSharpBehaviour` 自带的延时事件方法。传入方法名和延迟秒数后，Udon 虚拟机在那么多秒后调用那个方法。`async` / `await` 和协程在 UdonSharp 不可用，"过 N 秒之后做某事"统一写它。  
+首次出现：[第 12 章 · 第二类：UdonSharp 编译器还没支持的 C# 特性](/programming/udonsharp-personality/#第二类udonsharp-编译器还没支持的-c-特性)。
+
+**`Coroutine`** / **`yield return`**  
+普通 Unity 项目里写「等一段时间再继续做」的协程机制，依赖 `IEnumerator` 和 `yield return new WaitForSeconds(...)`。UdonSharp 不支持 `yield`，看到这种写法要翻译成 `SendCustomEventDelayedSeconds`。  
+首次出现：[第 12 章](/programming/udonsharp-personality/#第二类udonsharp-编译器还没支持的-c-特性)。
+
+**`DataList`** / **`DataDictionary`**（`VRC.SDK3.Data`）  
+VRChat SDK 提供的动态列表和键值字典，能装混合类型数据，是 UdonSharp 里 `List<T>` / `Dictionary<TKey, TValue>` 的替代品。当前 UdonSharp 集合只支持数组 `T[]`，需要动态长度时用它。  
+首次出现：[第 12 章 · 普通 C# 的数据类思路在这里走不通](/programming/udonsharp-personality/#普通-c-的数据类思路在这里走不通)。
+
+**`DataToken`**  
+`DataList` / `DataDictionary` 里每个元素的盒子。取值时用 `.Int`、`.String`、`.Boolean` 等属性把原始类型解出来。  
+首次出现：[第 12 章](/programming/udonsharp-personality/#普通-c-的数据类思路在这里走不通)。
+
+**`Plugins/` 目录**  
+Unity 的特殊目录之一。放在 `Assets/Plugins/` 下的 C# 文件走另一条编译路径，UdonSharp 不会要求它继承 `UdonSharpBehaviour`。纯静态常量类、纯工具方法类要放这里，否则编译器报「Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset」。  
+首次出现：[第 12 章 · 纯静态类必须放在 Plugins/ 文件夹](/programming/udonsharp-personality/#纯静态类必须放在-plugins-文件夹)。
+
+**`UdonSharpProgramAsset`**  
+UdonSharp 编译器为每个非 Plugins 区域的 `UdonSharpBehaviour` 自动配套的程序资产。它把脚本和 Udon 字节码绑在一起，运行时由 `Udon Behaviour` 引用。纯静态类不需要它，所以不能放在非 Plugins 目录。  
+首次出现：[第 12 章](/programming/udonsharp-personality/#纯静态类必须放在-plugins-文件夹)。
+
+**`Player Persistence API`**  
+VRChat SDK 3.7.4 起提供的玩家数据持久化通道，让世界保存少量玩家相关字段并跨实例读取。沙箱不让脚本读写本地文件，需要持久化时走它。  
+首次出现：[第 12 章 · 第一类：白名单里没有的 API](/programming/udonsharp-personality/#第一类白名单里没有的-api)。
+
+**`VRCUrl`** / **`VRCStringDownloader`**  
+VRChat 提供的受限 URL 类型与字符串下载工具。世界要从外部地址读文本只能走这套通道，普通 `System.Net.*` 调不到。URL 还要在 SDK 控制面板里登记。  
+首次出现：[第 12 章](/programming/udonsharp-personality/#第一类白名单里没有的-api)。
 
 ---
 
@@ -340,11 +452,11 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`VRC Pickup`**  
 让玩家能把物体拿起来。默认本地行为；要让别人也看见拿起，需要配 `VRC Object Sync`。  
-首次出现：[第 7 章 · VRChat SDK 自带的那批组件](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
+首次出现：[第 7 章 · VRChat SDK 自带的那批组件](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见[第 15 章 · 让物体可被抓取的三件套](/come-alive/pickup-and-throw/#让物体可被抓取的三件套)。
 
 **`VRC Object Sync`**  
 多人之间同步物体位置 / 旋转 / 速度。Pickup 类物体的同步标配。  
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 15 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见[第 15 章](/come-alive/pickup-and-throw/#让物体可被抓取的三件套)。
 
 **`VRC Spatial Audio Source`**  
 3D 空间音效组件，离远了变小。比 Unity 原生 `Audio Source` 多一些 VRChat 端的限制（最大距离上限等）。  
@@ -352,11 +464,11 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 
 **`VRC Mirror Reflection`**  
 生成镜子。镜子是 VRChat 性能最重的几样东西之一，做休闲世界时谨慎用。  
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 16 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见[第 16 章 · 第二节：用 VRCMirrorReflection 做一面镜子](/come-alive/sit-mirror-teleport/#第二节用-vrcmirrorreflection-做一面镜子)。
 
 **`VRC Station`**  
 让物体能被坐下（椅子、沙发、驾驶座）。会接管玩家移动控制。  
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见 ⏳ 第 16 章。
+首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)。详细见[第 16 章 · 第一节：用 VRCStation 做一把能坐的椅子](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
 
 **`Udon Behaviour`**  
 挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。  
@@ -392,7 +504,7 @@ Unity 原生音频组件。VRChat 世界里通常优先用 `VRC Spatial Audio So
 
 **`Animator`**  
 状态机驱动的动画组件，用于平滑运动（开关门、电梯、风扇）。  
-首次出现：[第 7 章](/workbench/components/#add-component按需加能力)。详细见 ⏳ 第 17 章。
+首次出现：[第 7 章](/workbench/components/#add-component按需加能力)。详细见[第 17 章 · 门、机关和状态](/come-alive/doors-and-states/)。
 
 ---
 
@@ -504,6 +616,158 @@ VRChat 2017 年 2 月在 Steam 上线时使用的发布模式。
 
 ---
 
+## 交互事件与玩家 API（第 4 部第 13–14 章）
+
+**`Interact`**  
+玩家把光标对准某个挂着 `UdonSharpBehaviour` 的 GameObject 后按下交互键时被调用的事件。VRChat 里几乎所有「走到 X 前面按一下」的交互都走它。完全本地：只有按下的人会跑这段代码。  
+首次出现：[第 13 章 · 按一下，灯亮了](/come-alive/press-and-light/)。
+
+**`Interaction Text`**  
+`Udon Behaviour` 组件上的字段，决定光标对准这个物体时玩家头顶提示的那行字（默认 `Use`）。空字符串等于没提示，玩家不知道能按。  
+首次出现：[第 13 章 · 第四步：配 Collider 和提示文字](/come-alive/press-and-light/#第四步配-collider-和提示文字)。
+
+**`Proximity`**  
+`Udon Behaviour` 组件上的字段，决定玩家在多远距离内才能交互（默认 `2` 米）。超出这个距离提示文字也不显示。  
+首次出现：[第 13 章](/come-alive/press-and-light/#第四步配-collider-和提示文字)。
+
+**`override`**（C# 关键字）  
+子类替换基类虚方法时必须写的关键字。Unity 自带生命周期方法（`Start` / `Update` 等）不写它；VRChat 专属事件（`Interact` / `OnPlayerJoined` 等）必须写。漏写不报错但 VRChat 不认，是典型的「按了没反应」沉默错误。  
+首次出现：[第 13 章 · 第二步：写一段五行脚本](/come-alive/press-and-light/#第二步写一段五行脚本)。
+
+**`enabled`**（组件字段）  
+Behaviour 类组件（`Light`、`MeshRenderer`、`AudioSource`、`UdonSharpBehaviour` 等）共有的字段，控制这个组件是不是处于工作状态。`light.enabled = false` 让灯不发光，但物体本身、其他组件不受影响。  
+首次出现：[第 13 章 · 第二步：写一段五行脚本](/come-alive/press-and-light/#第二步写一段五行脚本)。
+
+**`Is Trigger`**（Collider 字段）  
+`Box` / `Sphere` / `Capsule` / `Mesh Collider` 上的勾选项。打勾后这个 Collider 不再挡人，反过来变成检测体：玩家穿过它的瞬间会触发 `OnPlayerTriggerEnter` / `OnPlayerTriggerExit` 事件。一句话记：普通 Collider 管「碰得到」，Trigger 管「知道有人来过」。  
+首次出现：[第 14 章 · Trigger 跟普通 Collider 的区别](/come-alive/trigger-zones/#trigger-跟普通-collider-的区别)。
+
+**`OnPlayerTriggerEnter`** / **`OnPlayerTriggerExit`**  
+玩家进入 / 离开一个 Trigger Collider 时被 VRChat 调用的事件。形参 `VRCPlayerApi player` 是发生进出的那个玩家。所有客户端都会被通知一次（不只是进出区域的人本人），所以多人世界里通常先用 `if (!player.isLocal) return;` 过滤。  
+首次出现：[第 14 章 · 第三步：写一段触发脚本](/come-alive/trigger-zones/#第三步写一段触发脚本)。
+
+**`OnPlayerTriggerStay`**  
+玩家停留在 Trigger 内时每帧调用一次。开销显著高于 `Enter` / `Exit`，能用进出事件解决就别用它。  
+首次出现：[第 14 章 · OnPlayerTriggerStay 和 OnPlayerCollisionEnter](/come-alive/trigger-zones/#onplayertriggerstay-和-onplayercollisionenter)。
+
+**`OnPlayerCollisionEnter`** / **`OnPlayerCollisionExit`** / **`OnPlayerCollisionStay`**  
+玩家撞上 / 离开 / 持续接触一个普通（非 Trigger）Collider 时的事件。和 Trigger 系列对应，区别在 Collider 是不是 `Is Trigger`。  
+首次出现：[第 14 章](/come-alive/trigger-zones/#onplayertriggerstay-和-onplayercollisionenter)。
+
+**`OnTriggerEnter`** / **`OnTriggerExit`**  
+Unity 标准的 Trigger 事件，处理普通物体（不是玩家）穿过 Trigger 的情况，比如「球进了得分框」。和 `OnPlayerTrigger*` 区别在前缀有没有 `Player`。  
+首次出现：[第 14 章](/come-alive/trigger-zones/#onplayertriggerstay-和-onplayercollisionenter)。
+
+**`VRCPlayerApi`**  
+VRChat SDK 表示一个玩家的对象类型。`OnPlayerJoined`、`OnPlayerTriggerEnter` 等事件的形参就是它。常用属性 `isLocal`、`displayName`、`playerId`。命名空间在 `VRC.SDKBase`。  
+首次出现：[第 14 章 · 第三步：写一段触发脚本](/come-alive/trigger-zones/#第三步写一段触发脚本)。
+
+**`isLocal`**  
+`VRCPlayerApi` 的属性，判断这个玩家是不是当前客户端的本地玩家。多人事件里用 `if (!player.isLocal) return;` 把「别人的事件」过滤掉是 VRChat 世界的高频写法。  
+首次出现：[第 14 章 · 为什么要写 if (!player.isLocal) return;](/come-alive/trigger-zones/#为什么要写-if-playerislocal-return)。
+
+**`Networking.LocalPlayer`**  
+VRChat 静态 API，返回当前客户端那个 `VRCPlayerApi`。常用 `Networking.LocalPlayer.TeleportTo(...)` 把本地玩家瞬移到某个 Transform。  
+首次出现：[第 14 章 · 不只能播音乐：进区域可以做任何事](/come-alive/trigger-zones/#不只能播音乐进区域可以做任何事)。详细见[第 16 章 · 用 TeleportTo 做一个走过去就传送的门](/come-alive/sit-mirror-teleport/#第三节用-teleportto-做一个走过去就传送的门)。
+
+**`Spatial Blend`**（`AudioSource` 字段）  
+`0` 是 2D 音效（左右耳音量恒定，离多远都一样），`1` 是完全 3D（按距离衰减、按方向决定左右耳）。VRChat 世界里要让音乐「走近才听到」必须拉到 `1`。  
+首次出现：[第 14 章 · 第二步：放一段背景音乐](/come-alive/trigger-zones/#第二步放一段背景音乐)。
+
+**`Play On Awake`**（`AudioSource` 字段）  
+勾选后场景一加载就自动播放音频；不勾要由脚本调 `Play()` 才响。Trigger 区域、按按钮播音乐的场景都得关掉它。  
+首次出现：[第 14 章](/come-alive/trigger-zones/#第二步放一段背景音乐)。
+
+**`Loop`**（`AudioSource` 字段）  
+勾选后音频播完会从头再播。短的环境音、背景音乐通常都要勾上。  
+首次出现：[第 14 章](/come-alive/trigger-zones/#第二步放一段背景音乐)。
+
+---
+
+## 拿取、座椅、镜子、Animator（第 15–17 章）
+
+**`OnPickup` / `OnDrop`**  
+玩家把 `VRC Pickup` 物体拿起 / 放下时被 VRChat 调用的事件，写在挂着同一个 `UdonSharpBehaviour` 的脚本上。完全本地：只有抓的人会跑这段代码。  
+首次出现：[第 15 章 · 第四步：用三个事件让球更有个性](/come-alive/pickup-and-throw/#第四步用三个事件让球更有个性)。
+
+**`OnPickupUseDown` / `OnPickupUseUp`**  
+拿着 Pickup 时按下 / 松开"使用键"（鼠标左键、扳机）的事件。可以用来做"按住喷射、松手停"这类交互。  
+首次出现：[第 15 章](/come-alive/pickup-and-throw/#第四步用三个事件让球更有个性)。
+
+**`Pickupable`**（`VRC Pickup` 字段）  
+是否当前可被拿起。脚本里设 `pickup.pickupable = false` 可以临时禁止抓取，常用于"游戏中锁定道具"。  
+首次出现：[第 15 章](/come-alive/pickup-and-throw/)。
+
+**`Auto Hold` / `Orientation`**（`VRC Pickup` 字段）  
+`Auto Hold` 决定是不是抓起后自动黏在手上（默认 `Yes`）；`Orientation` 决定握持姿态（`Any` / `Grip` / `Gun`）。  
+首次出现：[第 15 章 · 第二步：加 Rigidbody 和 VRC Pickup](/come-alive/pickup-and-throw/#第二步加-rigidbody-和-vrc-pickup)。
+
+**`Disallow Theft`**  
+`VRC Pickup` 上的勾选项。打勾后别人不能从你手里抢走这个物体。多人世界里默认推荐勾上，避免误抢。  
+首次出现：[第 15 章](/come-alive/pickup-and-throw/#第二步加-rigidbody-和-vrc-pickup)。
+
+**`VRCStation`**  
+让玩家能"坐"上的 SDK 组件（`Add Component` 搜索框里显示为 `VRC Station`）。坐下后玩家移动控制被它接管，常用于椅子、驾驶座、过山车。简介见上方"VRChat SDK 组件（首批）"。  
+首次出现：[第 16 章 · 第一节：用 VRCStation 做一把能坐的椅子](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
+
+**`Player Mobility`**（`VRCStation` 字段）  
+坐下后玩家的活动范围：`Mobile`（可移动，比如开船）、`ImmobilizeForVehicle`（锁住但允许 vehicle station chaining）、`Immobilize`（完全锁住，普通椅子用它）。  
+首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
+
+**`Station Enter Player Location` / `Station Exit Player Location`**  
+两个 Transform 引用槽，分别决定坐下时玩家被吸到哪、起身时被弹到哪。Enter 槽通常拖一个椅面上方的子空物体；Exit 槽拖椅子前方一点。  
+首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
+
+**`Seated`**（`VRCStation` 字段）  
+是否走"坐姿"模式。`Seated` 打勾后 VR 玩家自动以坐姿校准，第一人称高度变化。普通椅子勾上，过山车 / 驾驶座按需。  
+首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
+
+**`Disable Station Exit`**  
+打勾后玩家不能自己按按钮起身，必须脚本调用 `station.ExitStation(player)` 才能弹下来。做小游戏锁人时用。  
+首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
+
+**`OnStationEntered` / `OnStationExited`**  
+玩家坐上 / 离开 `VRCStation` 时被调用的事件。形参 `VRCPlayerApi player` 是发生进出的玩家，**所有客户端都会收到**这次事件。  
+首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第一节用-vrcstation-做一把能坐的椅子)。
+
+**`VRCMirrorReflection`**  
+VRChat 的镜子组件（`Add Component` 搜索框里显示为 `VRC Mirror Reflection`）。开销极重（一帧画两次场景），是性能黑洞。建议默认禁用，按按钮才打开；并通过 `m_ReflectLayers` 把不必要的层从镜面反射里剔除。简介见上方"VRChat SDK 组件（首批）"。  
+首次出现：[第 16 章 · 第二节：用 VRCMirrorReflection 做一面镜子](/come-alive/sit-mirror-teleport/#第二节用-vrcmirrorreflection-做一面镜子)。
+
+**`m_ReflectLayers`**（`VRCMirrorReflection` 字段）  
+告诉镜子要画哪些 Layer。剔除 `UI`、`Water`、`PlayerLocal` 等层后镜子开销会显著下降。  
+首次出现：[第 16 章](/come-alive/sit-mirror-teleport/#第二节用-vrcmirrorreflection-做一面镜子)。
+
+**`TeleportTo`**  
+`VRCPlayerApi` 上的方法：把这个玩家瞬移到指定 `Vector3` 位置和 `Quaternion` 朝向。完全本地：只有调用方所在客户端的玩家会被移动。  
+首次出现：[第 16 章 · 第三节：用 TeleportTo 做一个走过去就传送的门](/come-alive/sit-mirror-teleport/#第三节用-teleportto-做一个走过去就传送的门)。
+
+**`Animator Controller`**  
+后缀 `.controller` 的资产文件。里面是一张状态图：每个节点是一个 `Animator State`，节点之间是 `Transition`。动画该播哪段、怎么切换都写在它里面。`Animator` 组件本身的简介见上方"Unity 内置组件（首批）"。  
+首次出现：[第 17 章 · 第三步：用 Animator Controller 控制状态切换](/come-alive/doors-and-states/#第三步用-animator-controller-控制状态切换)。
+
+**`Animator State`**  
+状态图里的一个节点，对应一段具体动画（一个 `AnimationClip`）。门"关着"是一个 State，"开着"是另一个。  
+首次出现：[第 17 章](/come-alive/doors-and-states/#第三步用-animator-controller-控制状态切换)。
+
+**`Animator Parameter`**  
+Animator Controller 上声明的参数（`Bool` / `Int` / `Float` / `Trigger`），脚本通过它驱动状态切换。比如声明一个 `IsOpen` 的 `Bool`，从脚本调 `animator.SetBool("IsOpen", true)` 让门切到"开"状态。  
+首次出现：[第 17 章 · 第四步：写状态字段和按钮脚本](/come-alive/doors-and-states/#第四步写状态字段和按钮脚本)。
+
+**`Animator.SetBool` / `SetInt` / `SetFloat` / `SetTrigger`**  
+脚本写参数的四个方法。前三个对应同名类型；`SetTrigger` 触发一次性事件（被读后自动清回）。键名是字符串，必须和 Animator Controller 里的参数名一字不差。  
+首次出现：[第 17 章](/come-alive/doors-and-states/#第四步写状态字段和按钮脚本)。
+
+**`Has Exit Time`**（Transition 字段）  
+两个状态间的过渡是否要等动画播完一个比例后才能切。门、按钮这类瞬时切换通常 **关掉它**，否则会"按一下要等几秒才动"。  
+首次出现：[第 17 章](/come-alive/doors-and-states/#第三步用-animator-controller-控制状态切换)。
+
+**`nameof()`**  
+C# 内置运算符，返回标识符的字符串名（`nameof(IsOpen)` 等于 `"IsOpen"`）。给 Animator 参数名、SendCustomNetworkEvent 方法名时推荐用它，改名后编译器能立刻报错而不是默默传错字符串。  
+首次出现：[第 17 章 · 第四步：写状态字段和按钮脚本](/come-alive/doors-and-states/#第四步写状态字段和按钮脚本)。
+
+---
+
 ## 交互与多人同步（第 5–6 部）
 
 **状态机**（State Machine）  
@@ -528,6 +792,78 @@ VRChat 2017 年 2 月在 Steam 上线时使用的发布模式。
 
 ---
 
+## 多人同步：所有权、网络事件、Manager 模式（第 26–30 章）
+
+**`OnPlayerJoined` / `OnPlayerLeft`**  
+玩家加入 / 离开实例时被调用的事件，形参 `VRCPlayerApi player` 是当事人。所有客户端都会收到一次，常用来播提示音、刷新玩家名单。  
+首次出现：[第 26 章 · VRChat 网络模型的最小心智模型](/with-others/you-see-others-dont/#vrchat-网络模型的最小心智模型)。
+
+**`Networking`**（静态类）  
+VRChat SDK 全局工具类，命名空间 `VRC.SDKBase`。所有「玩家是不是 Owner」「拿当前玩家」「拿服务器时间」「转移所有权」类操作都从它出发：`Networking.LocalPlayer`、`Networking.IsOwner(...)`、`Networking.SetOwner(...)`、`Networking.GetServerTimeInSeconds()`。  
+首次出现：[第 27 章 · Owner 是什么、不是什么](/with-others/ownership/#owner-是什么不是什么)。
+
+**`Owner`**（所有权概念）  
+对每一个挂着 `UdonBehaviour` 的 GameObject，VRChat 服务器都登记了"现在哪个玩家说了算"，那个玩家就是 Owner。`[UdonSynced]` 字段以 Owner 的值为准；`RequestSerialization` 只有 Owner 调用才有效；某些事件只在 Owner 上跑。Owner 离线时所有权会自动迁移。  
+首次出现：[第 27 章](/with-others/ownership/#owner-是什么不是什么)。
+
+**`Networking.IsOwner` / `GetOwner` / `SetOwner`**  
+所有权三件套：`IsOwner(this.gameObject)` 判断本机玩家是不是这个对象的 Owner；`GetOwner(this.gameObject)` 拿到当前 Owner 的 `VRCPlayerApi`；`SetOwner(player, this.gameObject)` 把所有权转移给某个玩家。  
+首次出现：[第 27 章 · 给灯按钮加 SetOwner](/with-others/ownership/#给灯按钮加-setowner)。
+
+**`OnOwnershipRequest`**  
+某客户端调用 `SetOwner(...)` 之前，VRChat 会先在当前 Owner 上调用这个事件问一句"接管 ok 吗？"。返回 `false` 即可拒绝接管。  
+首次出现：[第 27 章 · 拒绝接管：OnOwnershipRequest](/with-others/ownership/#拒绝接管onownershiprequest)。
+
+**`OnOwnershipTransferred`**  
+所有权转移完成后，所有客户端都会被通知一次的事件。形参是新 Owner 的 `VRCPlayerApi`。常用来在新 Owner 上立即抓一次最新状态、或者全员刷新 UI。  
+首次出现：[第 27 章 · 转完做什么：OnOwnershipTransferred](/with-others/ownership/#转完做什么onownershiptransferred)。
+
+**`[UdonSynced]`**  
+打在脚本字段上的特性，告诉 UdonSharp"这个字段要走网络同步"。Owner 改了它的值之后，需要调 `RequestSerialization()` 触发同步；其他客户端在收到包后通过 `OnDeserialization()` 看到新值。  
+首次出现：[第 28 章 · 告诉别人发生了什么](/with-others/tell-everyone/)。
+
+**`RequestSerialization()`**  
+`UdonSharpBehaviour` 上的方法，**Owner 调用才有效**。请求把所有 `[UdonSynced]` 字段打包发给其他客户端。一次调用通常对应一次状态变化（按钮被按、回合切换）。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**`OnDeserialization()`**  
+非 Owner 客户端收到同步包并解开后被调用的事件。在这里读 `[UdonSynced]` 字段当前值，然后刷新本地表现（灯亮、UI 更新）。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**`OnPostSerialization`**  
+Owner 调完 `RequestSerialization` 并完成打包后被调用的回调，形参 `SerializationResult` 里能查 `success` 和 `byteCount`。用来确认这次同步是否真的发出去了。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**`[UdonBehaviourSyncMode]`**  
+脚本类上的 attribute，决定这个 `UdonSharpBehaviour` 走哪种网络同步模式：`Continuous`（每帧自动同步小字段，像 Pickup）、`Manual`（你要手动调 `RequestSerialization`）、`NoVariableSync`（不同步任何字段，但仍能收发 `SendCustomNetworkEvent`）、`None`（彻底关闭网络）。VRChat 推荐 Manager 主类用 `Manual`、薄壳用 `NoVariableSync`。  
+首次出现：[第 28 章](/with-others/tell-everyone/)、[第 30 章 · 一个完整多人系统的形状](/with-others/multiplayer-mini-game/#一个完整多人系统的形状)。
+
+**`SendCustomNetworkEvent`**  
+`UdonSharpBehaviour` 上的方法：把这个脚本上某个公开方法的调用广播给目标客户端。不带参数，只能调本脚本上的方法名（推荐 `nameof(MethodName)`）。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**`NetworkEventTarget`**（枚举）  
+`SendCustomNetworkEvent` 的目标参数：`All` 发给所有人（包括自己）、`Owner` 只发给当前 Owner。需要"只让 Owner 改字段"时，先 `SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(...))` 让 Owner 跑那段代码，再 `RequestSerialization`。  
+首次出现：[第 28 章](/with-others/tell-everyone/)。
+
+**`Networking.GetServerTimeInSeconds()`**  
+所有客户端共享的 VRChat 服务器时间（`double`，秒）。做倒计时、回合时长、动画同步起点时用它，因为各个客户端的 `Time.time` 互不一致。  
+首次出现：[第 30 章 · 第二步：写 GameManager](/with-others/multiplayer-mini-game/#第二步写-gamemanager)。
+
+**`VRCPlayerApi.GetPlayerById`**  
+通过 `playerId`（int）反查 `VRCPlayerApi` 的方法。同步玩家间状态（"现在轮到哪号玩家"）时通常存 id 而不是引用。  
+首次出现：[第 30 章](/with-others/multiplayer-mini-game/#第二步写-gamemanager)。
+
+**`playerId` / `displayName`**  
+`VRCPlayerApi` 的两个常用属性。`playerId` 是 `int`，进入实例时分配，可同步；`displayName` 是字符串昵称，调试和展示用。  
+首次出现：[第 30 章](/with-others/multiplayer-mini-game/#第二步写-gamemanager)。
+
+**Manager 模式**  
+VRChat 多人脚本推荐架构：用一个挂在场景里、`SyncMode = Manual` 的 GameManager 主脚本管所有 `[UdonSynced]` 状态；按钮、显示物体等"薄壳"挂 `NoVariableSync` 脚本，只把交互转发给 Manager。这样同步源唯一，调试简单。  
+首次出现：[第 30 章 · 一个完整多人系统的形状](/with-others/multiplayer-mini-game/#一个完整多人系统的形状)。
+
+---
+
 ## VR 舒适与音频（第 7 部）
 
 **晕动症**（Motion Sickness）  
@@ -549,6 +885,82 @@ VRChat 的空间音频算法，按声源相对玩家的 3D 位置计算左右耳
 **增益**（Gain）  
 在原始音量之上额外加或减多少 dB。VRChat 世界 Audio Source 默认有 `+10 dB` 增益，所以素材本身太响时要降。  
 首次出现：[第 33 章](/placeness/sound-and-mood/)。
+
+---
+
+## 玩家落地、世界 UI、跨世界传送门（第 31 / 34 / 35 章）
+
+**`Spawns 数组`**（`VRC Scene Descriptor` 字段）  
+登记一个或多个空物体作为出生点，玩家进入实例时按 `Spawn Order` 选其中之一。要让两个人不出生在同一格上，需要至少两个分散的 Spawn。  
+首次出现：[第 31 章 · 出生点不是坐标，是一台相机](/placeness/first-thirty-seconds/#出生点不是坐标是一台相机)。
+
+**`Spawn Order`**（First / Random / Sequential / Demo）  
+`VRC Scene Descriptor` 上决定从 Spawns 数组里挑哪个的策略。`First` 一直用第一个；`Random` 随机；`Sequential` 顺序轮；`Demo` 用第一个但允许 Vehicle 接管。  
+首次出现：[第 31 章 · 一个出生不够的时候：让玩家不要堆叠](/placeness/first-thirty-seconds/#一个出生不够的时候让玩家不要堆叠)。
+
+**`Spawn Orientation`**（AlignPlayerWithSpawnPoint / AlignRoomWithSpawnPoint）  
+出生点的朝向语义。`AlignPlayerWithSpawnPoint` 让玩家本人面向 Spawn 物体的 forward；`AlignRoomWithSpawnPoint` 让 VR 玩家的房间坐标系跟 Spawn 对齐，常用于客厅型 VR 体验。  
+首次出现：[第 31 章 · 出生点的四条具体规矩](/placeness/first-thirty-seconds/#出生点的四条具体规矩)。
+
+**`Object Behaviour at Respawn` / `Player Object Behaviour at Respawn`**  
+`VRC Scene Descriptor` 上两个枚举字段，分别决定玩家按 `R` 重生时世界里的物体（Pickup 等）和"玩家自己拥有的物体"是否回到初始位置。家庭类世界一般保 default `Respawn`。  
+首次出现：[第 31 章](/placeness/first-thirty-seconds/)。
+
+**`Canvas`**（Unity UI）  
+Unity UI 系统的根容器。所有 UI 元素都要挂在某个 `Canvas` 下面才能被画出来。  
+首次出现：[第 34 章 · 第一节：World Space Canvas 的搭法](/placeness/ui-and-feedback/#第一节world-space-canvas-的搭法)。
+
+**`Render Mode`**（`Canvas` 字段）  
+决定 UI 怎么画：`Screen Space - Overlay`（贴屏幕，VRChat 世界用不到）、`Screen Space - Camera`（贴某摄像机近平面）、`World Space`（作为 3D 物体放进场景）。VRChat 世界 UI 用 `World Space`。  
+首次出现：[第 34 章](/placeness/ui-and-feedback/#第一节world-space-canvas-的搭法)。
+
+**`World Space Canvas`**  
+`Render Mode = World Space` 的 `Canvas`。它就是一块挂在世界里的 3D 平面，玩家可以走到它前面看，可以围着它转。VRChat 世界里所有立牌、屏幕、得分板都是它。  
+首次出现：[第 34 章](/placeness/ui-and-feedback/#第一节world-space-canvas-的搭法)。
+
+**`VRC_UIShape`**  
+VRChat SDK 的 World Space Canvas 必装组件，告诉 VRChat「这个 Canvas 上的按钮、Slider 应该响应玩家激光指针」。漏装的 Canvas 上按钮按不动。  
+首次出现：[第 34 章 · 第一节：World Space Canvas 的搭法](/placeness/ui-and-feedback/#第一节world-space-canvas-的搭法)。
+
+**`TextMeshPro` / `TMP`**  
+Unity 的高质量文本组件，比老版 `Text` 清晰得多。VRChat 世界里的所有文字都应该用它。  
+首次出现：[第 34 章 · 第二节：TextMeshPro 和中文字体](/placeness/ui-and-feedback/#第二节textmeshpro-和中文字体)。
+
+**`SDF`**（Signed Distance Field，有向距离场）  
+TextMeshPro 用的字体渲染技术。每个字符存一张距离图而不是位图，所以放大缩小都不糊、还能直接做描边、外发光等效果。  
+首次出现：[第 34 章](/placeness/ui-and-feedback/#第二节textmeshpro-和中文字体)。
+
+**`TMP Font Asset` / `Font Asset Creator`**  
+TextMeshPro 用的字体资产（`.asset`）和生成它的窗口（`Window → TextMeshPro → Font Asset Creator`）。中文世界里要先把 `.ttf` 通过 Font Asset Creator 烤一份只含必要汉字的 `TMP Font Asset`，否则中文会显示为方框。  
+首次出现：[第 34 章 · 第二节：TextMeshPro 和中文字体](/placeness/ui-and-feedback/#第二节textmeshpro-和中文字体)。
+
+**`MaterialPropertyBlock`**  
+Unity 的材质参数覆盖工具。可以在不复制材质的前提下、单独让某一个 `Renderer` 显示成不同颜色。VRChat 里给一组按钮做"按下变红"反馈又不想为每个按钮做单独材质时用它。  
+首次出现：[第 34 章 · 第五节：视觉反馈](/placeness/ui-and-feedback/#第五节视觉反馈)。
+
+**`AudioSource.PlayOneShot`**  
+在某个 `AudioSource` 上"插播"一段 `AudioClip`，不打断当前正在播的内容。按钮"啪"一声、命中"叮"一声常用它，因为可以让多次按动重叠播放。  
+首次出现：[第 34 章 · 第五节：视觉反馈](/placeness/ui-and-feedback/#第五节视觉反馈)。
+
+**`VRC Portal Marker`**  
+VRChat SDK 的传送门组件。挂在一个空物体上、设上目标世界（`World ID` 或 `Home` / `Hub`），运行时 VRChat 会在这里自动生成一个站着进就走的传送门。  
+首次出现：[第 35 章 · 第一节：用 World ID 做一个传送门](/placeness/portals/#第一节用-world-id-做一个传送门)。
+
+**`Custom Portal Name`**  
+`VRC Portal Marker` 的字段，传送门正面浮出来的世界名字。空着会显示目标世界自己的真实名称。  
+首次出现：[第 35 章](/placeness/portals/#第一节用-world-id-做一个传送门)。
+
+**`World` 字段**（None / Home / Hub）  
+`VRC Portal Marker` 的目标选择枚举。`None` 表示用下面那个 `Room ID`（即 `wrld_xxx`）；`Home` 把玩家送回他自己设置的 Home 世界；`Hub` 送到 VRChat 当前的官方 Hub。  
+首次出现：[第 35 章 · 第二节：直连内置位置（Home / Hub）](/placeness/portals/#第二节直连内置位置home--hub)。
+
+**`Hub` 世界**  
+VRChat 设置的官方公共大厅世界。新玩家、断网回归玩家会被推到这里，是 VRChat 的"游戏主菜单"。  
+首次出现：[第 35 章 · VRChat Hub 世界是什么](/placeness/portals/#vrchat-hub-世界是什么)。
+
+**`VRCWorld_PortalMarker` Prefab**  
+SDK 自带的传送门模板（`Packages/com.vrchat.worlds/Runtime/...`）。直接拖进场景就是一个完整可工作的传送门，比手搓一个空物体加组件省事。  
+首次出现：[第 35 章 · 第四节：Portal Marker 是 SDK Prefab，可以直接用](/placeness/portals/#第四节portal-marker-是-sdk-prefab可以直接用)。
 
 ---
 
