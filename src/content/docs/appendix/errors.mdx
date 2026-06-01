@@ -93,7 +93,7 @@ sidebar:
 
 > 编译器红字会直接告诉你哪个特性不支持，例如 `UdonSharp does not currently support 'try-catch'`。
 
-可能原因：UdonSharp 编译器自身能力的边界。常见的有 `async` / `await`、`yield return`、自定义泛型、`interface`、`event`、自定义 indexer / operator overload、USB 子类里的 `static` 方法、按"普通数据类"思路 `new` 的对象、`switch` 表达式等。
+可能原因：UdonSharp 编译器自身能力的边界。常见的有 `async` / `await`、`yield return`、自定义泛型、`interface`、`event`、自定义 indexer / operator overload、按「普通数据类」思路 `new` 的对象、`switch` 表达式等。
 
 排查步骤：按 [附录 D.2](/appendix/udonsharp-limits/#d2-编译器层udonsharp-还没支持的-c-特性) 一条条比对，每条都给了替代：
 - "过 N 秒做一件事"用 `SendCustomEventDelayedSeconds(nameof(M), N)`。
@@ -327,8 +327,8 @@ public void DoNext() { /* ... */ }   // 必须 public
 > SDK 控制面板 `Builder` 标签下方一行行红字，最常见是 Quest 平台。
 
 可能原因：
-1. Shader 不在 Quest 白名单 → 会被替换成 Standard Lite。
-2. 纹理超过 1K → 会被强制压。
+1. Shader 对 Android 过重或触发兼容性警告。
+2. 纹理超过 1K，移动端内存压力过高。
 3. 场景里有 `Light` 组件配置不合规、`Reflection Probe` 烘焙数据缺失。
 4. `VRC Scene Descriptor` 字段没填全。
 
@@ -389,8 +389,8 @@ public void DoNext() { /* ... */ }   // 必须 public
 可能原因：Quest 平台对 Shader 复杂度、纹理总大小、Triangle、Material 数等都有硬上限。SDK Validation 会一行行列出来。
 
 排查步骤：按 SDK Validation 的具体提示一条条修：
-1. **纹理**：超过 1K 的批量改 `Max Size = 1024` 或 `512`（Texture Inspector 顶部）。
-2. **Shader**：把不在 Quest 白名单的 Shader 替换为 `VRChat/Mobile/*` 系列。
+1. **纹理**：超过 1K 的批量改 `Max Size = 1024` 或 `512`（Texture Inspector 顶部），移动端包体还要压到 100 MB 以内。
+2. **Shader**：把高成本或 PC 专用 Shader 优先替换为移动端友好的 `Mobile/VRChat/Lightmapped` 或 `VRChat/Mobile/*` 系列。
 3. **Triangle**：Mesh 用 Mesh Decimator 或建模软件减面。
 4. 整体读 [第 39 章 · 第五节](/placeness/pc-and-quest/#第五节quest-的几条硬规矩) 和 [第 44 章 · 第六节](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)。
 

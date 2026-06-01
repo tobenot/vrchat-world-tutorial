@@ -124,7 +124,7 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 ## G.6 Quest / Android 专项
 
-Quest 是渲染预算大约只有中端 PC 1/10 的 Android 设备。下面这些是 [VRChat 官方 Quest 内容优化文档](https://creators.vrchat.com/platforms/android/quest-content-optimization/) 列的硬规矩。
+Quest 是渲染预算远低于 PC 的 Android 设备。下面这些分成两类：官方 Android 文档写明的硬限制，以及移动端性能预算下的强烈建议。
 
 ### G.6.1 必须项（违反会被退回 / 不能上传）
 
@@ -225,8 +225,8 @@ UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级
 **Quest 专项**
 
 - [ ] 切到 Android 平台，重新烘 Lighting（Subtractive）
-- [ ] 所有 Material Shader 改成 VRChat/Mobile 系列
-- [ ] 没有 Cloth / Post Processing / Realtime Light
+- [ ] 所有 Material Shader 优先换成移动端友好 Shader
+- [ ] 没有 Cloth / Post Processing；Realtime Light 尽量为 0
 - [ ] Build Estimate ≤ 100 MB
 - [ ] 用 VRWorld Toolkit 跑一次 Quick Audit
 

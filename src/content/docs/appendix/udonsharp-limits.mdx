@@ -51,8 +51,8 @@ VRChat 沙箱让 Udon 只能调用一份白名单内的 .NET / Unity API。判�
 | `event` 关键字 | 不支持 | 用 `SendCustomEvent` / `SendCustomNetworkEvent` 模拟广播 |
 | 自定义 indexer `this[int i]` | 不支持 | 公开一个数组字段，外部用 `obj.array[i]` 直接读 |
 | 自定义 operator overload（`==` / `+` / `-`） | 不支持 | 写命名方法 `static Vec2 Add(Vec2 a, Vec2 b)` 代替 |
-| `UdonSharpBehaviour` 子类里的 `static` 方法 | 不支持 | 工具方法挪到 `Assets/Plugins/` 下的纯静态类（见 D.3） |
-| `new` 一个自定义数据类（如 `new Enemy()`） | 官方不当作支持的工作流 | 三选一：并行数组 / 挂在 GameObject 上的 USB 字段 / `DataList` + `DataDictionary`；见[第 12 章 · 普通 C# 的数据类思路在这里走不通](/programming/udonsharp-personality/#普通-c-的数据类思路在这里走不通) |
+| `static` 工具方法 | 当前 UdonSharp 文档列为支持 | 可以用于纯计算；涉及场景对象、Inspector 引用或生命周期的逻辑仍放回实例方法 |
+| `new` 一个自定义数据类（如 `new Enemy()`） | 官方不当作支持的工作流 | 三选一：并行数组 / 挂在 GameObject 上的 UdonSharpBehaviour 字段 / `DataList` + `DataDictionary`；见[第 12 章 · 普通 C# 的数据类思路在这里走不通](/programming/udonsharp-personality/#普通-c-的数据类思路在这里走不通) |
 | `ref` / `out` 参数 | 受限：基本场景可用，复杂场景仍可能编译失败 | 简单类型场景 ok；如果编译报错，改成"返回新值"或"读公开字段" |
 | C# 8 `switch` 表达式 `e switch { ... }` | 受限 | 用传统 `switch` 语句 `switch (e) { case ...: }` |
 | 字符串内插 `$"score = {score}"` | 当前版本可用 | 老社区帖子可能写"不能用"，按当前 SDK 跑一次编译器即知 |
@@ -69,10 +69,10 @@ VRChat 沙箱让 Udon 只能调用一份白名单内的 .NET / Unity API。判�
 
 | 情况 | 表现 | 修法 |
 |---|---|---|
-| 纯静态常量类、纯工具类放在 `Assets/Scripts/` 下 | UdonSharp 编译器报「Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset」 | 文件挪到 `Assets/Plugins/`；引用方式不变 |
-| 工具方法写成 `UdonSharpBehaviour` 子类的 `static` 方法 | 编译过不去 | 改写成实例方法（场景里挂一个工具脚本），或挪到 `Plugins/` 下的纯静态类 |
+| 纯静态常量类、纯工具类放在 `Assets/Scripts/` 下 | 旧版 UdonSharp 容易报「Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset」 | 旧项目遇到这个错时，把文件挪到 `Assets/Plugins/`；新项目按当前 SDK 实测为准 |
+| 把需要场景状态的逻辑写成 `static` 方法 | 编译可能能过，但拿不到 Inspector 引用，也不参与对象生命周期 | 改写成实例方法，挂到场景里的工具脚本上 |
 
-回链：[第 12 章 · 纯静态类必须放在 Plugins/ 文件夹](/programming/udonsharp-personality/#纯静态类必须放在-plugins-文件夹)、[· UdonSharpBehaviour 上的 static 方法不可用](/programming/udonsharp-personality/#udonsharpbehaviour-上的-static-方法不可用)。
+回链：[第 12 章 · 纯静态类必须放在 Plugins/ 文件夹](/programming/udonsharp-personality/#纯静态类必须放在-plugins-文件夹)。
 
 ### 运行时行为差异
 
@@ -133,14 +133,14 @@ UdonSharp 跑同一段逻辑可能比普通 C# 慢 200–1000 倍。零基础阶
 | 出错时兜住 | `try { ... } catch (NullReferenceException) { ... }` | `if (target != null) { target.X(); }` |
 | 动态长度的列表 | `List<T>` | `T[]`（先够用就先用）；`DataList` |
 | 键值映射 | `Dictionary<TKey, TValue>` | `DataDictionary` |
-| 一组数据对象 | `class Enemy { string name; int hp; }` + `new Enemy()` | 并行数组（`string[] names; int[] hps;`），或一个挂场景里的 USB 字段，或 `DataList` + `DataToken` |
+| 一组数据对象 | `class Enemy { string name; int hp; }` + `new Enemy()` | 并行数组（`string[] names; int[] hps;`），或一个挂场景里的 UdonSharpBehaviour 字段，或 `DataList` + `DataToken` |
 | 按名字调本脚本上的方法 | `Invoke("M", 0f)` 或反射 | `SendCustomEvent(nameof(M))` |
 | 按名字调别人脚本上的方法 | 反射 / `delegate` | `other.SendCustomEvent(nameof(Other.M))` |
 | 按名字调网络上某玩家脚本上的方法 | — | `other.SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(Other.M))` |
 | 多线程 / 后台任务 | `Task.Run` / `async` / `await` | 没有等价物。把工作分摊到多帧（每帧处理一小批）|
 | LINQ 查询 | `arr.Where(x => x > 0).Select(x => x.Name).ToArray()` | 写循环：`for (int i = 0; i < arr.Length; i++) { if (arr[i] > 0) ... }` |
 | 启动外部程序、读写本地文件 | `Process.Start` / `File.WriteAllText` | 不能 |
-| 从外部 URL 读文本 | `HttpClient.GetStringAsync(url)` | `VRCStringDownloader.LoadUrl(new VRCUrl(...), this)`，URL 在 SDK 控制面板登记 |
+| 从外部 URL 读文本 | `HttpClient.GetStringAsync(url)` | `VRCStringDownloader.LoadUrl(new VRCUrl(...), this)`；优先使用官方信任列表里的域名 |
 | 持久化玩家数据 | `PlayerPrefs.SetInt` | `Player Persistence API`（SDK 3.7.4+）|
 
 ---
@@ -153,7 +153,7 @@ UdonSharp 跑同一段逻辑可能比普通 C# 慢 200–1000 倍。零基础阶
 2. 看脚本是否真的挂在了想让它执行的 GameObject 上。
 3. 看 Inspector 里每个引用槽是否真指向了目标物体。**槽位是 None 时调用会 `NullReferenceException`，当前事件中断，按按钮看起来就像没反应**。
 4. 看用到的 API 是否在白名单上（`Class Exposure Tree`，或让编译器告诉你）。**对应 D.1**。
-5. 看是否撞上 UdonSharp 编译器的特性限制（`async` / `yield` / 泛型 / `interface` / `try-catch` / USB 上的 `static`...）。**对应 D.2**。
+5. 看是否撞上 UdonSharp 编译器的特性限制（`async` / `yield` / 泛型 / `interface` / `try-catch` 等）。**对应 D.2**。
 6. 看是否撞上工程化约束（纯静态类没放在 `Plugins/`、运行时 `AddComponent`、`SendCustomEvent` 没找到 `private` 方法...）。**对应 D.3**。
 7. 都不是，加 `Debug.Log` 把变量值打出来。
 

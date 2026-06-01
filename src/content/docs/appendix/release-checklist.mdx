@@ -149,7 +149,7 @@ SDK Builder 面板的 **World** 区填这些字段。每一项的注意事项都
 
 ### H.4.5 Capacity（容量）
 
-> SDK 上传面板把容量拆成了两个字段——`Recommended Capacity` 是公开实例的推荐人数（达到后从公共列表隐去）；`Maximum Capacity` 是实例硬上限（达到后新玩家加不进来）。
+> SDK 上传面板把容量拆成两档：`Recommended Capacity` 是推荐人数，`Capacity` / `Maximum Capacity` 是实例硬上限。不同 SDK 面板版本的字段名可能略有差异，含义按「推荐值 / 硬上限」理解。
 
 - [ ] 按世界类型选：
 
@@ -173,10 +173,10 @@ SDK Builder 面板的 **World** 区填这些字段。每一项的注意事项都
 - [ ] **Group**：群组成员可见（如果是社群运营）。
 - [ ] **Public**：发布到 Community Labs。这是「上架」的那一下——准备好了再按。
 
-### H.4.7 Content Warnings 怎么填
+### H.4.7 Content Warnings 怎么看
 
-::::caution[Content Warnings 不是免责标志]
-SDK 上传面板里的 Content Warnings（`content_adult` / `content_gore` / `content_horror` / `content_violence` / `content_sex` / `content_combat` 等）目前仍然作为可选标记保留，玩家端会按设置过滤这些世界。但**勾上不等于「打了标就可以上」**：违反 Community Guidelines / ToS 的内容，无论有没有标记都会被处理。
+::::caution[Content Warnings 已弃用]
+VRChat 官方公开提交文档写明，Content Warnings 目前已弃用且不再使用。即使旧面板或旧文档里还看得到相关字段，也不能把它当作免责机制：违反 Community Guidelines / ToS 的内容，无论有没有标记都会被处理。
 ::::
 
 相关章节：[第 44 章 · 第四节 填元数据](/publishing/submit-your-world/#第四节填元数据)、[第 44 章 · 第六节 会被退回或下架的几条硬线](/publishing/submit-your-world/#第六节会被退回或下架的几条硬线)。
@@ -190,10 +190,11 @@ PC 平台 `Build & Publish` 完成后，再来这一节。Quest 版用的是同�
 - [ ] SDK Control Panel `Platform Target` 切到 `Android`
 - [ ] Unity 重新导入资源完成（首次 5–30 分钟，之后切回来用 Library 缓存几秒）
 - [ ] Builder 扫一遍，所有 Android 兼容性问题已修：
-  - Shader 不在 `VRChat/Mobile/...` 系列里 → 换
+  - 高成本或 PC 专用 Shader → 优先换成 `Mobile/VRChat/Lightmapped` 或 `VRChat/Mobile/...`
   - 纹理超过 1K → Android Max Size 设 1024
   - Lightmap Mode 不是 Subtractive → 切并重烘
-  - 有 Cloth / Post Processing / Realtime Light → 删
+  - 有 Cloth / Post Processing → 删
+  - 有 Realtime Light → 尽量改成 Baked
 - [ ] **Build Estimate ≤ 100 MB**（硬上限，超会被退）
 - [ ] 用 [VRWorld Toolkit](https://github.com/oneVR/VRWorldToolkit) 跑过一次 Quick Audit
 - [ ] 实际在 Quest 设备上测过 FPS ≥ 72
@@ -311,7 +312,7 @@ Builder 面板提示上传成功后，回 VRChat 客户端做一次完整的「�
 **元数据**
 
 - [ ] World Name / Description / Image / Tags 都准备好（H.4 节）
-- [ ] Maximum Capacity / Recommended Capacity 跟实测多人帧率一致
+- [ ] Recommended Capacity / Capacity（或 Maximum Capacity）跟实测多人帧率一致
 - [ ] Description 第一句话是 30 字以内的核心体验
 
 **Quest（如果做了）**

@@ -81,7 +81,7 @@ Udon 字节码格式。脚本最终被编译成它，由 VRChat 的虚拟机执�
 首次出现：[第 2 章 · VRChat 是 Unity 之上的一层「世界格式」](/getting-started/about-vrchat/#vrchat-是-unity-之上的一层世界格式)。
 
 **`Class Exposure Tree`**  
-Udon 允许调用的 .NET / Unity API 白名单。不在白名单上的 API（`System.IO.File.Delete`、`async/await`、自定义泛型类、反射、LINQ 等）调用会被编译器拦下。  
+Udon 允许调用的 .NET / Unity API 白名单。不在白名单上的 API（`System.IO.File.Delete`、`System.Net.HttpClient`、反射、LINQ 等）调用会被编译器拦下。`async` / `await`、自定义泛型类这类属于 UdonSharp 编译器限制，查附录 D。  
 首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见[附录 D · UdonSharp 限制](/appendix/udonsharp-limits/)。
 
 **`UdonSharpBehaviour`**  
@@ -104,8 +104,8 @@ Unity 通用脚本基类。VRChat 世界脚本不用它，用 `UdonSharpBehaviou
 按当前情况选一条路。Udon 脚本里大部分判断（`if (player.isLocal)`、`if (gameStarted)`）都靠它。  
 首次出现：[第 10 章](/programming/basics-no-code/#三种最基本的指令)、[第 11 章 · 控制流：if / else / for / while](/programming/csharp-just-enough/)。
 
-**循环 `for` / `while`**  
-把一段事重复做。`for` 适合「重复固定次数」，`while` 适合「直到某条件不成立才停」。UdonSharp 不支持 `foreach`。  
+**循环 `for` / `while` / `foreach`**  
+把一段事重复做。`for` 适合「重复固定次数」，`while` 适合「直到某条件不成立才停」。UdonSharp 官方文档列出支持 `foreach`，但本书前期仍优先写 `for`，因为索引和值的变化更清楚。  
 首次出现：[第 10 章](/programming/basics-no-code/#三种最基本的指令)、[第 11 章](/programming/csharp-just-enough/)。
 
 **函数 / 方法**（Function / Method）  
@@ -607,7 +607,7 @@ VRChat 主力平台，SteamVR / Oculus 头显或纯 Desktop 模式都能玩。
 首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。详细见[第 39 章 · PC 和 Quest](/placeness/pc-and-quest/)。
 
 **`iOS`** / **`Android`**（VRChat 移动端）  
-2024 年起进入 beta，2025 年 10 月正式登陆 App Store 和 Google Play。触屏、无 VR，2D 平面模式。  
+VRChat 的移动端客户端，2025 年 10 月正式登陆 App Store 和 Google Play。触屏、无 VR，以 2D 平面模式进入世界。  
 首次出现：[第 2 章](/getting-started/about-vrchat/#unity-版本钉死跨平台一份场景多份打包)。
 
 **`Steam Early Access`**  
@@ -903,7 +903,7 @@ Unity 接收音频的"耳朵"组件。Unity 默认场景里 `Main Camera` 自带
 首次出现：[第 31 章 · 出生点不是坐标，是一台相机](/placeness/first-thirty-seconds/#出生点不是坐标是一台相机)。
 
 **`Spawn Order`**（First / Random / Sequential / Demo）  
-`VRC Scene Descriptor` 上决定从 Spawns 数组里挑哪个的策略。`First` 一直用第一个；`Random` 随机；`Sequential` 顺序轮；`Demo` 用第一个但允许 Vehicle 接管。  
+`VRC Scene Descriptor` 上决定从 Spawns 数组里挑哪个的策略。`First` 一直用第一个；`Random` 随机；`Sequential` 按列表顺序轮；`Demo` 把 Spawn 当作 VR 房间尺度的中心点来对齐。  
 首次出现：[第 31 章 · 一个出生不够的时候：让玩家不要堆叠](/placeness/first-thirty-seconds/#一个出生不够的时候让玩家不要堆叠)。
 
 **`Spawn Orientation`**（AlignPlayerWithSpawnPoint / AlignRoomWithSpawnPoint）  
@@ -1091,7 +1091,7 @@ Android 应用安装包格式。VRChat 的 Quest 版世界构建，本质上按 
 首次出现：[第 39 章 · PC 和 Quest](/placeness/pc-and-quest/)。
 
 **`Post Processing`**（后处理）  
-一帧画面渲染完之后再叠的屏幕效果，如 Bloom、Color Grading、Vignette。Quest / Android 版不支持或代价过高，通常必须为 0。  
+一帧画面渲染完之后再叠的屏幕效果，如 Bloom、Color Grading、Vignette。VRChat 官方 Android 文档写明 Post Processing 在 Android 上会被禁用，Quest / Android 版本按 0 处理。  
 首次出现：[第 39 章](/placeness/pc-and-quest/)。
 
 **`Cloth`**  
