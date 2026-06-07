@@ -22,7 +22,7 @@ GameObject Floor
   Mesh Renderer → 引用 → Cube.mesh + Default-Material.mat
   Box Collider:  size 1,1,1
 GameObject Spawn
-  Transform: position 0,1,0
+  Transform: position 0,0.2,0
 GameObject WorldDescriptor
   VRC_SceneDescriptor:  Spawns[0] → Spawn
 ```
@@ -94,22 +94,23 @@ Instance   = 一群人此刻一起跑这个世界的一次具体聚会
 
 实例本身不在 CDN 上，它活在 VRChat 自研的网络层里。所有玩家位置、按了哪个按钮、抓起了什么东西，都是通过这一层广播给同一实例里的其他人。这条线在第六部会展开。
 
-:::caution[踩坑预警]
-新手在「世界」和「实例」上反复栽跟头，常见两种现场：
-
-- 「我和朋友进了同一个世界但他看不到我开的灯」：大概率两人没在同一个 instance。
-- 「我刚才把房间布置好了，怎么再进一次又是空的」：上一个实例已经销毁（最后一个人离开实例就销毁），现在这个是新实例。
-
-世界是文件，实例是这次聚会。这两个词分清楚之后，后面遇到同步类问题会容易得多。
+:::note
+**世界**是 CDN 上的 `.vrcw` 文件；**实例**是某次具体聚会。同一世界可以同时存在很多实例，实例之间数据不互通——上一个实例里摆好的东西不会带到新实例；最后一人离开后实例销毁，再进就是新实例。要和特定的人见面，需要进同一个实例（访问级别 + Instance ID）。
 :::
 
-## 跨平台：PC、Quest、iOS 各一份
+## 跨平台：PC、Android（含 Quest）、iOS 各一份 {#跨平台pcquestios-各一份}
 
-VRChat 现在跑在 PC、Meta Quest、iOS 三个平台上。它们的 GPU、CPU、可用内存差几个数量级，没法共用一个 AssetBundle。
+VRChat 现在跑在 PC、Meta Quest、iOS 等平台上。GPU、CPU、可用内存差几个数量级，没法共用一个 AssetBundle。
 
-所以**同一个世界**在 CDN 上其实存的是**多份文件**：PC 版、Android 版（Quest 用）、iOS 版。每一份都要在 Unity 里切到对应 Build Target 重新打一次包再上传。Quest 版还会强制砍 shader、砍实时光数量、砍贴图大小（第七部第 39 章会专门展开）。
+所以**同一个世界**在 CDN 上存的是**多份文件**：PC 版、Android 版、iOS 版。每一份都要在 Unity 里切到对应 Build Target 重新打一次包再上传。Android 版还会受 Mobile 限制：shader 白名单、实时光数量、贴图大小等（第七部第 39 章会专门展开）。
 
-服务器在玩家加入时按他客户端的平台返回对应那一份。这解释了一件事：PC 上 Build & Publish 完，只发了 PC 版；Quest 玩家点开这个世界，看到的是「This world has no Quest version」。
+SDK 文档里写的 **Quest**，在创作者侧通常就是指 **Android 构建**。Unity 里选 Android 打出来的包，Quest 头显和手机 App 下载的是同一份世界资源；**iOS** 另有一份构建。
+
+没有 Quest 时，把手机连 Unity 做 Android Build & Test，能验加载、粉材质、包体超限等「Android 版能不能用」，日常开发多半到这一步就够。
+
+Quest 和手机跑的是同一份资源，体验不是一回事：Quest 走 VR 双眼渲染和手柄/手势，手机是触屏。掉帧在 VR 里会晕，平屏上不一定感觉得到；视距、尺度、VR 交互手机也验不准。Quest 上帧率过关，手机通常也没问题；反过来不成立。对外标 Quest 支持前，最好还能用 Quest 实机过一遍。
+
+服务器在玩家加入时按客户端平台返回对应那一份。PC 上 Build & Publish 完只发了 PC 版时，Quest 玩家点开会看到「This world has no Quest version」。
 
 ## 那 Unity 编辑器版本为什么要钉死
 
@@ -138,8 +139,6 @@ Unity Scene  ─[SDK BuildPipeline]→  .vrcw  ──→  VRChat CDN  ──→ 
 
 - **第二部 工作台**：放大图最左上角那个 `Unity Scene` 的内部结构，包括 GameObject、Component、Prefab、Material、Light。
 - **第三、四部 编程和交互**：往 Scene 里塞 Udon Behaviour，让按钮、Trigger、门有反应，但都还在「单机」尺度。
-- **第六部 和别人一起**：图最右下角那条「网络层广播」展开。按了灯但其他人看不到的成因，从这里讲起。
+- **第六部 和别人一起**：图最右下角那条「网络层广播」展开。多人同步从这里讲起。
 - **第七部 让世界变成一个地方**：在每个环节里抠体验和性能：Mesh 多大、贴图多重、Light 怎么烘、加载多久。
 - **第九部 发出去**：把 `Build & Publish` 那条路走完，包括元信息、Tag、Community Labs。
-
-这张图后面会被反复回查。每章冒出「这事在管线哪一段」的疑问时，对一下就能定位。

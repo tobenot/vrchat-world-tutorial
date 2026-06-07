@@ -123,23 +123,7 @@ UdonSharp 之外还有 **Udon Graph**，可视化连线版本，长得像 Unreal
 
 ## Unity 版本钉死，跨平台一份场景多份打包
 
-这两件事 [理解章 A](/getting-started/world-pipeline/) 也会再讲一次，这里只补一句不重复的。
-
-Unity 版本钉死的原因是大版本之间会改 AssetBundle 格式、改 IL2CPP、改 Shader 编译器。客户端要能加载所有用户上传过的世界，工程上不可能同时兼容十几代格式。官方的策略是整个生态钉同一个 Unity 版本，每隔一两年统一升级一次。写本书时，VRChat 创作者项目仍在 Unity 2022 LTS 线上（LTS 是 Long Term Support，长期维护版本），常用推荐版本是 `2022.3.22f1`；实际安装前以官方当前 Unity 版本页面和 VCC 提示为准。
-
-跨平台意味着同一份场景要分别打包才能让所有平台进得来。公开数据不提供精确的 PC / Quest / 移动端拆分；按 2026 年中公开实时数据粗略对照，Steam PC 只是一半上下，非 Steam 入口也占很大一块。后者包括 Quest、移动端和其他入口，不能直接等同于 Quest，但足以说明 Quest 和手机端不是可忽略的小众平台。目前支持的平台：
-
-```text
-Windows PC          主力。SteamVR / Oculus 头显或纯 Desktop 模式都能玩
-Meta Quest 系列     独立 VR 头显，跑 Android。当前指 Quest 2 / 3 / 3S / Pro，
-                    GPU 是 PC 中端的 1/10 量级。Quest 一代 2023 年 6 月停止支持
-iOS / Android 移动端   2023 年起 alpha / beta，2025 年 10 月才正式上线。
-                    触屏操作，无 VR
-macOS / Linux       没有官方客户端。Mac 用户走 Boot Camp、云游戏或 Wine，
-                    都不算稳定方案
-```
-
-跨平台是 VRChat 创作里最贵的一块。一个 PC 上做得很美的世界塞进 Quest 的预算里，往往要把贴图压一半、把实时光全删、把 shader 换成更便宜的版本，最后视觉只剩五成。第 39 章会具体展开。
+[理解章 A](/getting-started/world-pipeline/) 会展开 Unity 版本钉死和同一场景多平台分别打包的管线细节。这里只补一句：按 2026 年中公开数据粗略对照，Steam PC 只占玩家体量的一半上下，Quest 与移动端合在一起不是可忽略的小众平台。
 
 ## 围绕在外面的生态
 
