@@ -105,7 +105,7 @@ SDK1 和 SDK2 已经停止支持。SDK2 的 UnityPackage 在 2023 年初下架�
 
 到 Worlds SDK 这一层，写出来的 C# 走的是一条专属编译链。
 
-表面上跟普通 Unity 项目一样：在 Unity 里建 `.cs` 文件，能 `using UnityEngine`，能定义 class，能写 `Update()`。底层不一样的地方在编译产物：先用 **UdonSharp** 编译器把 C# 翻译成一种叫 **Udon Assembly** 的字节码（一种比源码更紧凑、更接近机器的中间格式），最后跑在客户端里的是 VRChat 自己写的虚拟机（一段专门解释执行这种字节码的程序），取代了普通 Unity 项目里的 .NET 运行时。
+表面上跟普通 Unity 项目一样：在 Unity 里建 `.cs` 文件，能 `using UnityEngine`，能定义 class，能写 `Update()`。底层不一样的地方在编译产物：先用 **UdonSharp** 编译器把 C# 翻译成一种叫 **Udon Assembly** 的字节码（一种比源码更紧凑、更接近机器的中间格式），最后跑在客户端里的是 VRChat 自己写的虚拟机（一段专门解释执行这种字节码的程序），取代了普通 Unity 项目里的 .NET 运行时（.NET 是 Microsoft 为 C# 等语言提供的标准执行环境：加载程序集、调度代码；普通 Unity 编辑器里 Play 模式跑的就是这套）。
 
 绕这一圈是为了安全。VRChat 客户端要执行陌生人写的代码：点开一个 Public 世界，里面的脚本是某个不认识的人写的。如果这段脚本能调 `System.IO.File.Delete`、能调 `System.Net.WebClient`、能调 `Process.Start`，玩家电脑就会被任意操作。
 

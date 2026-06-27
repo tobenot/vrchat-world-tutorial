@@ -85,12 +85,12 @@ Udon 允许调用的 .NET / Unity API 白名单。不在白名单上的 API（`S
 首次出现：[第 2 章](/getting-started/about-vrchat/#写的是-c跑的是-udon)。详细限制见[附录 D · UdonSharp 限制](/appendix/udonsharp-limits/)。
 
 **`UdonSharpBehaviour`**  
-VRChat 脚本必须继承的基类，对应普通 Unity 的 `MonoBehaviour`。把 AI 给的代码贴进 Unity 后，前两行如果出现 `: MonoBehaviour` 而不是 `: UdonSharpBehaviour`，要立刻替换。  
-首次出现：[第 3 章 · 它会什么，不会什么](/getting-started/ai-partner/#它会什么不会什么)。
+VRChat 脚本必须继承的基类，对应普通 Unity 的 `MonoBehaviour`。把外部代码贴进 Unity 后，前两行如果出现 `: MonoBehaviour` 而不是 `: UdonSharpBehaviour`，要立刻替换。  
+首次出现：[第 11 章 · C# 刚好够用](/programming/csharp-just-enough/)。
 
 **`MonoBehaviour`**  
 Unity 通用脚本基类。VRChat 世界脚本不用它，用 `UdonSharpBehaviour`。出现在搜到的 Unity 教程里很正常，但贴进 VRChat 项目要换。  
-首次出现：[第 3 章](/getting-started/ai-partner/#它会什么不会什么)。
+首次出现：[第 11 章 · C# 刚好够用](/programming/csharp-just-enough/)。
 
 ---
 

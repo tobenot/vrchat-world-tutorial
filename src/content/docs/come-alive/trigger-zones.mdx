@@ -18,6 +18,15 @@ VRChat 里这一类被动触发依赖一种特别的 Collider：勾选了 `Is Tr
 
 这一章用它做一件事：在房间一角划一块「音乐区」，进去音乐响，出去音乐停。
 
+## 两种常见做法（别混）
+
+| 做法 | 典型设置 | 体验 |
+|------|----------|------|
+| 全局 BGM | 场景里一个 `AudioSource`，`Play On Awake` 开，`Spatial Blend = 0` | 进世界就开始响，全场音量差不多 |
+| 区域触发（本章） | Trigger + `OnPlayerTriggerEnter`，`AudioSource` 放在区域内，由脚本 `Play()` / `Stop()` | 跨过区域边界才响，离开才停 |
+
+很多公开世界用第一种。本章教第二种：Trigger 事件 + 局部声源。若目标是「一进地图就播、不分区」，不必用 Trigger，直接全局 `AudioSource` 即可。
+
 ## Trigger 跟普通 Collider 的区别
 
 第 7 章用过普通 Collider：`Floor` 上挂一个 `Box Collider`，玩家踩上去停在表面。这是它的「实心」版。
@@ -55,14 +64,7 @@ Scale      1,    1,     1
 
 `Box Collider` 的 `Size` 调成 `3, 2.2, 3`，意思是一块 3 米见方、2.2 米高、能罩住玩家头顶的长方体区域。Scene 视图里会看到一圈绿色线框，那就是这块「音乐区」的边界。线框只有作者看得见，玩家进游戏后看不到。
 
-::::caution[忘了勾 Is Trigger 是头号沉默错误]
-这一章最常见的坑就是 `Is Trigger` 没勾。不勾的后果是：
-
-- 玩家撞到 `MusicZone` 那块区域被弹开，像隔了一堵隐形玻璃，本人还会一脸蒙。
-- `OnPlayerTriggerEnter` 永远不会被调用，因为引擎压根没把这次接触当 Trigger 处理。
-
-第二件事尤其折磨人：脚本看着对、Console 没报错、玩家也没卡住，但事件就是不触发。检查清单第一条永远是『Is Trigger 勾了吗』。
-::::
+`Is Trigger` 没勾时，这块 Collider 会像墙一样挡住玩家，`OnPlayerTriggerEnter` 也不会触发。事件不触发时，排查清单里先查这一项。
 
 ## 第二步：放一段背景音乐
 
@@ -86,7 +88,9 @@ Volume          0.6
 Spatial Blend   1（完全 3D，离得远会变小）
 ```
 
-`Play On Awake` 关掉，意思是场景一加载不要立刻播。要等脚本说「现在播」才播。`Loop` 开着，让 30 秒的循环音不至于断成一截。`Spatial Blend` 拉到 1，让远处听不见、走近才听到，配合「走进区域才响」的体感。
+`Play On Awake` 关掉，意思是场景一加载不要立刻播。要等脚本说「现在播」才播。`Loop` 开着，让 30 秒的循环音不至于断成一截。
+
+`Spatial Blend` 设为 `1` 时，声源在 `MusicZone` 物体位置，离声源远则小、近则大。若希望进区域后全场音量差不多（更像「跨进咖啡厅门槛就响 BGM」），把 `Spatial Blend` 改成 `0`，Trigger 仍负责何时 `Play()` / `Stop()`，只是声场不再随距离衰减。
 
 ## 第三步：写一段触发脚本
 
@@ -200,7 +204,7 @@ public override void OnPlayerTriggerEnter(VRCPlayerApi player)
 }
 ```
 
-骨架是同一份：玩家进入 → 检查是不是本地玩家 → 改一个状态 / 调一个方法。后面三章会反复用到这套结构。
+骨架是同一份：玩家进入 → 检查是不是本地玩家 → 改一个状态 / 调一个方法。
 
 ::::note[不同世界不同活法]
 休闲世界用 Trigger 多半是为了气氛切换：进吧台音乐换成轻爵士、进露台环境音变成虫鸣、进大厅突然安静下来。
@@ -236,8 +240,6 @@ OnPlayerCollisionStay  玩家与普通 Collider 接触期间，每帧调一次
 - 加一个 `public Light areaLight` 字段，进区域音乐响的同时把灯也点亮，离开同时灭。两个动作写在同一对 Enter/Exit 里就行。
 - 把 Trigger 区域的 Box Collider 换成 Sphere Collider，做一个圆形声场，看看边界形状对体验的影响。
 - 加一个 `int playersInside` 字段，`Enter` 时自加、`Exit` 时自减，进 Build & Test 站进站出，在 Inspector 上观察这个数字怎么变。再思考：如果不写 `if (!player.isLocal) return;`，这个数字会变成什么样？
-
-最后一条不必真改，先想再做。这一类「先想再做」的题，比直接抄答案对脑子有用。
 
 ## 一段被动交互的骨架
 

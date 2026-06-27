@@ -13,7 +13,7 @@ sidebar:
 
 ## GameObject 是容器
 
-新手很容易把 Hierarchy 里的名字当成物体的身份：`Floor` 是地板，`GlowBall` 是发光球，`Door` 是门。
+Hierarchy 里的名字只是标签：`Floor`、`GlowBall`、`Door` 并不决定它能做什么。
 
 名字只是给人看的。Unity 真正在乎的是这个 GameObject 身上挂了什么组件。
 
@@ -25,8 +25,6 @@ sidebar:
 GameObject = 一个带名字和 Transform 的容器
 Component  = 这个容器获得的具体能力
 ```
-
-这一组关系后面会反复用到。
 
 ## 组合，比写死类型自由
 
@@ -68,9 +66,7 @@ Material 看起来像美术资源，Light 看起来像场景灯具，但它们�
 
 ## 这套思路对 VRChat 世界有什么用
 
-VRChat 世界开发最常见的挫败感，是「我明明照着做了，为什么它不动」。
-
-组件思路给出一个稳定的排查顺序：
+如果发现「照着步骤做了，物体还是不动」，可以按组件逐项查：
 
 1. 这个物体在哪？看 Transform。
 2. 它该不该被看见？看 Mesh Renderer 和 Material。
@@ -80,14 +76,6 @@ VRChat 世界开发最常见的挫败感，是「我明明照着做了，为什�
 6. 它是不是从 Prefab 来的？看有没有蓝色实例和 Override。
 
 多数 bug 都有明确原因：某个能力没装、装错地方、参数没填，或者引用槽还是 `None`。
-
-:::note[AI 小助手]
-以后问 AI 排查问题时，按组件思路描述。
-
-比如：「我在 VRChat 世界里做了一个按钮，GameObject 上有 Box Collider 和 Udon Behaviour，脚本里有一个 Target Light 引用槽，但点击后灯不亮。请按组件和引用关系帮我列检查顺序。」
-
-这种问法，比「按钮坏了怎么办」有效得多。
-:::
 
 ## 一张可以反复用的心智地图
 

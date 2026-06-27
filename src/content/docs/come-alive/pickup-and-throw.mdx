@@ -10,7 +10,7 @@ sidebar:
   order: 3
 ---
 
-VR 玩家进了别人世界，第一件事常常是伸手抓东西。桌上一个杯子、一支荧光棒、一把小剑，能拿起来挥几下、扔出去看会不会摔，整个空间立刻不一样。桌面玩家瞄准物体按一下 V，照样能抓。
+`VRC Pickup` 加在带 Collider 和 `Rigidbody` 的物体上，VRChat 才允许抓取。桌面端对准物体按默认交互键 `V` 拿起；VR 端用手柄 Grip 抓、Trigger 作 Use（键位可在 Settings → Controls 查看）。
 
 这一章把第二部那颗 `GlowBall` 改造成一个能拿起来的小球：抓起来时灯加亮、放下时变暗、按 Use（VR 里是扳机、桌面是鼠标左键）时切颜色。
 
@@ -73,7 +73,26 @@ Allow Manipulation When Equipped  False
 Disallow Theft       False       # 别人能不能从你手里抢走
 ```
 
-`Orientation` 和 `Auto Hold` 留默认值就好。要做手枪、手电筒、剑这种「必须握在手里特定角度」的物体，把 `Orientation` 改成 `Gun` 或 `Grip`，再在物体上做一个空 GameObject 当锚点，拖进 `Exact Gun` 或 `Exact Grip` 槽，VRChat 就会用这个锚点对齐玩家手心。
+`Orientation` 和 `Auto Hold` 留默认值 `Any` 即可。下面单独说 `Gun` / `Grip`。
+
+## 持握朝向：Any、Grip、Gun
+
+`Orientation` 决定物体被抓进手里时怎么对齐玩家手部：
+
+| 值 | 适用 | 行为 |
+|----|------|------|
+| `Any` | 荧光棒、杯子、装饰球 | 不强制角度，抓起来就能用 |
+| `Grip` | 剑柄、工具握把 | 按 `Exact Grip` 锚点对齐「握持」姿势 |
+| `Gun` | 手枪、手电筒 | 按 `Exact Gun` 锚点对齐「枪口/灯头朝前」 |
+
+要做 `Grip` 或 `Gun`：
+
+1. 在物体下新建空 GameObject，命名 `GripAnchor` 或 `GunAnchor`。
+2. 移动 / 旋转这个空物体，让它的轴向跟期望的握法一致（Scene 视图里切到物体本地坐标轴看）。
+3. Inspector 里 `VRC Pickup` → `Orientation` 选 `Grip` 或 `Gun`。
+4. 把锚点拖进 `Exact Grip` 或 `Exact Gun` 槽。
+
+`Build & Test` 里抓一次，不对就回 Unity 只改锚点旋转，不必改脚本。
 
 `Sphere Collider` 这一章可能比 `GlowBall` 自带的稍小，建议把 Radius 调成 0.4，让玩家容易「对准」小球。第 13 章那条规则在这里也成立：抓不准多半是 Collider 太小。
 

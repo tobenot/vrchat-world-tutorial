@@ -147,29 +147,6 @@ Chill 世界的取舍很明确。同步、状态机、UI 这些先放一边，�
 
 这三件事写完，再翻一遍第二部那张「物体清单」。会发现 Chill 世界的清单不长：墙、地、天花板、几件家具、几盏灯、一两个 Pickup、一台 BGM Audio Source、可能一面镜子。东西不多，但每一件都得调到位。
 
-## AI 在这一类世界里能帮上什么
-
-Chill 世界的视觉很吃「氛围词汇」：「黄昏」、「霓虹」、「下雨夜」这一类抽象的描述。这些词翻译到 Unity 参数里很难凭直觉对得上。
-
-:::note[AI 小助手]
-当画面在脑子里有了但落不到参数上时，可以试着把氛围描述给 AI，让它给出一组起点参数。例如：
-
-```
-我在做一个 VRChat 的 Chill 世界，氛围是「东京下雨天的小公寓，深夜，
-室内开着一盏暖色台灯，窗外能听到雨声」。请给我一组起步参数：
-- Directional Light 的 color、intensity
-- Ambient（Lighting → Environment）的颜色和强度
-- 室内主灯（Point Light）的 color、intensity、range
-- 雨声 AudioSource 的 Spatial Blend、音量、Min/Max Distance
-- 窗外的 SkyBox 颜色或推荐的免费 cubemap 风格
-不要解释，直接给参数。
-```
-
-AI 给的参数当起点用，不当成最终值。Unity 里点一下进 Play Mode 看效果，凭眼睛再调。亮度刺不刺眼这件事 AI 没办法判断，必须自己进 Play Mode 体感判断。
-
-但 AI 能省的是「从零开始猜参数」那段时间。从一组合理的起点开始，调整速度比从默认值开始快几倍。
-:::
-
 ## 这一章在脑子里留下来的
 
 走 Chill 世界这条路要带走的：

@@ -10,7 +10,7 @@ sidebar:
   order: 1
 ---
 
-第二部的房间里有一颗暖色 `GlowBall`，灯一直亮着。VRChat 里大部分让人愿意停下来的世界，灯并不是常亮的。墙边一块矮台，走过去按一下，整片暖光就亮了，再按一下灭。
+第二部的房间里有一颗暖色 `GlowBall`，Inspector 里 `Light` 默认一直开着。这一章做按一下切换开关。
 
 这个开关动作背后只有一个事件：`Interact`。VRChat 里几乎所有「走到 X 前面按一下」的交互都是它。这一章把这条最小回路打通：放一个按钮，写一段五行脚本，按一下，灯切换。
 
@@ -71,7 +71,7 @@ public class LampToggle : UdonSharpBehaviour
 - `using UnityEngine;` 引入 `Light` 这种 Unity 自带类型。
 - `public class LampToggle : UdonSharpBehaviour` 声明一个能挂到 GameObject 上的脚本类。
 - `public Light targetLight;` 声明一个 `Light` 类型的字段，`public` 让它在 Inspector 里露出一个引用槽。
-- `public override void Interact()` 重写 VRChat 规定的 `Interact` 事件方法。玩家按 V 或扣扳机时，VRChat 替作者调用它。
+- `public override void Interact()` 重写 VRChat 规定的 `Interact` 事件方法。玩家对物体发起交互时，VRChat 调用它。桌面默认键是 `V`（可在 Settings → Controls 改），VR 默认是手柄 Trigger。
 - 方法体里那一行 `targetLight.enabled = !targetLight.enabled;` 把灯的 `enabled` 状态翻转。`!` 是「取反」：true 翻成 false，false 翻成 true。
 
 ::::tip[为什么是 `public override` 不是 `public`]
@@ -104,9 +104,9 @@ Inspector 里检查 `LampSwitch` 上的 `Box Collider`：默认就有一个，Cu
 Press
 ```
 
-桌面玩家的视角里，光标对准开关时头顶会浮出 `Press`，VR 玩家在控制器上方看到同样的字。
+桌面玩家的视角里，光标对准开关时头顶会浮出 `Press`，VR 玩家在控制器上方看到同样的字。公开给全球玩家用的世界，常用英文短词（`Press`、`Toggle`、`Open`）；只给中文圈朋友测时可以写中文，但外国玩家看不懂头顶提示。
 
-`Proximity` 字段保持默认 `2`（米）。意思是玩家离开关 2 米以内才能交互。后面想让按钮远距离也能按再调高它。
+`Proximity` 字段保持默认 `2`（米）。意思是玩家离开关 2 米以内才能交互。想让按钮远距离也能按再调高它。
 
 ## 第五步：Build & Test
 
@@ -148,9 +148,7 @@ Press
 
 - 把 `Interaction Text` 从 `Press` 改成 `开灯` 或 `按一下`。中文也行。
 - 把 `Proximity` 从 `2` 改成 `0.5`，进去会发现要凑得很近才能按。
-- 把 `LampSwitch` 复制一份放到房间另一头，把它的 `Target Light` 拖到另一盏灯上。一份脚本，两个开关，各管各的灯。
-
-最后一条最值得停一下：脚本只是行为模板，每挂一次相当于一台独立的小机器。两个 `LampSwitch` 物体都挂着 `LampToggle.cs`，但两个 `Target Light` 槽各指各的灯。这就是为什么 Inspector 引用是显式拖的：要哪盏，自己点。
+- 把 `LampSwitch` 复制一份放到房间另一头，把它的 `Target Light` 拖到另一盏灯上。一份脚本，两个开关，各管各的灯。两个 `Target Light` 槽各指各的灯，因为 Inspector 引用是显式拖的。
 
 ## 自己改两个版本
 
@@ -170,8 +168,6 @@ Press
 - 同一个物体上的一个 Collider，决定 VRChat 在哪儿能「瞄准」它。
 - Udon Behaviour 的 `Interaction Text`，决定提示显示什么。
 - 脚本里通过 `public` 字段引用到的目标对象（这一章是那盏灯）。
-
-这套骨架后面会反复出现：开门、捡物、坐下来、传送点，几乎每一个交互都从这四件东西开始。下一章把「按一下」换成「走进去」，看 Trigger Collider 怎么把这个最小回路改成被动触发的版本。
 
 ## 本章参考
 
