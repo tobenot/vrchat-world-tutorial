@@ -10,9 +10,9 @@ sidebar:
   order: 3
 ---
 
-`VRC Pickup` 加在带 Collider 和 `Rigidbody` 的物体上，VRChat 才允许抓取。桌面端对准物体按默认交互键 `V` 拿起；VR 端用手柄 Grip 抓、Trigger 作 Use（键位可在 Settings → Controls 查看）。
+`VRC Pickup` 加在带 Collider 和 `Rigidbody` 的物体上，VRChat 才允许抓取。对准物体发起 **Interact** 可拿起；键位在 VRChat Settings → Controls。
 
-这一章把第二部那颗 `GlowBall` 改造成一个能拿起来的小球：抓起来时灯加亮、放下时变暗、按 Use（VR 里是扳机、桌面是鼠标左键）时切颜色。
+这一章把第二部那颗 `GlowBall` 改造成一个能拿起来的小球：抓起来时灯加亮、放下时变暗、拿在手里按 **Use**（使用键，同在 Settings → Controls）时切颜色。
 
 ## 让物体可被抓取的三件套
 
@@ -106,9 +106,9 @@ Disallow Theft       False       # 别人能不能从你手里抢走
 
 不写一行代码，先跑一次。`Build & Test` 进世界。
 
-桌面玩家：走到 `PickupBall` 附近，光标对准，头顶提示 `Hold`。按 `V` 拿起，球贴在视角中心。再按 `V` 放下，球受重力下坠。
+桌面玩家：走到 `PickupBall` 附近，光标对准，头顶提示 `Hold`。Interact 一次拿起，球贴在视角中心。再 Interact 一次放下，球受重力下坠。
 
-VR 玩家：手伸到球上，按 Grip 抓住，松手扔出去，球带着初速度飞出去再撞地。
+VR 玩家：手伸到球上，用 Pickup 抓起，松手扔出去，球带着初速度飞出去再撞地。
 
 不到半分钟，世界里多了一个能玩的物理小球。这就是为什么 Pickup 是 VRChat 世界最让人愿意试的交互之一：它不靠界面、不靠脚本，伸手抓就行，符合人在真实空间的直觉。
 
@@ -120,7 +120,7 @@ VR 玩家：手伸到球上，按 Grip 抓住，松手扔出去，球带着初�
 
 - 拿起时灯亮一档。
 - 放下时灯回原来亮度。
-- 拿在手里按 Use（桌面左键 / VR 扳机）时切换颜色。
+- 拿在手里按 Use 时切换颜色。
 
 `Assets/Scripts/` 下新建 `PickupGlow.cs`：
 
@@ -188,7 +188,7 @@ public class PickupGlow : UdonSharpBehaviour
 
 抓起来：球更亮了。  
 放下：球回原色亮度。  
-拿在手里按 Use（左键 / 扳机）：球颜色循环切换。
+拿在手里按 Use：球颜色循环切换。
 
 四个事件，每一个 VRChat 都给了名字：
 

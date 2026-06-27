@@ -117,7 +117,7 @@ sidebar:
 > ```
 
 可能原因：
-1. **Inspector 里某个 `public` 字段没拖引用**（最常见）。
+1. **Inspector 里某个 `public` 字段没拖引用**（先查这项）。
 2. 调了一个返回 `null` 的方法（`GetComponent<X>()` 没找到 X 组件），没判空就接着用。
 3. 引用的对象在运行中被销毁了（这种通常报 `MissingReferenceException`，见下条）。
 
@@ -324,7 +324,7 @@ public void DoNext() { /* ... */ }   // 必须 public
 
 ### SDK Validation 红字（上传前）
 
-> SDK 控制面板 `Builder` 标签下方一行行红字，最常见是 Quest 平台。
+> SDK 控制面板 `Builder` 标签下方一行行红字，Quest 平台相关条目往往占多数。
 
 可能原因：
 1. Shader 对 Android 过重或触发兼容性警告。

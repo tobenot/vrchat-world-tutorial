@@ -1,6 +1,6 @@
 ---
 title: 16. 坐下来，照镜子，走过去
-description: 三个 VRChat 房间最常见的配件一次到位：用 VRCStation 做一把能坐的椅子、用 VRCMirrorReflection 做一面默认关闭的镜子、用 Networking.LocalPlayer.TeleportTo 做一个走过去就送你到二楼的传送门。
+description: 三个 VRChat 房间里常用的配件一次到位：用 VRCStation 做一把能坐的椅子、用 VRCMirrorReflection 做一面默认关闭的镜子、用 Networking.LocalPlayer.TeleportTo 做一个走过去就送你到二楼的传送门。
 difficulty: 新手
 estimatedMinutes: 50
 chapterType: hands-on
@@ -108,7 +108,7 @@ Sit
 
 ### Build & Test
 
-`Build & Test` 进世界。走到椅子前，光标对准椅面，头顶提示 `Sit`。按 `V`，玩家被放进椅面上方，坐姿生效，视角也固定。再按一次 `V` 起身。
+`Build & Test` 进世界。走到椅子前，光标对准椅面，头顶提示 `Sit`。Interact 一次，玩家被放进椅面上方，坐姿生效，视角也固定。再 Interact 一次起身。
 
 如果坐下去之后脚穿透椅面，回 Unity 把 `EnterPoint` 的 Y 拉高一点，多调几次直到看着自然。VR 里坐姿的视角高度比桌面下不一样，最终位置以拉朋友实际进 VR 测试为准。
 
@@ -219,7 +219,7 @@ public class MirrorSwitch : UdonSharpBehaviour
 
 ### Build & Test
 
-进世界后镜子默认是关的，墙上看到一块 Quad（带个默认材质）。走到 `MirrorSwitch` 前按 `V`，Quad 变成镜面，能看到自己 avatar。再按一次关掉。
+进世界后镜子默认是关的，墙上看到一块 Quad（带个默认材质）。走到 `MirrorSwitch` 前 Interact 一次，Quad 变成镜面，能看到自己 avatar。再 Interact 一次关掉。
 
 如果开了之后镜面是黑的：
 

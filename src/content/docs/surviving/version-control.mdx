@@ -37,7 +37,7 @@ Asset Serialization
 
 这告诉 Unity：所有项目资源（Scene、Prefab、Material、Animator 等）一律以 YAML 文本格式存储，而不是二进制。
 
-为什么这件事是头号大事：
+为什么这件事很重要：
 
 - **二进制文件 Git 几乎用不了**：两个版本之间的差异显示为「整个文件改了」，没法看具体改了什么。三个人协作时，三份二进制场景文件几乎必然冲突且无法合并。
 - **YAML 文本可读、可 diff、可合并**：Smart Merge（下面讲）才能在 YAML 上跑。
@@ -65,7 +65,7 @@ GUID 是 Unity 内部用来在场景里互相引用的地址。`Hierarchy` 里�
 `.meta` 必须跟资源文件一起提交到版本控制。漏一个，引用就断了。
 
 ::::caution[踩坑预警]
-最常见的「一拉项目所有引用都变成 None」的故障源就是 `.meta` 文件没提交。
+如果 clone 下来引用全变成 `None`，先查 `.meta` 文件有没有进版本库。
 
 具体表现：另一台机器或者另一个合作者拉下项目打开，Inspector 里一堆字段变成红色 `Missing`，材质灰一片，脚本里的 `public` 字段全变 None。
 
@@ -269,7 +269,7 @@ UnityYAMLMerge 会尝试自动合并大部分变更。仍有冲突的地方，�
 :::::tip[不要把 mergetool 和 merge driver 混在一起]
 `.gitattributes` 里的 `*.unity merge=unityyamlmerge` 属于 Git **merge driver** 机制，需要额外配置 `[merge "unityyamlmerge"] driver = ...`。Unity 官方 Smart Merge 文档给的是 `git mergetool` 配置，不是 merge driver 配置。
 
-新手先按官方 `git mergetool` 方案来，足够覆盖多数场景冲突。等真的需要自动接管 `git merge` 过程，再单独研究 merge driver。
+先按官方 `git mergetool` 方案来，足够覆盖多数场景冲突。等真的需要自动接管 `git merge` 过程，再单独研究 merge driver。
 :::::
 
 ::::tip[为什么场景的合并是个独立问题]
@@ -291,7 +291,7 @@ VRChat 项目用 VCC（Creator Companion）管理依赖。这给版本控制带�
 - **进版本控制**（保险）：拉项目就能直接打开，不依赖 VCC 网络。
 - **不进版本控制**（仓库小）：只提交 manifest，每次新机器打开靠 VCC 重新拉。
 
-新手推荐第一种（进版本控制）。手动添加 `.gitignore` 规则把第二种排除掉的话，可以加：
+第一种（进版本控制）适合多数个人项目。手动添加 `.gitignore` 规则把第二种排除掉的话，可以加：
 
 ```bash
 # 选择性：让 VCC 在新机器上重新解包 SDK
@@ -305,7 +305,7 @@ VRChat 项目用 VCC（Creator Companion）管理依赖。这给版本控制带�
 
 本地 `git init` 解决「能回退到上周」的问题。但本地仓库只在这台机器上，硬盘坏了就一起没。远端备份是另一件事。
 
-最常见的 VRChat 个人项目远端方案：
+VRChat 个人项目里常用的一种远端方案：
 
 | 方案 | 上手难度 | 隐私 | 成本 |
 | :--- | :--- | :--- | :--- |

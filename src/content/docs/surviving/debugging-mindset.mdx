@@ -47,7 +47,7 @@ DoorController.Interact () (at Assets/Scripts/DoorController.cs:18)
 
 `NullReferenceException`（缩写 NRE，空引用异常）在 VRChat 世界脚本里出现的频率高得不像话。它的意思永远是同一句：「试图调用某个变量，但那个变量是 `null`，没指向任何对象」。看到 NRE 通常是两种情况之一：
 
-1. Inspector 里某个 `public` 字段没拖引用（最常见）。
+1. Inspector 里某个 `public` 字段没拖引用（先查这项）。
 2. 代码里调了一个返回 `null` 的方法（如 `GetComponent<X>()` 没找到 X 组件），没判空就接着用。
 
 [第 12 章](/programming/udonsharp-personality/)讲过：UdonSharp 不支持 `try-catch`。NRE 一发生，当前事件直接中断，后面的代码全部不再执行。所以「按钮按了没反应」往往就是 `Interact` 方法第三行就 NRE 了，第四行的 `SetBool` 根本没机会跑。
@@ -233,7 +233,7 @@ UdonSharp 没有 `try-catch`，所以避免 halted 的最稳办法是写之前�
 判空的几条惯例：
 
 ```cs
-// 用之前判，最常见
+// 用之前判空
 if (doorAnimator != null)
 {
     doorAnimator.SetBool("IsOpen", isOpen);

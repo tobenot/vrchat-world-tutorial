@@ -5,7 +5,7 @@ difficulty: 新手
 estimatedMinutes: 35
 chapterType: hands-on
 requiresSDK: true
-summary: 第四部的第一个动手章。在房间里放一个矮 Cube 当按钮，挂上一段五行的 UdonSharp，配一个 Box Collider 和一行提示文字，走过去按 V/扳机就能切换 Point Light 的开关。Interact 是 VRChat 一切按按钮交互的最小基本单位。
+summary: 第四部的第一个动手章。在房间里放一个矮 Cube 当按钮，挂上一段五行的 UdonSharp，配一个 Box Collider 和一行提示文字，对物体发起 Interact 就能切换 Point Light 的开关。Interact 是 VRChat 一切按按钮交互的最小基本单位。
 sidebar:
   order: 1
 ---
@@ -20,7 +20,7 @@ Interact 不是凭空生效。VRChat 客户端要知道「这个物体能被按�
 
 1. 一个带 Collider 的 GameObject，让 VRChat 知道光标该停在哪。
 2. 一段 UdonSharp 脚本，挂在同一个 GameObject 上，里面有一个 `Interact` 方法。
-3. Udon Behaviour 的 `Interaction Text` 字段填一句提示，玩家头顶才会出现「按 V / 扣扳机」那行小字。
+3. Udon Behaviour 的 `Interaction Text` 字段填一句提示，玩家准星附近才会出现那行小字（写动作如 `Press`，不写具体按键；键位各人可在 VRChat 的 Settings → Controls 里改）。
 
 三件齐了才能按。少哪一个，按下去都没反应，下面会一一对照。
 
@@ -71,7 +71,7 @@ public class LampToggle : UdonSharpBehaviour
 - `using UnityEngine;` 引入 `Light` 这种 Unity 自带类型。
 - `public class LampToggle : UdonSharpBehaviour` 声明一个能挂到 GameObject 上的脚本类。
 - `public Light targetLight;` 声明一个 `Light` 类型的字段，`public` 让它在 Inspector 里露出一个引用槽。
-- `public override void Interact()` 重写 VRChat 规定的 `Interact` 事件方法。玩家对物体发起交互时，VRChat 调用它。桌面默认键是 `V`（可在 Settings → Controls 改），VR 默认是手柄 Trigger。
+- `public override void Interact()` 重写 VRChat 规定的 `Interact` 事件方法。玩家对物体发起 **Interact**（交互键，键位在 VRChat Settings → Controls）时，VRChat 调用它。
 - 方法体里那一行 `targetLight.enabled = !targetLight.enabled;` 把灯的 `enabled` 状态翻转。`!` 是「取反」：true 翻成 false，false 翻成 true。
 
 ::::tip[为什么是 `public override` 不是 `public`]
@@ -112,20 +112,20 @@ Press
 
 `VRChat SDK` → `Show Control Panel` → Builder 标签 → `Build & Test`。
 
-进世界后走到 `LampSwitch` 前两米内，光标对准它，头顶提示 `Press`。按 `V`（桌面）或扣下扳机（VR），暖光熄灭。再按一下，亮起来。
+进世界后走到 `LampSwitch` 前两米内，光标对准它，头顶提示 `Press`。对开关发起一次 Interact，暖光熄灭。再 Interact 一次，亮起来。
 
 按一下，灯亮了。
 
 走两步退到 3 米外，提示消失：超出 `Proximity` 距离了。回头再走近，提示重新出现。
 
 ::::caution[按了没反应时，按这条顺序自查]
-第一次做这套常见三种「沉默失败」，按这条顺序排，多数能命中：
+Interact 没反应时，按这条顺序查，三条里多半能命中一条：
 
 1. 走过去看不到 `Press` 字 → `Interaction Text` 是空的，或者距离超了 `Proximity`。先填字、再走近。
-2. 看到 `Press` 字，按了灯没切换 → `Target Light` 引用槽是 `None`。回 Inspector 拖 `GlowBall`。
+2. 看到 `Press` 字，Interact 后灯没切换 → `Target Light` 引用槽是 `None`。回 Inspector 拖 `GlowBall`。
 3. 走过去连 `Press` 字都没看到，但物体明明在前面 → `LampSwitch` 上的 `Box Collider` 被禁用了或没了；脚本里 `Interact` 拼错了；脚本写成 `public void Interact()` 漏了 `override`。
 
-这三条覆盖九成第一次踩的坑。剩下那一成大概率是 Console 里有红字，按红字修。
+如果三条都对不上，看 Console 有没有红字，按红字修。
 ::::
 
 ## Interact 是完全本地的

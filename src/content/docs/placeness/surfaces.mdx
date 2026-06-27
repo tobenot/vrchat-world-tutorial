@@ -62,7 +62,7 @@ Normal Map（法线贴图）记录的是「这个表面上每一点的朝向」�
 4. 选中 `WoodFloor_normal.jpg`，Inspector 里 `Texture Type` 要改成 `Normal map`，然后 `Apply`。
 
 ::::caution[Normal Map 的 Texture Type 一定要改]
-最常见的错：忘了把 Normal 贴图的 Texture Type 改成 `Normal map`，让 Unity 把它当普通彩色贴图导入。
+如果 Normal 贴图看起来发灰、发平，检查 Texture Type 是否设为 `Normal map`。若仍是普通 `Default`，Unity 会把它当彩色贴图导入。
 
 后果：贴上去之后表面看起来「带颜色」（紫蓝色 tint），凹凸反过来或者根本没效果。表现是「明明贴了 Normal 但没感觉」。
 

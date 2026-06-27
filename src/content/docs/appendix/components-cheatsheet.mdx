@@ -48,7 +48,7 @@ pagefind: true
 ```cs
 public override void Interact()
 {
-    // 玩家按 V / 扣扳机时触发
+    // 玩家对物体发起 Interact 时触发
 }
 ```
 
@@ -216,7 +216,7 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 | `Capsule Collider` | 胶囊 | 便宜 | Capsule |
 | `Mesh Collider` | 任意 Mesh | 贵，可能漏检 | Plane |
 
-通用字段 `Is Trigger`：勾上 = 不阻挡只检测；不勾 = 物理阻挡 + 碰撞事件。**忘勾 `Is Trigger` 是 Player Trigger 事件不响应的头号沉默错误**（[第 14 章](/come-alive/trigger-zones/)）。
+通用字段 `Is Trigger`：勾上 = 不阻挡只检测；不勾 = 物理阻挡 + 碰撞事件。要用 `OnPlayerTriggerEnter` 时，`Is Trigger` 必须勾上（[第 14 章](/come-alive/trigger-zones/)）。
 
 能用 Box/Sphere 就别用 Mesh。首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
 

@@ -389,7 +389,7 @@ Unity 顶部三角形按钮启动的运行时预览模式。在里面调的所�
 首次出现：[第 7 章 · 踩坑预警 · 把 Play Mode 染上颜色](/workbench/components/#play-mode-调参的陷阱)。
 
 **引用槽（`None (Object)`）**  
-组件参数中可以把其他物体或资产拖进来的字段。最常见的「莫名其妙不工作」就是引用槽空着。  
+组件参数中可以把其他物体或资产拖进来的字段。如果组件「莫名其妙不工作」，先查引用槽是不是 `None`。  
 首次出现：[第 7 章 · 引用槽：最容易卡的一关](/workbench/components/#引用槽最容易卡的一关)。
 
 ---
@@ -433,7 +433,7 @@ Unity 内置基础形状。Cube 是封闭六面体，Plane 是单面薄片。地
 首次出现：[第 5 章 · 第二步：解决踩地（创建地板）](/getting-started/first-world/#第二步解决踩地创建地板)。
 
 **`Box Collider` / `Sphere Collider` / `Mesh Collider`**  
-三种最常见的碰撞体。Box 是盒子（默认 Cube 自带），Sphere 是球，Mesh 按网格逐三角形碰撞（默认 Plane 自带）。能用 Box 不用 Mesh，便宜得多。  
+三种常用碰撞体。Box 是盒子（默认 Cube 自带），Sphere 是球，Mesh 按网格逐三角形碰撞（默认 Plane 自带）。能用 Box 不用 Mesh，便宜得多。  
 首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
 
 **`Backface Culling`**（背面剔除）  
@@ -691,7 +691,7 @@ VRChat 静态 API，返回当前客户端那个 `VRCPlayerApi`。常用 `Network
 首次出现：[第 15 章 · 第四步：用三个事件让球更有个性](/come-alive/pickup-and-throw/#第四步用三个事件让球更有个性)。
 
 **`OnPickupUseDown` / `OnPickupUseUp`**  
-拿着 Pickup 时按下 / 松开"使用键"（鼠标左键、扳机）的事件。可以用来做"按住喷射、松手停"这类交互。  
+拿着 Pickup 时按下 / 松开 **Use**（使用键，Settings → Controls）的事件。可以用来做「按住喷射、松手停」这类交互。  
 首次出现：[第 15 章](/come-alive/pickup-and-throw/#第四步用三个事件让球更有个性)。
 
 **`Pickupable`**（`VRC Pickup` 字段）  

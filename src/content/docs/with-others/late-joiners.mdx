@@ -300,7 +300,7 @@ public override void OnPlayerJoined(VRCPlayerApi player)
 
 注意 `if (player == Networking.LocalPlayer) return`：跳过「自己加入自己」的那次触发。否则 Charlie 自己加入实例时她也会闪自己一下，玩家会困惑。
 
-这种「OnPlayerJoined 各自跑各自的反应」是最常见的迎宾模式。不需要 Owner、不需要 RequestSerialization，每个客户端独立行动。
+这种「OnPlayerJoined 各自跑各自的反应」是一种简单迎宾写法。不需要 Owner、不需要 RequestSerialization，每个客户端独立行动。
 
 ## 把第 28 章的灯做成迟到友好版
 

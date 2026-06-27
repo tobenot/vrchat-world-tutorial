@@ -16,7 +16,7 @@ sidebar:
 
 完成之后，两个客户端的灯第一次能同步切换：A 按一下，B 那边的灯也跟着灭。这个瞬间值得花时间把流程看穿，往后所有同步逻辑都是这套机制的变体。
 
-最后顺手介绍另一种同步工具：`SendCustomNetworkEvent`。它跟同步变量是两件不同的事，混着用是 VRChat 多人开发最常见的失误之一。
+最后顺手介绍另一种同步工具：`SendCustomNetworkEvent`。它跟同步变量是两件不同的事，混着用容易出 bug。
 
 ## 同步变量四件套
 
@@ -141,7 +141,7 @@ Beta 按一下：
 
 1. **类上没加 `[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`**：Inspector 里 Sync Mode 显示是 `Any` 或别的值。VRChat 编辑器有时候不会强报错，但行为飘忽。
 2. **`[UdonSynced]` 漏写**：字段在 Inspector 里看起来正常，但远端不会收到值变化。
-3. **改完字段忘调 `RequestSerialization`**：本地翻了，发不出去。这是最常见的。
+3. **改完字段忘调 `RequestSerialization`**：本地改了，远端看不到。
 4. **没重写 `OnDeserialization`**：远端字段值变了，但脚本不知道要做什么。需要把更新逻辑从 `Interact` 抽到 `ApplyState` 里、`OnDeserialization` 里再调一次。
 5. **没抢所有权就改字段**：本机不是 Owner，改字段加 `RequestSerialization` 不会发出去（VRChat 内部会忽略非 Owner 发起的同步请求）。
 
@@ -349,7 +349,7 @@ public class ExplosionButton : UdonSharpBehaviour
 「没有同步变量但要发网络事件」的脚本（像这个 `ExplosionButton`）必须用 `NoVariableSync`。挑成 `None` 的话脚本里写的 `SendCustomNetworkEvent` 会安静地什么都不发，调试半天找不到原因。
 ::::
 
-这一章先用两个最常见的 `NetworkEventTarget`：
+这一章先用两个 `NetworkEventTarget`：
 
 - `NetworkEventTarget.All`：所有当前在实例里的客户端，包括发起者。
 - `NetworkEventTarget.Owner`：仅这个 UdonBehaviour 的 Owner。
@@ -409,7 +409,7 @@ public void RegisterPlayer()
 - 加一个「广播范围」开关：在 `LampToggle` 里加 `[UdonBehaviourSyncMode]` 切到 `Continuous`，看看带宽监控里同步频率是不是变密了。改完记得切回 `Manual`，按按钮的场景 Continuous 是浪费。
 - 把 `ExplosionButton` 改成「按下后让所有玩家被弹起 3 米」：用 `SendCustomNetworkEvent(All, "BounceLocal")`，`BounceLocal` 里调 `Networking.LocalPlayer.SetVelocity(...)`。每个客户端各自把自己的本机玩家弹一下。
 
-第三个有一个值得注意的点：每个客户端调 `Networking.LocalPlayer.SetVelocity` 改的都是「自己的本机玩家」，不是「所有玩家」。让所有人弹起来正是因为每个客户端都各自弹了自己一下。这是网络事件最常见的用法之一：所有人各自跑一段「对自己生效」的代码。
+第三个有一个值得注意的点：每个客户端调 `Networking.LocalPlayer.SetVelocity` 改的都是「自己的本机玩家」，不是「所有玩家」。让所有人弹起来正是因为每个客户端都各自弹了自己一下。这是网络事件的一种常见用法：所有人各自跑一段「对自己生效」的代码。
 
 ## 状态用变量，事件用网络事件
 
