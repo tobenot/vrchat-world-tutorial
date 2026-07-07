@@ -85,6 +85,13 @@ npm run shift:chapters -- --from 5 --by +1 --write    # 写入
 
 `npm run build` 默认会跑 `check:chapters:strict`，章号腐烂会直接挡住构建——CI 也是这条命令。
 
+## 项目文档
+
+| 文档 | 说明 |
+|------|------|
+| [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md) | 项目全景：设计、技术栈、章节结构、资料导航审阅、审阅清单 |
+| [STARLIGHT-FEATURES.md](./STARLIGHT-FEATURES.md) | 写作者手册：Starlight 组件、部署、排错 |
+
 ## 目录结构
 
 ```text
