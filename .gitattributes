@@ -1,0 +1,10 @@
+# Unity 文本格式统一 LF，压过 core.autocrlf，杜绝行尾幻影 diff
+*.cs text eol=lf
+*.unity text eol=lf
+*.prefab text eol=lf
+*.asset text eol=lf
+*.mat text eol=lf
+*.meta text eol=lf
+*.shader text eol=lf
+*.cginc text eol=lf
+*.json text eol=lf
