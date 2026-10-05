@@ -1,97 +1,69 @@
 ---
 title: 理解章 B：为什么一切都是空壳加零件
 chapterType: concept
-difficulty: 新手
-description: 把 GameObject、Component、Prefab、Material、Light 串起来，看清 Unity 的组合式设计思路。
+difficulty: 基础
+description: 区分场景对象、组件、资源和 Prefab，按职责定位配置问题。
 sidebar:
   order: 5
 ---
 
-第二部到此为止：GameObject、Component、Prefab、Material、Light。看着像五个零散的概念，其实它们在讲同一件事：Unity 把复杂东西拆成小零件，再让创作者自己组合。
+GameObject、Component、Prefab、Material 和 Light 不在同一层级。GameObject 是场景对象，Component 附着在对象上；Material 是被 Renderer 引用的资源；Light 是组件；Prefab 是保存对象层级和配置的资源。
 
-这是这套工具能撑起大型项目的原因。
+## GameObject 组织组件
 
-## GameObject 是容器
-
-Hierarchy 里的名字只是标签：`Floor`、`GlowBall`、`Door` 并不决定它能做什么。
-
-名字只是给人看的。Unity 真正在乎的是这个 GameObject 身上挂了什么组件。
-
-`Floor` 之所以像地板，是因为它有扁平的 Transform、有 Mesh Renderer 能被看见、有 Box Collider 能被踩住。把 Mesh Renderer 关掉，它还可以当隐形地板；把 Collider 删掉，它就只剩一块看得见、踩不住的板。
-
-更准确的说法是：
+对象名称用于辨认，具体行为由组件和字段决定。`Floor` 有网格和 Renderer 时可见，有合适的 Collider 时能提供碰撞，Transform 决定这些形状的位置与缩放。
 
 ```text
-GameObject = 一个带名字和 Transform 的容器
-Component  = 这个容器获得的具体能力
+Floor（GameObject）
+├─ Transform
+├─ Mesh Filter → 网格资源
+├─ Mesh Renderer → 材质资源 → Shader 与贴图
+└─ Box Collider
 ```
 
-## 组合，比写死类型自由
+这解释了[渲染与碰撞对照实验](/workbench/gameobjects/)：禁用 Renderer 后物体仍可碰撞，因为 Collider 没有随之被禁用。
 
-想象 Unity 里有专门的 `Door` 类型、`Chair` 类型、`Lamp` 类型、`Button` 类型。听起来挺贴心。
+## 组件组合表达不同需求
 
-问题很快来了。一把会发光的椅子算椅子还是灯？一扇会播音效、能被脚本控制、还能同步给所有玩家的门，要继承几个类型？一个长得像石头、踩上去会开门的机关，是石头、按钮，还是机关？
+一个灯具可以包含模型、Light 和 Collider；一个座位可以包含模型、Collider 与 VRC Station。不同对象可以复用相同组件，不需要引擎为每一种组合定义专用对象类型。
 
-每种东西都写死成一个类型，世界稍微复杂一点，类型树就会乱成一团。
+组件也有依赖和使用条件。Mesh Renderer 需要网格和材质，物理行为需要合适的碰撞和刚体设置，SDK 组件必须符合 VRChat 的支持范围。把组件加到对象上只是配置的开始，实际行为还取决于字段、引用和运行环境。
 
-Unity 选了另一条路：先给一个空壳，然后把能力拆成组件。要看得见就加 Mesh Renderer，要挡住玩家就加 Collider，要发光就加 Light，要播声音就加 Audio Source，要让玩家拿起来就加 VRC Pickup，要写自己的逻辑就加 Udon Behaviour。
+## Prefab 保存组合与共有配置
 
-一个物体的身份，来自它装上的能力。
-
-:::tip[为什么是这样？]
-组合式设计的好处是自由。Unity 不用提前猜世界里会出现多少种物品，作者也不用等官方做一个「会发光、能坐、会播放音乐的椅子」类型。把 Chair 模型、Collider、Light、Audio Source、VRC Station、脚本组合起来，它就成了这个物件。
-
-如果没有组件系统，每多一种组合就要写一种新类型，项目很快会失控。
-:::
-
-## Prefab 是「组合结果」的保存
-
-Prefab 也可以放进这套思路里看。
-
-配好一个 `GlowBall`：球体 Mesh、材质、Point Light、Collider、名字、Transform 层级，它已经是一组零件的组合结果。
-
-Prefab 做的事就是把这组组合保存下来。以后需要第二个、第三个发光球，不用重新装一遍组件，从 Prefab 拖出来就行。修改 Prefab，相当于修改这套组合的源头。场景里的实例如果没有单独 Override，就一起更新。
-
-Prefab 是 Unity 管理重复组合的方式。它比复制粘贴多了一层：修改源头时，所有实例跟着更新。
-
-## Material 和 Light 也走这个思路
-
-Material 看起来像美术资源，Light 看起来像场景灯具，但它们也遵循同一套拆分原则。
-
-一个 Cube 的形状由 Mesh 决定，表面由 Material 决定，是否发光由 Light 组件决定，是否能被踩由 Collider 决定。每个部分只管自己那一摊。
-
-这让排查问题精确起来：看得见但踩不住，查 Collider；踩得住但看不见，查 Mesh Renderer；球本身亮但照不亮墙，查 Light；材质颜色不对，查 Material 和 Shader；复制了很多份想统一改，查 Prefab。
-
-拆开看，问题会小很多。
-
-## 这套思路对 VRChat 世界有什么用
-
-如果发现「照着步骤做了，物体还是不动」，可以按组件逐项查：
-
-1. 这个物体在哪？看 Transform。
-2. 它该不该被看见？看 Mesh Renderer 和 Material。
-3. 它该不该被碰到、点到、踩到？看 Collider。
-4. 它该不该发光或发声？看 Light 和 Audio Source。
-5. 它该不该响应玩家？看 Udon Behaviour、VRC Pickup、VRC Station 这类。
-6. 它是不是从 Prefab 来的？看有没有蓝色实例和 Override。
-
-多数 bug 都有明确原因：某个能力没装、装错地方、参数没填，或者引用槽还是 `None`。
-
-## 一张可以反复用的心智地图
-
-第二部真正想留下的是这张图，按钮位置只是临时记忆：
+[Prefab 章](/workbench/prefabs/)把球体、Point Light 和相关设置保存为 `GlowBall.prefab`。场景里可以有多个实例，每个实例保留自己的位置，并继承未被覆盖的资源属性。
 
 ```text
-Scene
-└─ GameObject（空壳 + Transform）
-   ├─ Component（能力）
-   ├─ Material（表面外观）
-   ├─ Light / Audio / Collider / Udon Behaviour ...
-   └─ Prefab（把一组配置保存成可复用模具）
+GlowBall.prefab（资源）
+    ├─ 场景实例 A：位置 A，使用共有 Light 参数
+    └─ 场景实例 B：位置 B，颜色有单独 Override
 ```
 
-看一个世界时，从外观往里拆。做一个世界时，从意图往外装。
+Prefab 不是挂在 GameObject 上的一种组件。实例与资源的联系用于编辑阶段的复用，也不会自动成为多人状态同步。
 
-「我想要一盏能被按钮开关的灯」这句话，现在可以翻译成具体清单：一个灯具模型、一个 Light 组件、一个按钮 Collider、一个 Udon 脚本、一个引用槽，把按钮和灯连起来。
+## 材质、光源与发光外观
 
-这就是从玩家视角跨到创作者视角的第一步。
+Material 保存 Shader 参数，Light 提供光照计算。材质的 Emission 可以使表面自亮，但它与实时 Light 是不同机制。启用适用的全局光照设置并烘焙后，发光材质也可以把贡献写入光照数据。
+
+因此，如果球体亮而墙面不亮，要区分当前是否只有 Emission、是否有实际照到墙的 Light，以及是否存在有效的烘焙光照。不能只用「有没有 Light」概括所有发光贡献。
+
+## 按现象检查对应配置
+
+如果照着配置步骤做了，但物体仍没有预期行为，可以逐项核对：
+
+1. **位置或尺寸不对**：查看 Transform、父级变换和局部坐标。
+2. **应该可见却没有显示**：查看物体激活状态、Renderer、网格、材质和摄像机可见条件。
+3. **应该阻挡却能穿过**：查看 Collider 是否启用、是否为 Trigger，以及碰撞层设置。
+4. **声音或光照不符**：查看 Audio Source、Light、相关资源和作用范围。
+5. **交互没有响应**：查看目标组件、触发条件、程序编译状态、事件日志和引用槽。
+6. **实例与预期参数不同**：查看 Prefab 资源和该实例的 Override。
+
+这些是检查入口，不是所有问题的完整清单。一次修改一个条件，再用相同操作复现，才能确认修改是否解决了问题。
+
+## 从需求到配置
+
+「房间角落有一个可见且能照亮墙面的灯球」可以拆成：球体网格、Renderer 和材质负责外观；Point Light 负责本例的实时照明；Transform 决定位置；Prefab 管理重复实例。
+
+拆分后，每项配置都有对应的作用和检查方法。没有提出玩家操作需求时，这个对象也不需要额外的自定义交互脚本。
+
+如果需求增加为「按按钮开关这盏灯」，清单就增加按钮 Collider、包含 Interact 的 UdonSharp 脚本，以及指向这盏 Light 的引用槽。对应的创建、挂载、赋值和客户端检查见[灯光开关](/come-alive/press-and-light/#第二步创建灯光开关脚本)。增加的是输入与控制关系，不是把 GameObject 换成一种专用的「按钮灯」类型。

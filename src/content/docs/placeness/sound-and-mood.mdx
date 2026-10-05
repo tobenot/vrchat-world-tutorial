@@ -1,88 +1,70 @@
 ---
 title: 33. 声音和氛围
-description: VRC Spatial Audio Source 的 Near、Far、Volumetric Radius、Gain 怎么填。背景音、环境音、点声源各管什么，还有几条常见的「世界进去就吵」的避坑做法。
-difficulty: 新手
+description: 区分进入世界就播放的全局 2D 音乐、跨区域边界播放的本地 2D 音乐，以及持续播放的固定 3D 声源。配置播放条件、方向、距离衰减和本地音量控制。
+difficulty: 基础
 estimatedMinutes: 40
 chapterType: hands-on
 requiresSDK: true
-summary: VRChat 的声音 = Unity Audio Source + VRC Spatial Audio Source 包装层。配三种典型用法：随玩家走的背景音、点声源（壁炉、收音机、电脑风扇）、环境音（雨、风、鸟）。这一章把每种各做一遍，给一份不容易踩雷的字段值。
+summary: Audio Source 控制音频、播放状态和 Spatial Blend；VRC Spatial Audio Source 配置 VRChat 的空间化与衰减。Trigger 决定何时播放，空间化决定声音相对听者的方向和距离表现。区域触发 2D 与固定室内 3D 是两种独立方案，墙体不自动隔音。
 sidebar:
   order: 3
 ---
 
-VRChat 玩家进一个世界时，眼睛比耳朵慢。视觉得等头像加载、灯光初始化、Shader 编译，耳朵从第一帧就开始接收信息。如果出生那一刻没有任何声音，世界的「真实感」会塌一截：玩家会下意识地觉得「这地方是空的」。
+声音配置需要分别回答两个问题：什么时候播放，以及播放时是否随听者的位置改变方向和音量。
 
-但声音也是 VRChat 世界里第二容易翻车的元素。仅次于镜子。一个吵到打架的背景音乐、一个永远停不下来的雨声、一个走到房间另一头还在响的电视，都能让玩家在十秒内退出。
+第 14 章的区域音乐采用本地 Trigger 控制：玩家跨入咖啡厅边界时播放，离开时停止，音源为 2D。本章保留这个模型，并说明另外两种独立需求。
 
-这一章把「声音怎么不吵」拆成三类典型用法，每类一份字段填法。
+## 三种方案的区别
 
-## VRChat 的声音是怎么算出来的
-
-在 Unity 里给一个物体加 `Audio Source`，它就是普通 Unity 项目里的 3D 音源：用 Unity 的滚降曲线，按距离衰减。
-
-但 VRChat 客户端做了一件事：所有 Unity Audio Source 进入运行时之后会被 VRChat 接管，**统一通过 VRC Spatializer**（VRChat 的空间化算法，按声源相对玩家的 3D 位置算左右耳音量与方向，让声音听起来真的从某个方向传来）来播放。这一层接管包括两件事：
-
-1. 默认套用一个反平方衰减曲线（更接近现实物理，比 Unity 默认对数曲线稍有不同）。
-2. 给世界 Audio Source 默认加 `+10 dB` 的增益（dB 是音量的对数刻度，每 +10 dB 听感大约翻倍；增益就是「比原音量额外加多少 dB」。Avatar Audio Source 没有这个加成）。
-
-所以 VRChat 世界里的声音不能只按 Unity 编辑器里 Play 试听到的来调。最终听感由 VRChat 客户端决定。`VRC Spatial Audio Source` 这个组件存在的意义，是给作者一组对应 VRChat 算法的字段，让最终听感可控。
-
-任何想被空间化的声音，都应该挂上 `VRC Spatial Audio Source`。
-
-:::tip[为什么不直接用 Unity 自带的 3D 设置]
-Unity 自带的 3D Settings（Min Distance / Max Distance / Rolloff Mode）能在 Unity 编辑器里控制声音随距离的衰减，但 VRChat 客户端会把那套值映射到自己的算法里去，结果常常对不上预期。
-
-`VRC Spatial Audio Source` 的字段（Near、Far、Volumetric Radius）是 VRChat 算法的**原生输入**。填这套字段，编辑器试听和最终客户端听感差距小很多。
-
-这跟「为什么 VRChat 镜子不直接用 Unity 内置反射相机」「为什么 Pickup 不直接用 Rigidbody」一样：平台层的封装是为了解决「在多人 + 跨平台 + 同步 + 性能预算约束下」普通 Unity 组件不够用的问题。
-:::
-
-## VRC Spatial Audio Source 的字段速查
-
-按这个表填，多数情况下不需要每次重新查文档：
-
-| 字段 | 默认 | 含义 | 调整建议 |
+| 需求 | 播放条件 | Audio Source | 移动时的结果 |
 | :--- | :--- | :--- | :--- |
-| `Gain` | `10 dB`（世界） | 额外音量增益。世界默认 `+10 dB`，Avatar 不能超过 `10 dB` | 世界里很少调，原始音频太响时降到 `0 dB` |
-| `Far` | `40` 米 | 音量衰减到几乎听不见的远端半径 | 房间内的小声源 `5`–`8` 米；环境氛围声 `15`–`30` 米；广场音乐 `40` 米 |
-| `Near` | `0` 米 | 音量开始衰减的近端半径，建议保持 `0` | 体积型「面光源式」音源才需要调 |
-| `Volumetric Radius` | `0` 米 | 把点声源虚拟成一个体积。**必须 < Far** | 想让某段水流声「整片都在响」时设到 `1`–`3` 米；玩家不会进入这个半径内 |
-| `Use AudioSource Volume Curve` | `False` | 是否使用 Audio Source 自定义曲线 | 推荐保持 `False`，让 VRChat 默认反平方曲线生效 |
-| `Enable Spatialization` | `True` | 是否走 VRChat 空间化算法 | 想要 2D 全场等响（背景音乐）时关掉 |
+| 进入世界就播放的全局 BGM | `Play On Awake` | 2D，循环 | 不因玩家在世界中的位置改变方向和距离音量 |
+| 跨过咖啡厅门槛才播放的区域 BGM | 本地玩家进入 / 离开 Trigger 时 `Play` / `Stop` | 2D，循环，关闭 `Play On Awake` | 区域内移动不产生声源方向和距离变化；边界由脚本判断 |
+| 室内音箱持续播放的音乐 | `Play On Awake`，不接区域开关 | 固定位置的 3D 声源，循环 | 靠近、远离或绕过音箱时，相对方向和距离发生变化；室外也可能听见 |
 
-底层 Audio Source 字段也会照常生效，最常用的几个：
+**Trigger 决定何时播放，Spatial Blend 决定是否按空间位置处理声音。** 把音源改成 3D 不会自动把声音限制在某个 Trigger 内。墙和关闭的门也不会自动阻挡 Audio Source；若需要遮挡、低通滤波或隔音，需另行设计并测试。
 
-- `AudioClip`：哪段音频。
-- `Loop`：循环播放（背景音、环境音必勾）。
-- `Play On Awake`：场景加载时自动播放。
-- `Volume`：基础音量（`0`–`1`），Gain 是它之上的额外增益。
-- `Spatial Blend`：`0` = 2D 全场等响，`1` = 完全 3D 跟距离衰减。
+## Audio Source 与空间化组件
 
-## 第一类：背景音乐 / 大堂音乐
+`Audio Source` 是 Unity 的播放组件，音频文件导入后成为 `AudioClip`。添加 `VRC Spatial Audio Source` 时，SDK 会同时确保物体上有 Audio Source。`VRC Spatial Audio Source` 配置 VRChat 的空间化与衰减参数，两者配合使用。
 
-「全场都听得到、玩家走到哪都一样响」的声音。常用做法：休闲世界的环境音乐、活动世界的现场音乐。
+Audio Source 的主要字段：
 
-做法是 2D 全场等响 + 一个全局位置的 Audio Source：
+- `Audio Clip`：要播放的音频
+- `Loop`：播放到末尾后循环
+- `Play On Awake`：组件启动时自动播放，适合持续播放的音源
+- `Volume`：基础音量；同一值在不同音轨上的听感可能不同
+- `Spatial Blend`：`0` 为完全 2D，`1` 为完全 3D
+- `Doppler Level`：相对运动造成的音调变化强度；不需要这种效果时设为 `0`
 
-1. Hierarchy 空白处右键 `Create Empty`，命名 `Audio_Background`。Position 摆到 `0, 0, 0`（位置不重要，因为是 2D）。
-2. `Add Component` → `Audio Source`。设 `Audio Clip` 为想要的背景音轨；勾 `Loop`、`Play On Awake`；`Spatial Blend` 拉到 `0`（完全 2D）；`Volume` 先设 `0.5`。
-3. `Add Component` → `VRC Spatial Audio Source`。**取消勾选** `Enable Spatialization`，让 VRChat 不参与空间化（这一步关键，否则它仍然按 3D 处理）。
+空间化配置参考官方 [VRC Spatial Audio Source 文档](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)。下表采用已核查的 Worlds SDK 3.10.5 Inspector；高级字段位于 `Advanced Options`：
 
-这样玩家进世界第一秒就有底色，且无论走到哪里音量都一样。
+| 字段 | 含义与条件 |
+| :--- | :--- |
+| `Gain` | 世界可设 `0–24 dB`，默认 `10 dB`；调音时同时检查它与 Audio Source 的 Volume |
+| `Near` | 开始衰减的近端距离，默认 `0` 米 |
+| `Far` | 衰减到静音的远端距离，默认 `40` 米 |
+| `Volumetric Radius` | 让远处声源呈现较大体积，默认 `0`；数值必须小于 Far |
+| `Use AudioSource Volume Curve` | 开启后使用 Audio Source 的音量曲线；关闭时采用空间化器的默认衰减 |
+| `Enable Spatialization` | 控制空间化；制作完全 2D 音频时关闭，并把 Spatial Blend 设为 0 |
 
-`Volume` 不要设到 1。VRChat 默认 +10 dB 增益叠上来时已经偏响。背景音乐对应玩家可能聊天的场景，留一点动态空间。
+在 SDK 3.10.5 中，启用 `Enable Spatialization` 并关闭 `Use AudioSource Volume Curve` 使用空间化器默认衰减；开启后者则使用 Audio Source 的音量曲线。官方网页仍出现 `Use Spatializer Falloff`、`Use Spatialized Audio` 等旧称，当前 Inspector 没有这两个同名复选框。调整 Near / Far 时要先核对实际采用哪一套曲线。
 
-### 一个常见错误：背景音盖住人声
+不要把 Unity 的 `Max Distance` 一概理解成静音边界：Unity 自带曲线在最大距离之外可能维持末端音量。判断结果要结合所选曲线和 VRChat 空间化设置。
 
-玩家在 VRChat 里聊天的语音也是音频。背景音乐设得太响，玩家自己听到的是「音乐 80%、人声 20%」，整个房间会变成靠喊的地方。
+## 方案一：全局自动播放的 2D 音乐
 
-实务上，背景音乐的 `Volume` 在 `0.2`–`0.4` 之间是合适的起点。比这个高就开始挤占人声，比这个低又听不清。具体值跟音轨本身的响度有关：先把音轨在 Audacity 里归一化到 `-12 dB` 左右，再到 Unity 里设 `Volume = 0.5` 当起点，进世界听一遍调。
+1. 新建空物体 `Audio_Background`，添加 Audio Source 和 VRC Spatial Audio Source。
+2. 指定音轨，勾选 `Loop` 和 `Play On Awake`。
+3. 将 `Spatial Blend` 设为 `0`，关闭空间化组件中的空间化选项。
+4. 将 `Volume` 从较低值开始调，例如 `0.2`。这是本例试音起点，不是适用于所有音轨的响度标准。
+5. `Build & Test` 后，分别站在房间各处、室外和不同楼层试听。
 
-### 给玩家一个开关
+预期：场景加载并启动该音源后开始播放；在没有其他脚本调整音量的条件下，走远或转头不产生距离衰减和方位变化。
 
-社区里关于背景音的最大共识：**永远要给玩家关掉的方式**。
+### 本地静音开关
 
-做法跟第 16 章的镜子开关一样：
+静音开关只改变当前玩家听到的音乐，不同步给别人：
 
 ```cs title="MusicSwitch.cs"
 using UdonSharp;
@@ -95,135 +77,166 @@ public class MusicSwitch : UdonSharpBehaviour
     public override void Interact()
     {
         if (musicSource == null) return;
-        musicSource.enabled = !musicSource.enabled;
+        musicSource.mute = !musicSource.mute;
     }
 }
 ```
 
-挂在一个小 Cube 上当墙边的开关，把 `Audio_Background` 上的 `Audio Source` 拖到 `Music Source` 字段。
+把脚本挂在带 Collider 的按钮上，将音乐 Audio Source 拖入 `Music Source`。`mute` 保留播放进度，解除静音后听到当前播放位置。它不是暂停，也不是释放音频资源。
 
-注意这里改的是 `enabled`，不是 `mute` 也不是 `SetActive`。`enabled` 关掉之后 Audio Source 立刻停，再开启时从音轨当前位置继续播。`mute` 的话玩家关了音乐还在跑（占用音频通道）；`SetActive(false)` 整个 GameObject 消失，可能影响其他逻辑。
+若需求是暂停后接着播放，使用 `Pause()` / `UnPause()`；若需求是停止后重新开始，使用 `Stop()` / `Play()`。不要用组件 `enabled` 的开关代替暂停语义。对区域音乐使用独立的 `mute` 开关，也可避免玩家关闭音乐后被 Trigger 再次自动解除静音。
 
-这个开关是本地的，每个玩家自己关自己的，不需要同步。
+## 方案二：区域触发的本地 2D 音乐
 
-## 第二类：点声源（壁炉、收音机、电脑、流水）
+第 14 章的 [区域触发教程](/come-alive/trigger-zones/) 已给出脚本与挂载步骤。配置应保持一致：
 
-某个具体物体在响：壁炉的火、桌上的收音机、墙边电脑的风扇、墙上的水管。玩家靠近就听见，走开就听不见。
+- 咖啡厅区域使用勾选 `Is Trigger` 的 Box Collider，覆盖整个需要播放的室内空间；只放薄门槛会让跨过门槛后立刻触发 Exit
+- Audio Source 保持启用，关闭 `Play On Awake`，勾选 `Loop`
+- `Spatial Blend = 0`，空间化关闭
+- `OnPlayerTriggerEnter` 只处理 `player.isLocal`，进入时调用 `Play()`
+- `OnPlayerTriggerExit` 只处理本地玩家，离开时调用 `Stop()`
 
-做法是 3D 空间化 + 合适的 Far：
+预期测试：
 
-1. 选中那个物体（比如壁炉的 GameObject `Fireplace`）。
-2. `Add Component` → `Audio Source`。设 `Audio Clip` 为火苗噼啪声；勾 `Loop`、`Play On Awake`；`Spatial Blend` 拉到 `1`；`Volume` 设 `0.7`。
-3. `Add Component` → `VRC Spatial Audio Source`。`Far` 设 `5` 米（玩家走出 5 米基本听不见），`Near` 留 `0`，`Volumetric Radius` 留 `0`。
+1. 出生点在区域外时，音乐不播放。
+2. 本地玩家跨过门槛进入区域后开始播放。
+3. 在区域内走近窗边或房间另一端，音乐不会转向固定音箱，也不会随距离减小。
+4. 本地玩家离开区域后停止；再次进入从头播放。
+5. 第二位玩家进出区域，不改变第一位玩家的音乐。
 
-进世界，走近壁炉听得清，走远到房间另一头几乎听不见。这才像一个「实物在响」。
+本例把出生点放在区域外，以便验证进入事件。若允许直接出生或传送到区域内，需要单独测试初始播放状态和事件顺序。若改用淡入淡出，脚本仍在本地控制 Volume；淡化不等于空间化。
 
-不同的点声源有不同的合理 `Far`：
+## 方案三：持续播放的固定室内 3D 声源
 
-| 物体 | 合理 Far | 备注 |
-| :--- | :--- | :--- |
-| 蜡烛火苗 | `1.5`–`2` 米 | 极短距离 |
-| 壁炉 | `4`–`6` 米 | 房间内主要 |
-| 桌上收音机 / 电脑 | `2`–`3` 米 | 凑近能听清 |
-| 墙上挂钟（滴答声） | `2`–`3` 米 | 想让人感受到「这是个有钟的房间」就够 |
-| 水管 / 滴水 | `3`–`5` 米 | 配合一个 Volumetric Radius `0.5` 让水声有体积 |
-| 风扇 / 空调 | `3`–`4` 米 | |
-| 室内阳台外的鸟叫 | `8`–`12` 米 | 让鸟叫感觉「在外面」而不在房间内 |
+这个方案用于「收音机或音箱一直在播放」的需求，与区域触发方案分别配置：
 
-### 体积音源（Volumetric Radius）什么时候用
+1. 新建空物体 `Audio_Radio`，放在室内一个明确位置；已有音箱模型时再与模型对齐，保持这个声源位置固定。
+2. 添加 Audio Source 和 VRC Spatial Audio Source，指定音轨，勾选 `Loop`、`Play On Awake`。
+3. 设 `Spatial Blend = 1`，启用空间化；不需要多普勒效果时设 `Doppler Level = 0`。
+4. 在 `Advanced Options` 中保持 `Enable Spatialization` 开启、`Use AudioSource Volume Curve` 关闭，可从 `Near = 0`、`Far = 8`、`Volumetric Radius = 0` 开始试听。
+5. 不把这个音源交给咖啡厅 Trigger 的 Play / Stop 脚本。
 
-默认 `Volumetric Radius = 0` 时声音从一个数学点发出，玩家恰好走到这个点会听到声音「钉」在头里，体验奇怪。
+在 VRChat 客户端测试：
 
-把 `Volumetric Radius` 设到 `0.5`–`1.5` 米，声音变成从一个小球区域发出。玩家进入这个球时不会出现「点声源贴脸」的尴尬感。
+- 靠近音箱时音量增加，远离时按曲线衰减
+- 从音箱左侧走到右侧，听者与音箱的相对方向变化；声源自身没有换位置
+- 转头时，听者朝向变化会改变空间化的方位表现
+- 走到室外但仍在有效距离内时，可能仍听到音乐；墙体不自动隔音
 
-适合用 Volumetric Radius 的场景：
+如果室外完全不能听到才符合需求，应使用区域开关或其他明确的隔音逻辑。不能用「改成 3D」替代这个播放条件。
 
-- 火堆 / 喷泉这种**有体积**的声源，半径设到火堆物理大小左右。
-- 长流水声（一段水沟），`Volumetric Radius` 设到水沟一半长度，声音感觉是「从整段水沟来的」。
-- 远处一片树林的鸟鸣，半径调大让它感觉是「从树林整片来的」而不是某棵树上的一只鸟。
+### 体积半径的使用条件
 
-`Volumetric Radius` **必须严格小于 `Far`**，文档明确要求。如果 Volumetric 设了 `5`，Far 也是 `5`，运行时行为是未定义的，会出怪声。
+`Volumetric Radius` 用于需要听起来具有面积的远处声源，例如远处无法走近的瀑布。官方建议听者不要靠近这个半径，并要求它小于 Far。玩家可以走到中心的火堆、收音机或花园，不适合直接用大半径覆盖整个可活动区域。
 
-:::caution[远处一直响的环境声会让人头疼]
-在一个静谧森林世界里加一段全场响的虫鸣循环播放，结果玩家在客厅、地下室、阁楼都听到一样的虫鸣，进去十分钟开始头疼，是常见情况。
+可走入的环境音区域可以采用区域触发 2D，或布置多个低音量 3D 声源并检查叠加。选择取决于是否需要明确方向和距离变化。
 
-环境声不是越多越好。常用的「层」结构：
+## 环境音、混响与一次性音效
 
-1. **底层全场氛围**（一段非常轻、`Volume` 0.15 的低频空间感声音，2D 等响）。
-2. **中层区域氛围**（按区域开关：靠近窗户能听到雨声，到地下室换成水滴声）。
-3. **顶层点声源**（具体物体：壁炉、收音机）。
+雨、风、设备噪声都可以按上述三类需求配置，不存在一种固定的「环境音设置」。例如，整段立体声雨声可作为本地区域 2D 音频；窗外水管滴水可作为固定 3D 音源。
 
-每一层换层时让前一层淡出。淡出可以用 `OnPlayerTriggerEnter / Exit` + 第 12 章那种 `SendCustomEventDelayedSeconds` 配合 `Mathf.Lerp` 慢慢改 `Volume`。
-:::
+`Audio Reverb Zone` 为处于区域内的 Audio Listener 提供混响。是否作用于某个 Audio Source，还取决于该音源的混响发送与 bypass 设置。混响不会自动实现隔墙遮挡，也不能据此保证其他玩家的语音一定带上相同混响。
 
-## 第三类：环境音（雨、风、鸟、远处城市）
+可选对照：在场景副本中新建 `Reverb_Test`，添加 Audio Reverb Zone，选择一个非 Off 的 Reverb Preset；先用 Min Distance `2`、Max Distance `4`，在 Scene 视图检查球形范围。使用已经配置的持续 3D 测试音源，核对其 Reverb Zone Mix 与 Bypass Reverb Zones 设置，让听者从范围外走到范围内，再只禁用 Reverb Zone 重走一次。记录实际音轨的混响差别，不用球形半径冒充与房间墙体完全一致的隔音边界；多人语音另行实测。
 
-这一类介于背景音乐和点声源之间：声音是「有方向的氛围」，但不属于具体某个物体。
+按钮和门的短音效可用 `PlayOneShot`：
 
-最朴素做法：把一段循环环境音挂在一个空 GameObject 上，3D 空间化，`Far` 设大、`Volumetric Radius` 设大。
+```cs title="LocalClickSound.cs"
+using UdonSharp;
+using UnityEngine;
 
-例子：一片户外区域的鸟鸣。
+public class LocalClickSound : UdonSharpBehaviour
+{
+    public AudioSource sfxSource;
+    public AudioClip clickSfx;
 
-1. `Create Empty` 命名 `Ambience_BirdsOutside`，Position 摆到这片区域中心，比如花园中心。
-2. `Audio Source` 配鸟鸣音轨；`Loop`、`Play On Awake`；`Spatial Blend = 1`；`Volume = 0.3`。
-3. `VRC Spatial Audio Source`：`Far = 25`、`Volumetric Radius = 8`、`Near = 0`。
+    public override void Interact()
+    {
+        if (sfxSource != null && clickSfx != null)
+            sfxSource.PlayOneShot(clickSfx);
+    }
+}
+```
 
-玩家在花园里听得到鸟鸣，进了室内（如果室内远离这个点超过 25 米）就基本听不见。
+新建同名 U# 脚本并挂在带 Collider 的按钮上。创建独立 Audio Source，关闭 Play On Awake 与 Loop；按本章 2D 或 3D 配置空间化，再将它拖入 `Sfx Source`，将获准使用的短音轨拖入 `Click Sfx`。这里音轨由 `PlayOneShot` 参数提供，Audio Source 的 Audio Clip 槽可以留空。保存并检查编译后，Build & Test 分别点一次、快速连点、让第二位玩家点击；本例只在发起 Interact 的客户端播放。
 
-如果世界由几个区域组成（咖啡厅 + 后巷 + 屋顶），分别给每个区域做一个这样的 ambience。玩家走到哪一片，对应那片的环境音占主导。这比一段「全世界都在响的下雨声」更自然。
+`PlayOneShot` 不会停止该 Audio Source 上其他已播放的声音。连续触发可能叠加音量，需要测试点击频率和最大响度。
 
-### Doppler 效应：能关就关
+## 可选：区域 2D 音乐的淡入淡出
 
-Audio Source 上有一个 `Doppler Level` 字段，默认 `1`。Doppler 是车开过身边时音调先高后低的变化。它适用于真的在快速移动的声源。
+这个变体仍是本地 Trigger 控制的 2D 音乐，只把边界处的立即播放／停止改成渐变。它不接到上面的独立持续 3D 音源，也不产生自动隔墙效果。先在场景副本中停用原 `MusicZone`，同一个音源只保留一个播放控制器：
 
-VRChat 世界里大多数声源是静止的（壁炉不跑、雨不动、收音机不动）。`Doppler Level` 默认 `1` 时，玩家自己快速移动也会让声音音调略微变化，听起来怪怪的。
+```cs title="LocalZoneFade.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
 
-实务上 VRChat 世界里的 Audio Source 都把 `Doppler Level` 设到 `0`。除非有意做一辆开过的火车那种载具，需要 Doppler 效果。
+public class LocalZoneFade : UdonSharpBehaviour
+{
+    public AudioSource musicSource;
+    public float insideVolume = 0.2f;
+    public float fadeSeconds = 1f;
+    private bool inside;
 
-### Reverb Zone（混响区）
+    private void Start()
+    {
+        if (musicSource == null) return;
+        musicSource.volume = 0f;
+        musicSource.Stop();
+    }
 
-Unity 自带 `Audio Reverb Zone`：在场景里画一个区域，玩家进入这个区域时所有 Audio Source 自动加上对应的混响（教堂、洞穴、小房间等几种预设）。
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        if (musicSource == null) return;
+        inside = true;
+        if (!musicSource.isPlaying) musicSource.Play();
+    }
 
-VRChat 世界里使用 Reverb Zone 是 OK 的，但要注意：
+    public override void OnPlayerTriggerExit(VRCPlayerApi player)
+    {
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        inside = false;
+    }
 
-- Reverb Zone 影响的是 Audio Listener（玩家耳朵）所处区域，不是 Audio Source。玩家进入「教堂」Reverb Zone，所有声音都会带教堂混响，包括其他玩家的语音。
-- 多个 Reverb Zone 重叠时按权重混合。
-- 想要「室内 vs 室外混响差异」时是这个组件的主要用途。把整个室内画成一个 Reverb Zone（Mode = `Off` 之外的预设），室外不画，玩家进出室内自动切换。
+    private void Update()
+    {
+        if (musicSource == null) return;
+        float level = Mathf.Clamp01(insideVolume);
+        float target = inside ? level : 0f;
+        float step = level * Time.deltaTime / Mathf.Max(0.01f, fadeSeconds);
+        musicSource.volume = level <= 0f
+            ? 0f : Mathf.MoveTowards(musicSource.volume, target, step);
+        if (!inside && musicSource.volume <= 0f && musicSource.isPlaying)
+            musicSource.Stop();
+    }
+}
+```
 
-## 一个完整空间的声音搭建顺序
+把脚本挂在覆盖整片播放区域、勾选 Is Trigger 的 Box Collider 上；Music Source 指向启用的音源，Loop 开启、Play On Awake 关闭、Spatial Blend 为 `0`，Advanced Options 中 Enable Spatialization 关闭。Spawn 放在区外，Inside Volume 设为 `0.2`、Fade Seconds 设为 `1`，保存、检查 Console 编译结果后执行 Build & Test。
 
-按这个顺序加声音，最不容易翻车：
+进入后音量渐升，离开后渐降到零再 Stop。淡出未结束就返回时，从当前音量回升且不重新开播；完全停止后再进入，则从头播放。用同一音轨比较 Fade Seconds `0.2 / 1 / 3`，一次只改时长；再测试快速往返和第二位玩家进出。沿用 MusicSwitch 的 mute 不会被此脚本解除。出生或传送到区域内部、多个重叠区域仍需单独处理，不能把这个单区域练习当作完整混音系统。
 
-1. **先加全场底层氛围**：一段 `Volume = 0.1`、2D、几乎听不见的低频空间感。让世界不至于「死寂」。
-2. **再加区域氛围**：按 Trigger 区域切换雨声 / 风声 / 鸟鸣。
-3. **再加点声源**：壁炉、收音机、风扇这些「有具体物体」的声音。
-4. **最后才加背景音乐**（如果有的话）：留一个开关，默认 `Volume = 0.3`。
+一个可选的混音顺序是：先单独配置需要的区域雨声，再单独配置固定滴水声，最后决定是否加全局音乐；每加一层，都在相同站位比较单独与叠加结果，并复测语音和提示音。全局底声、区域声和点声源都不是必填项，也不要求已有壁炉、家具或音轨。
 
-反过来先做背景音乐再加其他声音，最后整个世界会被音乐盖住，所有点声源听起来都偏远。
+## 调音与检查
 
-## 自己改三个版本
+使用同一段音轨，分别测试三种配置。先一次只启用一个方案，确认行为，再测试混音：
 
-挑一个或几个改：
-
-- 把背景音乐 `Spatial Blend` 从 `0` 改到 `1`，Far 设 `5` 米。看「音乐从音箱里来」和「音乐弥漫全场」的体验差别。
-- 给壁炉加一段 `Volumetric Radius = 1.5` 的火苗噼啪声，再做一份 `Volumetric Radius = 0` 的版本。在编辑器里站到壁炉正中心，对比两种感觉。
-- 把房间外加一段鸟鸣 `Far = 15`、`Volumetric Radius = 6`。然后写一段 `OnPlayerTriggerEnter / Exit` 脚本，让玩家走到窗边时鸟鸣 `Volume` 平滑提升、走开时降回去。提示：用 `SendCustomEventDelayedFrames` 每帧改一点 `Volume`。
-
-第三个改起来最考验耐心，做完之后回头听一些做得好的休闲世界，会发现它们都在做这种「随玩家位置混响层」的细节。
-
-:::note[不同世界不同活法]
-- **休闲世界**主要靠声音定调子。背景音乐 + 几层氛围 + 几个点声源是标配。
-- **游戏世界**主要靠声音传信息。脚步、子弹、提示音必须能听清，所以背景音乐通常很轻或干脆没有。
-- **展览世界**优先「让作品说话」：默认无音乐，只在玩家靠近作品时触发该作品对应的解说或氛围声。
-- **舞台 / Event**则相反，主舞台音乐占主导，其他点声源全部静音。
-
-同一组 Audio Source 字段，按目的填法可以差很大。
-:::
+- [ ] 播放开始和停止的条件符合需求
+- [ ] 2D 音源的 Spatial Blend 与空间化开关一致
+- [ ] 3D 声源在近处、远处、转头和室外位置的表现符合预期
+- [ ] 背景音开启时，语音和操作提示仍可辨认
+- [ ] 玩家可以本地静音或调节背景音量
+- [ ] 多段环境音叠加时没有异常增响
+- [ ] 桌面端与目标 VR 设备均试听过
+- [ ] 音轨的使用与分发许可允许打包进世界
 
 ## 本章参考
 
 - [VRChat Creator Docs：VRC Spatial Audio Source](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)
-- [VRChat Creator Docs：Audio in VRChat（概览）](https://creators.vrchat.com/worlds/audio/)
-- [Unity Manual：Audio Source](https://docs.unity3d.com/Manual/class-AudioSource.html)
-- [Unity Manual：Audio Reverb Zone](https://docs.unity3d.com/Manual/class-AudioReverbZone.html)
-- [VRCreators：Audio Optimization for VRChat（2026-05 修订）](https://vrcreators.net/docs/vrchat/world-optimization-checklist)
+- [Unity 2022.3 Manual：Audio Source](https://docs.unity3d.com/2022.3/Documentation/Manual/class-AudioSource.html)
+- [Unity 2022.3 API：AudioSource.Pause](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/AudioSource.Pause.html)
+- [Unity 2022.3 API：AudioSource.PlayOneShot](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/AudioSource.PlayOneShot.html)
+- [Unity 2022.3 API：Mathf.MoveTowards](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/Mathf.MoveTowards.html)
+- [Unity 2022.3 Manual：Audio Reverb Zone](https://docs.unity3d.com/2022.3/Documentation/Manual/class-AudioReverbZone.html)

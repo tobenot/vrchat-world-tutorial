@@ -1,155 +1,86 @@
 ---
 title: 31. 玩家进来的前三十秒
-description: 出生点朝向、第一帧的视觉焦点、可读的欢迎信息、动线的起点。一个世界能不能留住玩家，常常在玩家进来的头三十秒就被决定了。
-difficulty: 新手
+description: 配置出生位置和朝向、可见的入口信息与行走路线，并测试多人出生和本地触发反馈。
+difficulty: 基础
 estimatedMinutes: 35
 chapterType: hands-on
 requiresSDK: true
-summary: VRChat 玩家落到一个陌生世界时，加载头像、四下看一眼、决定走哪。这三十秒里，出生点朝向、第一眼可见的物体、能不能看懂自己在哪、知不知道往哪走，每一项都很关键。这一章把这几件事拆开做一遍。
+summary: 出生区需要明确的落点、朝向、可通行路径和可读信息。VRC Scene Descriptor 配置多个出生点与选择顺序；欢迎牌显示当前世界的实际功能；本地 Trigger 可在玩家经过入口时启用提示。
 sidebar:
   order: 1
 ---
 
-VRChat 的世界列表里有一个普遍现象：很多世界缩略图很漂亮，玩家点进去十秒不到就退了。
+出生区决定玩家加载场景后的初始位置和朝向。检查目标是：落在可站立的地面上、能看见可走的方向，并能识别世界名称和必要操作。
 
-退出的原因常常不是世界做得不好，是进门那一刹那「不知道自己在哪、不知道该看哪、不知道该往哪走」。当一个空间没回答这三件事，玩家会先退出再去翻评论区，再决定要不要回来。
+## 配置 Spawn 的位置与朝向
 
-这章只做一件事：把出生点周围那三十秒，做成可以**看懂**的三十秒。
+找到第 5 章的 `Spawn` 空物体。它的 Transform 被填入 `VRC Scene Descriptor` 的 `Spawns` 数组。
 
-## 出生点不是坐标，是一台相机
+使用 `Align Player With Spawn Point` 时，玩家朝向与 Spawn 的旋转对齐，Scene 视图中的蓝色箭头表示本地 Z 轴正方向。`Align Room With Spawn Point` 对齐的是 VR 玩家现实房间的 room-scale 空间；两者不能混为「保持朝向不变」。本例采用前一种。
 
-打开第二部以来一直在搭的小屋，找到 Hierarchy 里那个 `Spawn` 空 GameObject。Inspector 里看到的是它的 Position 和 Rotation。第 5 章把它当成「玩家会出现的位置」用。
+做一组对照：
 
-实际上 Spawn 提供的不止位置，还有方向。VRChat 把玩家放到 `Spawn` 时，玩家面朝的方向就是 `Spawn` 的 Z 轴正方向（Scene 视图里那个蓝色箭头）。这意味着 Spawn 是一台相机，决定玩家出生时第一帧看到的画面。
+1. 将 `Spawn` 的 Rotation Y 设为 `0`，执行 `Build & Test`，记录初始画面。
+2. 将 Rotation Y 改为 `180`，重新构建测试。
+3. 对照画面中入口、可通行地面、说明牌的位置。
+4. 调整 Spawn，避免出生在墙内、地板下或关闭的门后。
 
-做一个最直接的对照：
+测试头部空间时使用不同视高。上方预留 `2` 米可作为房间原型的起点，但不能覆盖所有头像尺寸。
 
-1. 选中 `Spawn`，Rotation Y 改成 `0`。
-2. `Build & Test` 进世界，记下第一眼看到的是什么。
-3. 退出，Rotation Y 改成 `180`，再进一次。
-4. 同样记下第一眼看到什么。
+## 多个出生点
 
-同一个房间，两次进去看到的画面完全不同。第一次也许看到的是房间深处那盏暖灯，第二次也许只看到一面白墙加一扇门关着的背面。
+多名玩家使用同一个落点时，头像可能重叠。可以增加出生点，也可以调整 `Spawn Radius`，使落点在半径内分散。半径覆盖范围必须仍是可站立的地面。
 
-第二种情况就是出生点没立住。
+1. 复制 Spawn，创建 `Spawn_A`、`Spawn_B`、`Spawn_C`。
+2. 在入口附近分开摆放，例如相距 `1.5` 米，并检查各点面向同一条主要路线。
+3. 将 Transform 填入 `Spawns` 数组。
+4. 按需求设置 `Spawn Order`。
 
-:::tip[为什么出生第一帧这么关键]
-玩家从世界列表点进来到画面亮起来，中间会经过：实例加载、光照初始化、自己头像加载（几秒到几十秒）、其他玩家头像加载。这些都在跑的时候，玩家**没办法移动镜头**（VR 用户能转头但走不了，桌面用户在看 Loading 圈）。
+| 选项 | 作用 |
+| :--- | :--- |
+| `First` | 使用第一个出生点 |
+| `Random` | 随机选择出生点，不保证各点均匀分配 |
+| `Sequential` | 按数组顺序使用出生点 |
+| `Demo` | 将出生点作为 room-scale 空间中心，玩家现实位置的偏移会影响落点 |
 
-也就是说，进门第一帧的画面会**被强制看十几秒**。如果第一帧让人困惑或不舒服，玩家会带着这个第一印象进入世界，很难翻过来。
+`Spawn Radius = 0` 表示使用指定位置。不要用随机半径覆盖楼梯边缘、落差或传送门。
 
-这跟电影、餐厅、博物馆的门口同理：门一打开看到什么，决定接下来的所有判断。
-:::
+`Object Behaviour At Respawn` 控制 Pickup 掉到重生高度以下时是销毁还是回到初始位置，不是「玩家重生时把所有 Pickup 归位」。
 
-## 出生点的四条具体规矩
+## 欢迎牌只写已存在的功能
 
-把上面那个原则翻成可执行的规矩，差不多是这四条：
+在入口设置一块 World Space Canvas，显示世界名、可用功能与出口方向。不要写场景里尚未实现的功能。
 
-1. **不要面朝墙壁、面朝边角、面朝紧闭的门**。这三种角度都会让玩家感到「被堵住了」。
-2. **第一帧要看见房间的主轴**。让出生点面向房间最有信息密度的一面：壁炉、舞台、吧台、窗外景观。
-3. **第一帧要能看见至少一个其他可去的方向**。如果玩家身后还有路，让那条路在画面里以余光形式出现，比如门框斜出现在画面边缘。完全只对着前方一堵景观墙的世界，玩家会原地呆站。
-4. **出生点上方留出空间，下方留出落点**。VRChat 玩家身高默认是 `1.6` 米左右（玩家可校准），`Spawn` Y 设到 `0` 时玩家的眼睛在 `1.6` 上下。`Spawn` 上方至少要有 `2` 米头顶空间，下方要落在可踩的地面上。这两条不满足，VR 用户可能直接卡进墙或穿过地板。
+1. 创建 `UI → Canvas`，将 `Render Mode` 改为 `World Space`。
+2. 将 Rect Transform 的 Width / Height 设为 `400 / 200`，Scale 设为 `0.005, 0.005, 0.005`。最终宽度为 `2` 米。
+3. 将牌子放在 Spawn 前方约 `3` 米处，调整旋转使文字正对入口。
+4. 在 Canvas 下创建 `UI → Text - TextMeshPro`，按提示导入 TMP Essentials。
+5. 添加深色底板或选择足够对比度的文字颜色，并在客户端检查实际阅读距离。
 
-打开自己的世界，对着这四条检查一次。一次出生点改 5 度旋转，比写多少代码都改善体验。
-
-## 一个出生不够的时候：让玩家不要堆叠
-
-第 5 章为了简单只放了一个 `Spawn`。一个 Spawn 在多人世界里有个尴尬：十个人同时进世界，会全部出生在同一个点上，重叠成一团。
-
-VRChat 支持给 `VRC Scene Descriptor` 配多个出生点，玩家进来时按规则随机或顺序选其中一个。
-
-回到 Hierarchy，找到挂着 `VRC Scene Descriptor` 的物体（通常就是场景根物体）。Inspector 里展开 `Spawns` 数组：
-
-```text
-VRC Scene Descriptor
-└─ Spawns
-   ├─ Element 0   (None Transform)
-   ├─ Element 1   ...
-   └─ ...
-Spawn Order              Random      # Random / First / Sequential
-Spawn Orientation        AlignPlayerWithSpawnPoint
-Object Behaviour at Respawn   Respawn   # 玩家重生时所有 Pickup 也归位
-Player Object Behaviour at Respawn   Respawn
-```
-
-接下来做几个 Spawn：
-
-1. Hierarchy 选中 `Spawn`，按 `Ctrl+D` 复制三份，命名 `Spawn_A`、`Spawn_B`、`Spawn_C`。
-2. 三个点摆在出生区域附近，相距 1.5 米左右，方向一致（或略有变化，给玩家一点新鲜感）。
-3. 把三个 Transform 拖进 `VRC Scene Descriptor` 的 `Spawns` 数组里，分别填到 Element 0/1/2。
-4. `Spawn Order` 设为 `Random` 或 `Sequential`。`Random` 就是每个新玩家随机选一个，`Sequential` 是按顺序轮流。
-
-`Spawn Order` 的几个选项各有用法：
-
-| 选项 | 作用 | 适合 |
-| :--- | :--- | :--- |
-| `First` | 永远用第一个 Spawn | 单 Spawn 世界，跟原来行为一样 |
-| `Random` | 每次随机选一个 | 休闲世界，避免堆叠 |
-| `Sequential` | 按顺序轮流 | 想让玩家均匀分布的活动世界 |
-| `Demo` | 用第一个 Spawn，但把它当作玩家在现实房间中的中心；玩家会按自己头显在房间里的偏移**相对** Spawn 出现 | 演示场、按真实房间布展，要求落点跟物理空间一致 |
-
-`Spawn Orientation` 字段控制玩家进出生点时的朝向：
-
-- `AlignPlayerWithSpawnPoint`：用 Spawn 的旋转对齐玩家朝向（默认值，前面那条「Z 轴指向决定面朝」的规则就是这个）。
-- `AlignRoomWithSpawnPoint`：保留玩家自己 VR 房间的朝向，Spawn 的旋转不强制对齐。多用于已经习惯自己 VR 房间正前方的 VR 玩家场景。
-
-普通房间留 `AlignPlayerWithSpawnPoint` 就好。
-
-## 第二步：让玩家一眼能看懂自己在哪
-
-出生点摆好了，下一件事是给第一帧加一个**可读的视觉焦点**。
-
-走进真实世界的酒店大堂，会看到一块写着「Reception」或「Welcome」的牌子。走进美术馆会看到入口的展览海报。出生点附近放一块这样的「门面物」是同一个意图：让玩家一眼知道自己在哪。
-
-最朴素的做法用 World Space UI（在三维空间里的 Canvas，跟在屏幕上贴的二维 Canvas 不同）。
-
-1. Hierarchy 空白处右键 `UI` → `Canvas`。Inspector 里把 `Render Mode` 改成 `World Space`。
-2. 选中这个 `Canvas`，Rect Transform 里把 `Width / Height` 改成 `400 / 200`，`Scale` 改成 `0.005, 0.005, 0.005`（World Space Canvas 默认 Scale 是 1，1 单位的 UI 在世界里是巨大的）。
-3. 摆到出生点正前方 3 到 4 米的位置，正对玩家。
-4. 在 `Canvas` 下右键 `UI` → `Text - TextMeshPro`，在 Inspector 里编辑文字（具体设置参数下一节再讲）。
-
-文字内容简单到这种程度就够：
+例如：
 
 ```text
-欢迎来到 月光小屋
-
-可以坐下、可以拿起桌上的灯
-出口在右边
+Moonlight Room / 月光小屋
+Light switch on the left / 灯开关在左侧
+Exit on the right / 出口在右侧
 ```
 
-三行，不超过 30 字。第一行告诉玩家这是什么地方，第二行告诉玩家可以做什么，第三行告诉玩家可以去哪。
+TMP 默认字体不包含所有中文。固定文字可用 Font Asset Creator 导入具有所需字符的字体；也可按 [VRChat 官方 TMP 文档](https://creators.vrchat.com/worlds/components/textmeshpro/) 配置客户端 fallback 字体。编辑器显示方框不代表客户端一定相同，两处都需验证。
 
-:::caution[World Space UI 在 VR 里很容易看不清]
-做世界欢迎牌时常踩三个坑：
+## 让行走路线可辨认
 
-- **字太小**：World Space 文字字号 `36` 在屏幕上看着很大，到 VR 里离一米外就糊掉了。VR 里阅读距离的字号要比桌面端再大一截，常用值是 `60`–`80`。
-- **背景透明**：纯文字直接贴在场景里，颜色和墙融到一起就读不清了。在 Canvas 下加一个 `UI` → `Image` 当底板，颜色调成深色半透明，文字浮在上面。
-- **字体没替换**：Unity 默认的 TextMeshPro 字体只支持英文。中文文字会显示成方框。第 34 章会专门讲怎么导入中文字体并生成 TMP Font Asset。这一章先用英文或纯数字测试。
-:::
+出生区的视线中可以包含目的地、开口和路径标识。它们提供方向信息，但不能保证玩家一定按设计路线移动。
 
-字体问题第 34 章解决，本章先验证「字面意思能让玩家看懂」就行，必要时先用英文。
+- 用灯光亮度或颜色差异标出入口、开关或展示物
+- 保持门洞和走廊可见，避免说明牌挡住唯一出口
+- 将详细规则放在可停留阅读的位置，不占满出生点
+- 在分岔处使用箭头或简短目的地名称
 
-## 第三步：动线起点
+如果邀请测试者，让对方描述看到了哪些入口和功能，再对照设计目标。记录不能辨认的位置，调整后重测。
 
-「动线」是建筑设计里的词，意思是人在空间里实际行走的路径。出生点之后玩家走第一步，多半是被画面里某个东西吸引才动的。
+## 本地 Trigger：经过入口时显示提示
 
-设计动线起点可以用三个朴素手段：
-
-1. **光线引导**。第 9 章讲过冷暖对比：远处一抹暖光会自然把人吸过去。在出生点正前方 5 米左右放一盏低强度的 Point Light（颜色 `#FFE0B0`、Intensity `1.5` 左右），玩家会自然走向它。
-2. **可见的目标物**。一张沙发、一盏吊灯、一个能拿的东西放在画面深处，比一面光秃秃的白墙更能让人想走过去看看。
-3. **走廊或开口**。如果世界由多个空间组成，让出生点直接看到第二个空间的入口（一扇半开的门、一段走廊、一道拱门）。玩家会想知道里面是什么。
-
-反过来三个让玩家「不想动」的常见错误：
-
-- 出生点周围 360° 全是同样的空间，没有方向感。
-- 出生点紧贴一面有信息的墙，但身后是空的，玩家不知道还能转身。
-- 出生点上方有过低的天花板（VR 玩家会有压迫感）。
-
-## 一个 Trigger 区域：迎接第一步
-
-第 14 章用过 `OnPlayerTriggerEnter`。同一个组件可以做一个「玩家走出出生圈时触发」的区域：第一次跨过这条线时，背景音淡入、第二盏灯打开、面板上的提示文字换成下一段。
-
-最薄的一版只做「打开第二盏灯」：
+可以用第 14 章的 `OnPlayerTriggerEnter` 在本地玩家经过入口时启用一个提示物体：
 
 ```cs title="WelcomeStep.cs"
 using UdonSharp;
@@ -163,9 +94,8 @@ public class WelcomeStep : UdonSharpBehaviour
 
     public override void OnPlayerTriggerEnter(VRCPlayerApi player)
     {
-        if (!player.isLocal) return;
-        if (triggered) return;
-        if (toEnable == null) return;
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        if (triggered || toEnable == null) return;
 
         triggered = true;
         toEnable.SetActive(true);
@@ -173,70 +103,59 @@ public class WelcomeStep : UdonSharpBehaviour
 }
 ```
 
-挂法跟第 14 章的 Trigger 区域一致：建一个空 GameObject 当区域，加一个 `Box Collider` 勾上 `Is Trigger`，把这段脚本挂上去，把要打开的物体（一盏灯、一段提示牌、一个传送门）拖到 `To Enable` 字段。
+1. 创建独立区域物体，添加 Box Collider 并勾选 `Is Trigger`。
+2. 挂载脚本，调整 Collider 覆盖入口经过的位置。
+3. 将默认禁用的提示牌拖入 `To Enable`。脚本和 Trigger 本身保持启用。
+4. 从区域外进入，确认提示牌启用；再次进出时不重复执行。
+5. 用第二位玩家测试：对方进入区域，不应启用本机的提示。
 
-`triggered` 字段保证触发只发生一次。玩家在出生圈里反复进出时不会反复触发。
+`player.isLocal` 限定本机玩家。`triggered` 是本地字段，表示这台客户端已触发，不会自动同步给别人。区域直接包住 Spawn 时，还需测试出生过程是否符合预期。
 
-注意 `if (!player.isLocal) return;` 这一行：第 26 章会展开讲，这里只用结论：玩家事件在每个客户端都触发一次，没这行的话别人进世界也会让本机这边的灯亮。
+## 出生区灯光检查
 
-## 让光在出生圈里多做点活
-
-「第一帧看到的画面」很大程度上是「第一帧的光是什么样」。
-
-第 9 章铺过的冷暖对比规则在出生区特别有用。一组容易立得住的搭法：
+可以用一盏低强度环境光配一盏局部灯做对照，观察说明牌和出口的对比度：
 
 ```text
 Directional Light
-Rotation    50, -30, 0
-Color       #9AB4C8           # 冷调天空光
+Color       #9AB4C8
 Intensity   0.4
 
-Point Light（出生点正前方 4 米）
-Type        Point
-Color       #FFE0B0           # 暖调焦点光
+Point Light（照向入口标识附近）
+Color       #FFE0B0
 Intensity   2.0
 Range       6
-Shadows     None              # 出生点附近的小灯先关阴影，省性能
+Shadows     None
 ```
 
-冷调全局光给世界一个干净的底，暖调焦点光在画面深处吸住视线。玩家第一帧看到的是一张有焦点的画，不是一张平均亮度的工程截图。
+这些参数只用于对照测试。实际亮度还取决于材质、环境光、曝光与显示设备。降低全局光后，检查地面边缘和操作提示是否仍可辨认。
 
-VRChat 烘焙光照下的出生区还有一个很实用的小技巧：在出生点附近**多放几个 Light Probe**。Light Probe 是预计算好「这一点上四周来的光是什么」的小球，玩家、Pickup、动态对象进入这块区域时会按周围 Probe 的值取光。Probe 太少，玩家头像在出生点会显得灰扑扑的；Probe 加密之后，玩家自己的头像会被附近的暖光「染」一点点温度。Light Probe 的具体放法第 36 章会展开。
+若使用烘焙光照，可在出生区放置 Light Probe Group 并重新烘焙，为支持探针的动态对象提供环境光。检查探针是否覆盖玩家活动高度，避免落入墙内。
 
-## 自己改三个版本
+## 日夜对照与无文字盲测
 
-挑一个或几个改：
+先另存场景副本，记录 Spawn、材质、灯光、Lighting Settings 和曝光。固定测试设备、视高、出生点与行走路线。以下灯光数值是实验条件，不是通用的日夜亮度。
 
-- **入夜版**：把全局光降到 `0.1`，留两盏暖色 Point Light，看出生区在「半黑」状态下还认不认得路。
-- **晴天版**：全局光升到 `0.8` 偏白，关掉所有 Point Light，看暖光被拿走之后画面是不是变得太冷。
-- **盲测**：把欢迎 UI 暂时禁用，请没看过这个世界的人进来，问他「看到第一眼，第一反应想往哪走」。如果对方走的方向跟设计意图不一致，问题不在玩家。
+1. **入夜版**：在副本中将用于整体照明的 Directional Light 设为 Realtime、Intensity `0.1`，保留本章创建的局部 Point Light。检查出口、台阶边缘和提示牌能否辨认。没有创建局部灯时，先按本章参数添加，不能假定它已经存在。
+2. **晴天版**：从入夜版只把 Directional Light 的 Intensity 改为 `0.8`，拍同一站位的画面；再单独将光色改为偏白；最后才关闭局部 Point Light，分别记录每一步。这样能分清强度、光色和局部灯各自的影响。环境光、材质和曝光保持原值；若也要调整环境光，单列一轮。依赖烘焙光的场景应为每版重新烘焙，不能用旧 Lightmap 判断新灯光。
+3. **无文字盲测**：恢复同一套基准光照，仅禁用欢迎牌的 Canvas，不禁用灯光、通道或提示控制器。请没见过该场景的测试者从指定 Spawn 进入，不提前解释路线，问「你看见哪些出口，接下来想往哪走？」记录对方指出的入口和实际路线，再恢复欢迎牌做对照。
 
-第三个版本最有用，但也最难做。条件不够时，自己用一个第二号 VRChat 账号、用全新的 avatar 进去看一遍，能发现的不一致比想象中多。
+同一位测试者第二次进入已经知道布局，因此恢复文字后的结果不能当作独立的首次进入测试；条件允许时让另一位未见过场景的人测试有文字版本。路线选择与预期不同时，记录是入口不可见、标识不清，还是对方选择了别的目标，不预先把原因归到任何一方。
 
-:::note[不同世界不同活法]
-- **休闲世界**的出生点优先正对最舒服的角落（沙发、壁炉、窗景）。第一帧让人想坐下来。
-- **游戏世界**的出生点优先正对「规则提示牌 + 起跑线 + 队友站位」。第一帧让人知道玩什么。
-- **展览世界**的出生点优先正对作品的视觉中心或开幕语板。第一帧让人意识到「展览开始了」。
-- **社交 Hub**的出生点优先放在能扫到几个分区入口的中心位置（吧台、楼梯、活动板）。第一帧让人知道这里能干几件事。
+可按用途选择初始画面：聊天区可面向实际已放置的座位与通道；游戏区可面向规则牌和起点；展厅可面向首件作品与导览入口；Hub 可让多个分区入口同时可见。测试只使用已经建成的对象。
 
-同样几个 Spawn 的字段，按世界的目标填法不同。
-:::
+## 出生区检查清单
 
-## 出生区的检查清单
-
-写一份清单，每次发布前自己走一遍：
-
-- [ ] Spawn 的 Z 轴指向房间最有信息的一面，不指墙、不指角、不指关上的门
-- [ ] Spawn 上方至少 2 米空间，下方落点稳固
-- [ ] 至少有 3 个 Spawn（休闲 / 游戏 / Hub 类世界），避免多人堆叠
-- [ ] 第一帧画面里能看见可去的方向（开口、走廊、亮光）
-- [ ] 欢迎牌字号在 VR 里清晰，背景与文字对比足够
-- [ ] 出生点附近有足够 Light Probe，玩家头像不会发灰
-- [ ] 找一个没看过这个世界的人，让他描述第一帧看见了什么。如果他说不清，画面信息密度不够
+- [ ] 每个 Spawn 均有可站立地面，朝向符合入口布局
+- [ ] Spawn Radius 不覆盖墙体、落差或传送门
+- [ ] 不同视高和多人出生时均测试过
+- [ ] 初始视线内能看见可通行路径
+- [ ] 欢迎牌内容与当前场景功能一致
+- [ ] 文字在实际观看距离上可读，所用字符可显示
+- [ ] Trigger 只响应所需玩家，脚本与提示物体分开配置
+- [ ] 入口光照和动态对象的环境光表现经过客户端检查
 
 ## 本章参考
 
 - [VRChat Creator Docs：VRC Scene Descriptor](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)
-- [VRChat Creator Docs：Player Positions](https://creators.vrchat.com/worlds/udon/players/player-positions/)
-- [Unity Manual：World Space Canvas](https://docs.unity3d.com/Manual/UICanvas.html)
-- [VRCreators：World Optimization Checklist（2026-05 修订）](https://vrcreators.net/docs/vrchat/world-optimization-checklist)
+- [VRChat Creator Docs：TextMesh Pro](https://creators.vrchat.com/worlds/components/textmeshpro/)
+- [Unity Manual：World Space Canvas](https://docs.unity3d.com/2022.3/Documentation/Manual/HOWTO-UIWorldSpace.html)

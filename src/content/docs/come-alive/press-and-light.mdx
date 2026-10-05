@@ -1,34 +1,38 @@
 ---
 title: 13. 按一下，灯亮了
-description: 用 VRChat 最基础的 Interact 事件做一个开关，控制第二部那盏 Point Light 的开关。把脚本、Collider、引用槽串成一条最小回路。
-difficulty: 新手
+description: 用 Interact 事件切换 Point Light，连接 Collider、UdonSharp 脚本与目标引用，并设置双语交互提示。
+difficulty: 基础
 estimatedMinutes: 35
 chapterType: hands-on
 requiresSDK: true
-summary: 第四部的第一个动手章。在房间里放一个矮 Cube 当按钮，挂上一段五行的 UdonSharp，配一个 Box Collider 和一行提示文字，对物体发起 Interact 就能切换 Point Light 的开关。Interact 是 VRChat 一切按按钮交互的最小基本单位。
+summary: 在房间里放一个 Cube 当按钮，添加 Collider 和 LampToggle 脚本，把 Light 拖入引用槽。玩家对按钮发起 Interact 时，只切换当前客户端的灯光；Interaction Text 显示作者提供的动作提示。
 sidebar:
   order: 1
 ---
 
-第二部的房间里有一颗暖色 `GlowBall`，Inspector 里 `Light` 默认一直开着。这一章做按一下切换开关。
+本章给第二部房间里的 `GlowBall` 配一个灯光开关。按钮收到 `Interact` 事件后，脚本翻转目标 `Light` 组件的 `enabled` 状态。
 
-这个开关动作背后只有一个事件：`Interact`。VRChat 里几乎所有「走到 X 前面按一下」的交互都是它。这一章把这条最小回路打通：放一个按钮，写一段五行脚本，按一下，灯切换。
+## Interact 的组件和输入条件
 
-## 一个 Interact 交互需要凑齐三件东西
+一个可交互按钮需要：
 
-Interact 不是凭空生效。VRChat 客户端要知道「这个物体能被按、按了之后跑哪段逻辑、提示文字写什么」。要凑齐三件东西：
+1. GameObject 上有启用的 Collider，用于命中检测。
+2. 同一 GameObject 上有可运行的 Udon Behaviour，程序实现 `Interact`，且没有禁用交互。
+3. 玩家能指向该 Collider，并处于允许交互的距离内。
 
-1. 一个带 Collider 的 GameObject，让 VRChat 知道光标该停在哪。
-2. 一段 UdonSharp 脚本，挂在同一个 GameObject 上，里面有一个 `Interact` 方法。
-3. Udon Behaviour 的 `Interaction Text` 字段填一句提示，玩家准星附近才会出现那行小字（写动作如 `Press`，不写具体按键；键位各人可在 VRChat 的 Settings → Controls 里改）。
+`Interaction Text` 是动作提示，帮助玩家判断操作结果；它不是启用交互的开关。不能把「没有填自定义提示」直接当成事件不执行的原因。
 
-三件齐了才能按。少哪一个，按下去都没反应，下面会一一对照。
+### Interact、Pickup、Use 的区别
 
-## 第一步：在房间里立一个开关
+- **Interact**：对场景中的交互对象执行操作，例如按钮调用 `Interact()`。
+- **Pickup / Grab**：拿起带 `VRC Pickup` 的物体，拿起时触发 `OnPickup()`。
+- **Use**：使用已经拿在手里的物体，触发 `OnPickupUseDown()` / `OnPickupUseUp()`。
 
-打开第二部那间小屋的场景。Hierarchy 空白处右键 `3D Object` → `Cube`，命名 `LampSwitch`。
+官方默认桌面键鼠操作中，鼠标左键用于 Interact / Pickup；持有支持 Use 的物体时，左键用于 Use，右键用于放下。`V` 对应麦克风操作，不是这里的交互键。VR 的 Use 通常映射到扳机，Grab 通常映射到握把，但控制器型号、Auto Hold 设置和用户绑定都会影响实际操作。测试时以 VRChat 当前的控制设置和设备提示为准，脚本使用事件名，不检测一个假定通用的物理按键。[官方键鼠操作](https://docs.vrchat.com/docs/keyboard-and-mouse)和[输入事件文档](https://creators.vrchat.com/worlds/udon/input-events/)分别列出操作与输入映射。
 
-选中 `LampSwitch`，Inspector 里把 Transform 调成：
+## 第一步：在房间里放一个开关
+
+打开场景。如果已完成 C# 章的 `Button_LightSwitch`，可将该按钮重命名为 `LampSwitch` 并复用。没有这个按钮时，在 Hierarchy 空白处右键 `3D Object` → `Cube`，命名 `LampSwitch`。设置：
 
 ```text
 Position  -1.5,  1.0,  -2
@@ -36,17 +40,13 @@ Rotation   0,    0,    0
 Scale      0.3,  0.3,  0.1
 ```
 
-得到一块大概手掌大、贴在墙上的扁方块。位置数值不必照搬，原则是：站在房间里能看见、走得到、不挡路。
+这会得到一个扁方块按钮。若要贴墙放置，根据已经创建的墙的位置调整坐标和朝向，让按钮露出墙面，玩家能走近并指向它。前方有其他 Collider 遮挡时，命中检测可能先碰到遮挡物。
 
-可以顺手给它做一个稍微亮一点的材质（按第 9 章的步骤新建 `Mat_Switch_Brass`，Albedo 设为 `#C49A6C`），让它从墙上跳出来一点。这一步不是必须的。
+可按第 9 章的方法新建 `Mat_Switch_Brass`，把 Albedo 设为 `#C49A6C` 并赋给按钮，使它与墙面颜色有区别。材质不影响 `Interact` 的执行。
 
-## 第二步：写一段五行脚本
+## 第二步：创建灯光开关脚本
 
-第 11 章用过这个脚本骨架。这一章把它当成模板，改两个字。
-
-Project 面板的 `Assets` 下，如果还没有 `Scripts` 文件夹就新建一个。进入 `Scripts` 文件夹，右键 `Create` → `U# Script`，命名 `LampToggle`。
-
-双击打开它，把内容替换成：
+在 `Assets/Scripts/` 查找 `LampToggle.cs`。C# 章已创建过它时，打开并复用同一份脚本及其关联的 Udon Program Asset，不再新建同名类。不存在时，右键 `Create` → `U# Script`，命名 `LampToggle`。核对或修改内容如下：
 
 ```cs title="LampToggle.cs"
 using UdonSharp;
@@ -58,121 +58,103 @@ public class LampToggle : UdonSharpBehaviour
 
     public override void Interact()
     {
+        if (targetLight == null) return;
         targetLight.enabled = !targetLight.enabled;
     }
 }
 ```
 
-存盘（`Ctrl+S`）回到 Unity，等编译完成。Console 没红字才算通过。
+保存后回 Unity，等待编译完成，检查 Console 是否有编译错误。
 
-逐行扫一眼，每一行都干一件具体的事：
+- `UdonSharpBehaviour` 是脚本继承的基类。
+- `public Light targetLight` 在 Inspector 中提供一个 `Light` 引用槽。
+- `public override void Interact()` 实现 UdonSharp 的交互事件。
+- `targetLight == null` 表示未引用到有效的灯；此时返回，避免访问空引用。
+- `!targetLight.enabled` 对布尔值取反，亮着的灯关闭，关闭的灯开启。
 
-- `using UdonSharp;` 引入 UdonSharp 的基础类型，包括 `UdonSharpBehaviour`。
-- `using UnityEngine;` 引入 `Light` 这种 Unity 自带类型。
-- `public class LampToggle : UdonSharpBehaviour` 声明一个能挂到 GameObject 上的脚本类。
-- `public Light targetLight;` 声明一个 `Light` 类型的字段，`public` 让它在 Inspector 里露出一个引用槽。
-- `public override void Interact()` 重写 VRChat 规定的 `Interact` 事件方法。玩家对物体发起 **Interact**（交互键，键位在 VRChat Settings → Controls）时，VRChat 调用它。
-- 方法体里那一行 `targetLight.enabled = !targetLight.enabled;` 把灯的 `enabled` 状态翻转。`!` 是「取反」：true 翻成 false，false 翻成 true。
+UdonSharp 的 VRChat 事件使用基类提供的签名，例如 `public override void Interact()`；`Start`、`Update` 则使用 Unity 生命周期方法的写法。事件名、大小写和参数必须与文档一致，不能用一个同名的普通方法代替事件声明。
 
-::::tip[为什么是 `public override` 不是 `public`]
-`Interact` 是 `UdonSharpBehaviour` 基类里已经定义过的虚方法，VRChat 客户端发现一个物体被按时会去找它。子类要替换它的实现，必须写 `public override`。
+## 第三步：挂脚本并绑定目标
 
-只写 `public void Interact()` 不报错，但 VRChat 不认它。看起来「按了没反应」，就是这种沉默错误。第 12 章 [UdonSharp 的脾气](/programming/udonsharp-personality/) 里专门提过这条：Unity 自带生命周期方法（Start / Update）不写 override，VRChat 专属事件（Interact / OnPlayerJoined ...）必须写 override。
-::::
+选中 `LampSwitch`，检查是否已有 `LampToggle`。复用 C# 章按钮时保留已有脚本组件，不再重复添加；只有缺少时，才把 `LampToggle.cs` 拖到 Inspector，或通过 `Add Component` 添加 `Lamp Toggle`。
 
-## 第三步：把脚本挂上去，把灯拖进引用槽
+把带 `Light` 的 `GlowBall` 拖到 `Target Light` 槽中。Unity 能从拖入的 GameObject 上匹配所需组件；也可以直接拖入它的 `Light` 组件。如果该物体没有 `Light`，应选择实际挂有灯光组件的物体。
 
-回到 Hierarchy，选中 `LampSwitch`。Inspector 底部 `Add Component` → 搜 `Lamp Toggle`（或者直接把 Project 面板里的 `LampToggle.cs` 拖到 Inspector 上）。
+本例切换的是灯光组件，不会关闭 `GlowBall` 的 Mesh Renderer，也不会改变材质的 Emission。若球体材质本身发亮，关灯后球面仍可能可见；若环境亮度来自已经烘焙的光照，也不能用关闭运行时 Light 来移除那份烘焙贡献。测试开关时使用 `Realtime` 灯光，观察它照亮的附近表面。
 
-挂上之后，Inspector 会出现一个 `Udon Behaviour` 区域，里头有一个 `Target Light` 字段，值是 `None (Light)`。
+## 第四步：配置 Collider 和交互提示
 
-把 Hierarchy 里的 `GlowBall` 拖到这个 `Target Light` 槽里。槽里写出 `GlowBall (Light)` 就对了。
+保留 Cube 自带的 `Box Collider`，确认它启用。本章按钮采用未勾选 `Is Trigger` 的普通 Collider。
 
-::::caution[把整个 GameObject 还是把 Light 组件拖过来]
-往 `Target Light` 槽拖东西时，可以拖整个 `GlowBall` GameObject。Unity 会自动从这个物体上抓出 `Light` 类型的组件填进去。
-
-如果 `GlowBall` 上没有 `Light` 组件（只有 Mesh Renderer 之类），槽位就一直是 `None (Light)`，拖也拖不进去。这时不是 Unity 故意为难，是物体身上确实没有它要的那种组件。
-::::
-
-## 第四步：配 Collider 和提示文字
-
-Inspector 里检查 `LampSwitch` 上的 `Box Collider`：默认就有一个，Cube 自带的，这次刚好用得上。`Is Trigger` 保持 **不勾选**。这一章用普通 Collider，下一章再勾。
-
-`Udon Behaviour` 区域里找到 `Interaction Text` 字段，把默认值改成：
+在 Udon Behaviour 中设置 `Interaction Text`：
 
 ```text
-Press
+开关灯 / Toggle light
 ```
 
-桌面玩家的视角里，光标对准开关时头顶会浮出 `Press`，VR 玩家在控制器上方看到同样的字。公开给全球玩家用的世界，常用英文短词（`Press`、`Toggle`、`Open`）；只给中文圈朋友测时可以写中文，但外国玩家看不懂头顶提示。
+玩家指向可交互物体时，VRChat 的交互界面显示这段作者填写的文字。桌面与 VR 的提示布局不同，不应把它描述成固定显示在玩家或物体头顶。
 
-`Proximity` 字段保持默认 `2`（米）。意思是玩家离开关 2 米以内才能交互。想让按钮远距离也能按再调高它。
+### 提示文字与本地化
+
+`Interaction Text` 是一个字符串，不是自动翻译服务。写入中文不会自动生成英文；客户端菜单切换语言，也不等于世界作者填写的任意文字被翻译。
+
+可按实际受众选择：
+
+- 短提示直接使用双语，例如 `开关灯 / Toggle light`、`坐下 / Sit`。
+- 在按钮旁加图标或说明牌，用于补充动作含义；文字仍由作者提供。
+- 文本较多时，由作者准备翻译表和语言选择界面，在本地更新 `InteractionText`。SDK 提供的 `GetCurrentLanguage` 能读取本地用户选择的界面语言，例如 `en`、`ja`、`zh-CN`，但不会生成译文，也不代表该用户只懂这一种语言。语言未收录时，需要预设回退文本。
+
+本章使用双语提示，不添加语言切换脚本。运行时修改 Interaction Text 和读取语言的能力分别见[官方 Udon 更新说明](https://docs.vrchat.com/docs/vrchat-202142)与[Player API：Language](https://creators.vrchat.com/worlds/udon/players/#language)。
+
+把 `Proximity` 设为 `2`。它参与交互距离判定，不是以按钮 Transform 为中心的固定两米球：射线判定使用射线起点到 Collider 命中点的距离，桌面模式还有与 Avatar 尺寸有关的额外触及补偿。VR 靠近物体时还存在手部 Hover 判定。因此不能承诺「退到三米外一定没有提示」。详细规则见[官方 Proximity Rules](https://creators.vrchat.com/worlds/components/vrc_pickup/#proximity-rules)。
 
 ## 第五步：Build & Test
 
-`VRChat SDK` → `Show Control Panel` → Builder 标签 → `Build & Test`。
+打开 `VRChat SDK` → `Show Control Panel` → `Builder`，运行 `Build & Test`。
 
-进世界后走到 `LampSwitch` 前两米内，光标对准它，头顶提示 `Press`。对开关发起一次 Interact，暖光熄灭。再 Interact 一次，亮起来。
+1. 走近 `LampSwitch`，对准按钮，检查提示是否显示 `开关灯 / Toggle light`。
+2. 发起一次 Interact，观察目标实时灯的照明是否关闭；再次操作应恢复。
+3. 从近到远移动，记录当前 Avatar 和输入模式下提示消失的位置。
+4. 回 Unity 把 `Proximity` 改为 `0.5`，重新构建，比较有效交互范围。
 
-按一下，灯亮了。
+### 结果不符合预期时
 
-走两步退到 3 米外，提示消失：超出 `Proximity` 距离了。回头再走近，提示重新出现。
+- **没有高亮或提示**：检查按钮与 Collider 是否启用、程序是否编译并挂到同一物体、是否禁用了交互、距离和前方遮挡是否符合条件。
+- **有提示但灯不变**：检查 `Target Light` 是否指向正确组件。示例的空引用判断会直接返回，所以引用为空时不一定有运行时错误。
+- **灯关闭但球或房间仍然亮**：区分实时灯、材质自亮、其他灯和烘焙光照。
+- **编译失败**：按 Console 中的文件名与行号检查类名、事件签名和语法，再构建测试。
 
-::::caution[按了没反应时，按这条顺序自查]
-Interact 没反应时，按这条顺序查，三条里多半能命中一条：
+## 本地状态的范围
 
-1. 走过去看不到 `Press` 字 → `Interaction Text` 是空的，或者距离超了 `Proximity`。先填字、再走近。
-2. 看到 `Press` 字，Interact 后灯没切换 → `Target Light` 引用槽是 `None`。回 Inspector 拖 `GlowBall`。
-3. 走过去连 `Press` 字都没看到，但物体明明在前面 → `LampSwitch` 上的 `Box Collider` 被禁用了或没了；脚本里 `Interact` 拼错了；脚本写成 `public void Interact()` 漏了 `override`。
+`Interact` 在操作玩家的客户端执行。这段脚本没有发送网络事件或同步字段，因此它只修改这个客户端的 `Light.enabled`。
 
-如果三条都对不上，看 Console 有没有红字，按红字修。
-::::
+在可进行多人测试的实例中，A 操作开关后，A 的灯变了；B 的灯不会因为这段代码自动改变。需要公共灯光状态时，必须另行设计状态同步、写入权限与加入实例时的初始化；本例不具备这些行为。
 
-## Interact 是完全本地的
+## 调整与练习
 
-桌面或 VR，按下那一刻 VRChat 客户端在本地查找：注视/触碰的物体、上面挂的 UdonSharpBehaviour、里面的 `Interact` 方法，本地调用它。
+- 复制一个 `LampSwitch`，把新按钮的 `Target Light` 指向另一盏灯，检查两个引用是否分别生效。
+- 让灯开启三秒后关闭：保留 targetLight 引用，在 Interact 中先判空再设置 `enabled = true`，安排三秒后的公开回调，在回调中判空并设为 false。可参照 [DelayedMessage 的完整延迟入口与 waiting 锁](/programming/udonsharp-personality/#延迟执行注册一个事件)，将两处日志分别换成开灯和关灯。此版本等待期间忽略新点击；测试约一秒时再点，不能把它误解为重新计时三秒。
+- 加 `int pressCount` 字段，每次 Interact 先加一；第三次把 `targetLight.color` 改为红色并跳过本次 enabled 翻转，其余次数仍切换灯。先使用 `pressCount == 3`，再在副本中改成 `pressCount % 3 == 0`，从重新进入场景的零次开始，记录第 1–6 次的次数、颜色与启用状态。前者只在第三次满足，后者每三次满足；只变颜色不保证一盏关闭的灯可见。
+- 把目标改为 `MeshRenderer`，翻转它的 `enabled`。结果是隐藏网格，不会自动禁用 Collider 或整个 GameObject。
 
-这件事拉朋友进来才看得清楚：
+## 交互结构
 
-- 拉朋友进同一个测试世界。
-- 按一下开关，本地的灯灭了。
-- 朋友那边的灯还亮着。
-
-不是 bug。Interact 默认只在按下的人身上跑，灯也只在按下的人客户端切换。两个人按各自看到自己那一半的状态。
-
-要让所有玩家看到同一个状态，得显式把这条信息广播出去。这是「网络同步」的活，第六部《和别人一起》一整部专门讲。先把单人版做扎实。
-
-## 调整两个值，看看变化
-
-回 Unity 改几样东西，重新 Build & Test 一次：
-
-- 把 `Interaction Text` 从 `Press` 改成 `开灯` 或 `按一下`。中文也行。
-- 把 `Proximity` 从 `2` 改成 `0.5`，进去会发现要凑得很近才能按。
-- 把 `LampSwitch` 复制一份放到房间另一头，把它的 `Target Light` 拖到另一盏灯上。一份脚本，两个开关，各管各的灯。两个 `Target Light` 槽各指各的灯，因为 Inspector 引用是显式拖的。
-
-## 自己改两个版本
-
-把这段五行脚本当骨架，往里加一点：
-
-- 让按钮按下后，灯亮三秒自动灭。提示：用第 12 章提到的 `SendCustomEventDelayedSeconds`，搜一下「延时事件」那一节。
-- 加一个 `int pressCount` 字段，每按一次自加一。第三次时不切换灯，而是把灯颜色变成红色。
-- 把 `targetLight.enabled = ...` 换成 `targetMesh.enabled = ...`（`MeshRenderer` 也有 `enabled` 字段），做一个能让某个物体瞬间消失的开关。
-
-这三个变体不给完整代码。如果改到一半卡住了，回头读这一章和第 11 章，答案分散在那两个文件里。第二个变体是最容易写歪的，因为 `if (pressCount % 3 == 0)` 和 `if (pressCount == 3)` 行为完全不同，留给读者自己想。
-
-## 一段最小交互的骨架
-
-回头看，整个 Interact 链条只有四件东西：
-
-- 一个挂在物体上的 UdonSharpBehaviour，里头有 `public override void Interact()`。
-- 同一个物体上的一个 Collider，决定 VRChat 在哪儿能「瞄准」它。
-- Udon Behaviour 的 `Interaction Text`，决定提示显示什么。
-- 脚本里通过 `public` 字段引用到的目标对象（这一章是那盏灯）。
+- Collider 提供可命中的范围。
+- `Interact` 定义操作发生时的入口。
+- `Interaction Text` 提供动作提示。
+- `targetLight` 指定操作对象。
+- `enabled` 的取反决定本次操作结果。
 
 ## 本章参考
 
 - [VRChat Creator Docs：Event Nodes](https://creators.vrchat.com/worlds/udon/graph/event-nodes/)
-- [VRChat Creator Docs：VRC Pickup](https://creators.vrchat.com/worlds/components/vrc_pickup/)
-- [VRChat Creator Docs：VRC Station](https://creators.vrchat.com/worlds/components/vrc_station/)
+- [VRChat Creator Docs：Input Events](https://creators.vrchat.com/worlds/udon/input-events/)
+- [VRChat Docs：Keyboard and Mouse](https://docs.vrchat.com/docs/keyboard-and-mouse)
+- [VRChat Creator Docs：VRC Pickup / Proximity Rules](https://creators.vrchat.com/worlds/components/vrc_pickup/#proximity-rules)
+- [VRChat Creator Docs：Player API / Language](https://creators.vrchat.com/worlds/udon/players/#language)
+- [VRChat 2021.4.2：Interaction Text 的 Udon 接口](https://docs.vrchat.com/docs/vrchat-202142)
 - [UdonSharp Docs：Examples](https://udonsharp.docs.vrchat.com/examples/)
-- [Mastering User Input Detection（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-user-interaction/)
+
+原稿参考来源（第三方，保留来源记录）：
+
+- [UhiyamaLab：Interact 与输入事件](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-user-interaction/)

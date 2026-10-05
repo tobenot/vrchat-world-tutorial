@@ -7,12 +7,12 @@ sidebar:
 # Head.astro 覆盖会基于 id 前缀 dev/ 自动注入 noindex meta。
 pagefind: false
 chapterType: concept
-summary: 写新章前看这一页：所有可用组件的活样例，照抄即可。
+summary: Starlight 组件的渲染示例与写法。
 ---
 
 import { Steps, FileTree, Tabs, TabItem, Card, CardGrid, LinkCard, Aside, Badge, Icon } from '@astrojs/starlight/components';
 
-这一页只服务写作者，不在侧栏出现，但通过 URL `/dev/components-demo/` 可以直接访问。所有样例都是真渲染。看到效果之后，再回章节里照抄。
+这一页只服务写作者，不在侧栏出现，但通过 URL `/dev/components-demo/` 可以直接访问。样例展示组件的实际渲染结果。
 
 ## 1. Steps：教程步骤
 
@@ -20,8 +20,8 @@ import { Steps, FileTree, Tabs, TabItem, Card, CardGrid, LinkCard, Aside, Badge,
 
 <Steps>
 
-1. 打开 Unity Hub，新建 World 项目。
-2. 等 VRChat SDK 自动安装完成，进度条会到 100% 才算结束。
+1. 在 VCC 中用 Worlds 模板创建项目。
+2. 等待 VCC 安装依赖，再用指定的 Unity 编辑器打开项目。
 3. 菜单栏 `File → New Scene`，选 `Basic`，按 `Ctrl+S` 命名 `MyFirstWorld`。
 4. Hierarchy 右键 `3D Object → Cube`，缩放成 `10, 0.2, 10` 当地板。
 
@@ -60,7 +60,7 @@ import { Steps, FileTree, Tabs, TabItem, Card, CardGrid, LinkCard, Aside, Badge,
   <TabItem label="macOS">
     保存场景：`Cmd + S`
 
-    macOS 上 VRChat 客户端不支持上传，仅适合查文档和准备场景。
+    编辑器快捷键使用 Cmd；客户端测试与目标平台支持须按 VRChat 官方环境要求核对。
   </TabItem>
   <TabItem label="Quest 工作流">
     Quest 平台需要切换 Build Target 到 Android，再用 SDK 控制面板上传 Quest 版本。
@@ -69,7 +69,7 @@ import { Steps, FileTree, Tabs, TabItem, Card, CardGrid, LinkCard, Aside, Badge,
 
 ## 4. CardGrid + Card / LinkCard
 
-每一部的入口、章节末尾的「相关阅读」最常用。
+可用于分部入口和相关资料导航。
 
 <CardGrid>
   <Card title="先做出来" icon="rocket">
@@ -83,7 +83,7 @@ import { Steps, FileTree, Tabs, TabItem, Card, CardGrid, LinkCard, Aside, Badge,
 <CardGrid>
   <LinkCard title="第 6 章：一切都是物体" href="/workbench/gameobjects/" description="GameObject 只是空壳，能力来自组件。" />
   <LinkCard title="第 7 章：组件" href="/workbench/components/" description="Add Component / Inspector / 引用槽。" />
-  <LinkCard title="第 9 章：材质和光" href="/workbench/materials-light/" description="给空间装上第一缕氛围。" />
+  <LinkCard title="第 9 章：材质和光" href="/workbench/materials-light/" description="材质参数、光源类型与照明条件。" />
 </CardGrid>
 
 ## 5. Aside（提示框）：四种语义
@@ -98,11 +98,11 @@ Markdown 简写优先，组件式备用。
 讲设计原理、对比"如果不这样会怎样"。这是本书的高频侧栏。
 :::
 
-:::caution[踩坑预警]
+:::caution[版本与字段差异]
 具体到哪个按钮、哪个字段。如果 Unity 版本和教程不一致，容易在这里对不上。
 :::
 
-:::danger[千万别]
+:::danger[数据与构建风险]
 真的会让数据丢失或上传失败的硬错误，留给极少数情况。
 :::
 
@@ -112,15 +112,16 @@ Markdown 简写优先，组件式备用。
   组件版可以在标题里嵌徽章、子组件，比 Markdown 简写更灵活。
 </Aside>
 
-## 6. 代码块的隐藏招式（Expressive Code）
+## 6. 代码块标记（Expressive Code）
 
 只在 `\`\`\`lang` 之后追加 meta 信息即可，无需任何额外组件：
 
 ```cs title="LampToggle.cs" {3-5} ins={6-7} del={8} collapse={1-1}
 using UdonSharp;
+using UnityEngine;
 public class LampToggle : UdonSharpBehaviour {
     public Light targetLight;
-    void Interact() {
+    public override void Interact() {
         targetLight.enabled = !targetLight.enabled;
     }
     // ↑ 这两行被高亮为「新增」
@@ -187,7 +188,7 @@ sequenceDiagram
 
 在 ```` ```lang ```` 后追加 `showLineNumbers` 和带引号的关键字即可：
 
-```cs title="同步开关灯片段" showLineNumbers
+```cs title="仅供 Owner 执行的本地开关片段" showLineNumbers
 public override void Interact() {
   if (Networking.IsOwner(gameObject)) {
     targetLight.enabled = !targetLight.enabled;

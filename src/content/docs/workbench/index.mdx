@@ -1,15 +1,15 @@
 ---
-title: 第二部 · 认识你的工作台
-description: 第一部跑起来的那个世界，是怎么由「物体 + 组件 + 模具 + 材质 + 光」搭出来的。
+title: 第二部 · 场景物体与组件
+description: Unity 场景对象、组件、Prefab、材质和基础灯光的配置与检查。
 template: splash
 hero:
-  tagline: 把 Unity 拆成五块积木，看穿每一块。
+  tagline: 对象层级、组件职责、资源引用与光照。
   actions:
     - text: 从第 6 章开始
       link: ./gameobjects/
       icon: right-arrow
       variant: primary
-    - text: 直接读理解章
+    - text: 对象与组件的关系
       link: ./unity-philosophy/
       variant: minimal
 sidebar:
@@ -23,43 +23,39 @@ editUrl: false
 
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-第一部里已经站进了一个世界。这一部回头看：刚才那一切，到底是用什么搭出来的。
-
-四个动手章 + 一个理解章 + 一个创作者视角，按顺序读最稳。
+本部使用已创建的最小场景，说明地板、墙体、灯球及其组件与资源配置。操作范围是基础房间结构、重复对象和光照对照。
 
 <CardGrid>
   <LinkCard
     title="6. Unity 里的一切都是物体"
     href="./gameobjects/"
-    description="GameObject、Scene、Hierarchy、Transform：三维空间的组织方式。"
+    description="GameObject、Scene、Hierarchy 与 Transform。"
   />
   <LinkCard
     title="7. 组件，给物体装能力"
     href="./components/"
-    description="Inspector 里的每一块都是一种「能力」，按需挂、按情况删。"
+    description="组件参数、对象引用、禁用与移除。"
   />
   <LinkCard
     title="8. Prefab，把东西做成模具"
     href="./prefabs/"
-    description="Prefab、Prefab Instance、Override，把可复用的东西整理出来。"
+    description="资源、实例、覆盖、应用与还原。"
   />
   <LinkCard
     title="9. 材质和光的第一印象"
     href="./materials-light/"
-    description="用最少的概念让世界开始有气氛。"
+    description="基础材质、实时灯光与 Emission 的不同作用。"
   />
   <LinkCard
     title="理解章 B · 为什么一切都是空壳加零件"
     href="./unity-philosophy/"
-    description="把前四章串起来，看清 Unity 的组合式设计哲学。"
+    description="场景对象、组件与资源之间的关系。"
   />
   <LinkCard
     title="创作者视角 · 从模糊画面到具体清单"
     href="./from-picture-to-list/"
-    description="把心里的画面拆成物体、组件、材质、灯光和交互任务。"
+    description="按对象、参数和完成条件记录场景需求。"
   />
 </CardGrid>
 
-读完这六篇，再看任何 VRChat 世界的 Unity 工程，Hierarchy 不再像一团乱码。
-
-读完之后再回 [第一部](../getting-started/) 翻一遍，那一组 GameObject 是怎么搭起来的会变得很清楚。
+[第一部 · 最小世界](../getting-started/) · [第三部 · C# 与 UdonSharp 基础](../programming/)

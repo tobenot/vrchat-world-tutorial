@@ -1,14 +1,14 @@
 ---
 // 自定义 404 页面
-// 目的：失败页面也是流量入口——别让用户两步关掉浏览器，给他们一条路回来。
+// 为无效 URL 提供首页、目录和搜索入口。
 // 同时显式 noindex，避免 404 进搜索结果。
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 ---
 
 <StarlightPage
   frontmatter={{
-    title: '走丢了 · 404',
-    description: '你访问的页面不存在或已经搬家。回到首页或搜一下你想看的章节吧。',
+    title: '页面不存在 · 404',
+    description: '你访问的页面不存在。可通过首页、目录或搜索查找章节。',
     template: 'splash',
     tableOfContents: false,
     pagefind: false,

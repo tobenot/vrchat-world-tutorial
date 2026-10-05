@@ -6,7 +6,7 @@ import starlightLinksValidator from 'starlight-links-validator';
 
 const bookTitle = '你的第一个 VRChat 世界：从零到发布的完全手册';
 const bookDescription =
-  '面向新手的 VRChat 世界开发教程，从零讲起 Unity 基础、VRChat SDK、UdonSharp 编程、多人同步、空间体验设计与性能优化，带你做出第一个能发布的 VRChat 世界。';
+  '中文 VRChat 世界开发教程，包含 Unity 基础、VRChat SDK、UdonSharp 编程、多人同步、空间设计、性能检查与发布维护。';
 const siteUrl = 'https://vrchat-world-tutorial.pages.dev';
 // 注意：og:image / twitter:image 不再在这里全站注入，
 // 改由 src/overrides/Head.astro 按当前页 slug 输出 per-page 动态 OG 卡，
@@ -110,47 +110,47 @@ export default defineConfig({
           items: [{ slug: 'preface' }],
         },
         {
-          label: '第一部：先站进去再说',
+          label: '第一部：工具与第一个世界',
           collapsed: false,
           autogenerate: { directory: 'getting-started' },
         },
         {
-          label: '第二部：认识你的工作台',
+          label: '第二部：场景物体与组件',
           collapsed: false,
           autogenerate: { directory: 'workbench' },
         },
         {
-          label: '第三部：学一点编程',
+          label: '第三部：C# 与 UdonSharp 基础',
           collapsed: false,
           autogenerate: { directory: 'programming' },
         },
         {
-          label: '第四部：让世界活过来',
+          label: '第四部：交互与状态',
           collapsed: false,
           autogenerate: { directory: 'come-alive' },
         },
         {
-          label: '第五部：你想做什么样的世界？',
+          label: '第五部：世界类型与设计',
           collapsed: false,
           autogenerate: { directory: 'world-types' },
         },
         {
-          label: '第六部：和别人一起',
+          label: '第六部：多人同步',
           collapsed: false,
           autogenerate: { directory: 'with-others' },
         },
         {
-          label: '第七部：让世界变成一个地方',
+          label: '第七部：空间、音画与性能',
           collapsed: false,
           autogenerate: { directory: 'placeness' },
         },
         {
-          label: '第八部：做着做着会撞上的事',
+          label: '第八部：调试、测试与资源管理',
           collapsed: false,
           autogenerate: { directory: 'surviving' },
         },
         {
-          label: '第九部：发出去，然后继续走',
+          label: '第九部：发布与维护',
           collapsed: false,
           autogenerate: { directory: 'publishing' },
         },
@@ -182,7 +182,6 @@ export default defineConfig({
       filter: (page) => !page.includes('/dev/'),
       // 站点目前更新频率较低，统一用本次构建时间作为 lastmod，
       // 让 Google 知道"这本书还在写、还在变"，触发更频繁的重抓。
-      // 后续如果要做 per-page git mtime，再升级 serialize 钩子。
       lastmod: new Date(),
     }),
   ],

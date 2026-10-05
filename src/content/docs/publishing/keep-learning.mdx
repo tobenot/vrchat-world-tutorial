@@ -1,246 +1,120 @@
 ---
 title: 47. 继续学习
-description: 这本书结束了。VRChat 世界开发还在变。这一章给一份能在书结束之后继续用的资源地图：怎么读官方文档、怎么用社区资料、下一座世界怎么开始。
+description: 按问题查找官方文档、SDK 示例、源代码和社区资料，记录版本与复现条件。
 difficulty: 进阶
 estimatedMinutes: 30
 chapterType: creator-view
 requiresSDK: false
-summary: 全书最后一章。VRChat SDK 一直在变，社区一直在出新东西。这一章给一份在书结束之后还能继续用的资源地图：官方文档的结构怎么读、社区资料怎么挑、决定下一座世界做什么的几个问题。书结束，开发不结束。
+summary: 资料核对以项目版本和具体问题为起点。官方参考、示例工程与社区经验各有适用范围；工程结果需要在匹配环境中验证，制作来源与引用记录保留。
 sidebar:
   order: 4
 ---
 
-到这里全书 47 章读完。一座世界从空 Unity 工程到上线 VRChat、稳定运营的全程跑通过一遍。
+VRChat、Unity 和 SDK 的接口与工具界面会变化。查资料时先记录当前版本和问题范围，再判断资料中的步骤是否适用。本章是一份资料索引与核对方法，不假定读者已完成某座世界的发布或运营。
 
-但 VRChat SDK 一直在更新，UdonSharp 的能力一直在扩展，社区里每周都有新教程、新坑、新工具。这本书写定之后就是一份固定快照，世界在它之外继续变。
+## 第一节：按问题找官方入口
 
-最后一章的目的不是再教什么新技术，是回答**书结束之后接下来去哪**这个问题：要查文档时去哪、要看别人怎么做时去哪、下一座世界怎么开始。
+| 问题 | 入口 |
+| :--- | :--- |
+| SDK 安装、支持的 Unity 与升级 | [VRChat Creator Docs](https://creators.vrchat.com/)与 [VCC 文档](https://vcc.docs.vrchat.com/) |
+| Scene Descriptor、Pickup、Station 等 | [World Components](https://creators.vrchat.com/worlds/components/) |
+| Udon 事件、网络与持久化 | [Udon](https://creators.vrchat.com/worlds/udon/) |
+| UdonSharp 语法与支持限制 | [UdonSharp 文档](https://udonsharp.docs.vrchat.com/) |
+| 客户端功能与实例 | [VRChat Wiki](https://wiki.vrchat.com/)与 [VRChat Docs](https://docs.vrchat.com/) |
+| 商品、订阅与提现 | [Creator Economy](https://creators.vrchat.com/economy/) |
+| Unity 组件和 API | 与项目版本匹配的 [Unity Manual](https://docs.unity3d.com/2022.3/Documentation/Manual/index.html) |
+| C# 语言本身 | [Microsoft C# 文档](https://learn.microsoft.com/dotnet/csharp/) |
 
-## 第一节：官方文档的结构
+从官方导航或搜索进入实际页面，不按猜测拼接组件 URL。`docs.vrchat.com` 包含客户端资料，不能简单当作全部过时的 SDK2 文档。
 
-`creators.vrchat.com` 是写这本书时反复回查的源头。官方文档自己有一套结构，理解了这个结构后续自己查会快很多。
+Unity 或 C# 支持某个 API，不代表 Udon 已暴露该 API。结合 Class Exposure Tree、当前 SDK 文档和工程编译结果核对。
 
-主站大致分四个层级：
+## 第二节：记录版本与证据
 
-```text
-creators.vrchat.com
-├─ /sdk/                    SDK 安装、版本、Creator Companion
-├─ /worlds/                 ← 写这本书的主战场
-│   ├─ /creating-your-first-world/   入门
-│   ├─ /components/                  所有 SDK 组件参考
-│   ├─ /udon/                        Udon 编程
-│   │   ├─ /networking/              网络同步
-│   │   ├─ /persistence/             PlayerData
-│   │   └─ /graph/                   Udon Graph（书里没怎么用）
-│   ├─ /sdk-prefabs/                 官方预制体
-│   ├─ /performance-tips/            性能建议
-│   ├─ /submitting-a-world/          发布流程
-│   └─ /updating-your-world/         版本更新
-├─ /avatars/                头像开发（这本书没碰）
-├─ /economy/                Creator Economy
-└─ /platforms/
-    └─ /android/            Quest 平台限制
-```
-
-读法上的几条经验：
-
-- **每个组件的字段定义都在 `/worlds/components/<componentname>/`**。书里凡是「VRC X」开头的组件（VRC Pickup、VRC Object Sync、VRC Scene Descriptor、VRC Spatial Audio Source 等），文档地址都是这个模式。直接拼 URL 比从首页点进去快。
-- **SDK 升级 / 版本变动看 `/sdk/`**。VRChat 大改 SDK 的时候迁移指南都在这一段。每年大改一次，社区里有大量过期教程，遇到看着不对的步骤先来这里对一遍。
-- **Networking 那块特别绕**。同一件事在 `/worlds/udon/networking/` 下分散在好几个子页（network-components、events、ownership、sync 等），第一次读建议从 `/worlds/udon/networking/` 主页那张总图开始，别从子页钻进去。
-
-VRChat 还维护一份**旧版文档** `docs.vrchat.com`（早期 SDK2 时代留下的）。Community Labs、Trust Rank 这些跟玩家行为相关的内容仍然在那里，跟创作者文档分开。
-
-::::tip[官方文档跟这本书的关系]
-这本书的角色是**教学**：让一个不会的人按一个有节奏的路径学会。官方文档的角色是**参考**：让已经会一些的人快速找到精确答案。
-
-两个东西不能互相替代：
-
-- 拿官方文档当教学用：它假设读者已经知道 Unity、知道 GameObject、知道 Prefab。读到 VRC Pickup 文档时，文档不会铺「先在 Hierarchy 里建一个 Cube」这种基础步骤，会直接说「给 Pickup 物体加 Rigidbody」，第一次接触的人就卡这一步。
-- 拿这本书当参考用：书里讲组件时只展开当前章用得上的部分。VRC Pickup 的 `auto-hold` 字段或 `pickup-orientation` 字段书里可能没提（书里只用本书示例里的配置），需要时仍然要查文档。
-
-成熟的工作流是：从书学到一个东西怎么用，到文档查这个东西的所有参数。
-::::
-
-## 第二节：社区资源怎么挑
-
-社区资源繁多，质量参差。可以按权威性分几档：
-
-| 档位 | 来源 | 怎么用 |
-| :--- | :--- | :--- |
-| **官方** | `creators.vrchat.com`、`udonsharp.docs.vrchat.com`、官方 GitHub | API 行为以此为准 |
-| **平台官方** | Unity Manual、Microsoft C# Docs | Unity / C# 基础以此为准 |
-| **社区组织** | VRCLibrary、VR Creators、VRCD 文档库、VRC School、UdonSharp DeepWiki | 有编辑流程，质量稳定 |
-| **知名个人** | Vowgan、JustSleightly、神乐甜狐狸、Liya 荔吖等 | 经验丰富，需核实版本 |
-| **散落资源** | 单篇博客、单次视频、Reddit / Discord 帖子 | 作为线索，必须用上层来源核实 |
-
-VRChat 创作圈的几条「不读会绕远路」的资源：
-
-- **VRChat 官方 Discord**（`discord.gg/vrchat`）：最快的实时问答场。`#world-creation` 频道里多数日常问题几小时内有人答。
-- **Creator Forum**（`ask.vrchat.com`）：长期问题归档。比 Discord 检索方便，回答质量高。
-- **DeepWiki**（`deepwiki.com/vrchat-community/`）：AI 对官方文档的结构化解读。读官方文档卡时换这里看一遍经常豁然开朗。
-- **VRChat 官方 GitHub**（`github.com/vrchat-community`）：Creator Docs 源码、World 模板、UdonSharp 源码都在这里。能看到最新提交是什么时候、最近改了什么。
-
-中文圈的资源单独列：
-
-- **VRCD 文档库**（`docs.vrcd.org.cn`）：中文社区共建文档，有完整的世界教程系列和 VCC 详解。
-- **VRChat 汉化文档中心**（`docs.vrczh.org`）：官方 Creator Docs 的中文翻译，跟得比较勤。
-- **Bilibili 收藏夹**：搜「VRChat 世界」「Udon」能找到不少系列教程，新一些的视频通常带了制作日期。
-
-英文圈和日文圈的资源很多，按需要查。但凡是 2022 年之前的内容、或者不写明 SDK 版本的内容，先怀疑再用。
-
-## 第三节：读别人的世界
-
-「读别人的代码」是第三部讲过的事。在 VRChat 里有一个变体：「读别人的世界」。
-
-VRChat 有几类公开可学的世界：
-
-### 官方示例项目
-
-VRChat 官方提供了 `UdonExampleScene`（包含在 World SDK 里）。安装 SDK 之后导入这个场景，能看到官方写好的几十个交互范例：按钮、计数器、同步、Pickup、Station、传送门，每个都是简单完整的小例子。
-
-读这个项目能学到的：官方推荐的 Udon 写法是什么样、组件之间怎么搭。书里没展开的细节多数能在这里找到。
-
-### Open-source 世界
-
-VRChat 上有一些创作者把世界源工程开源出来：
-
-- **VRWorld Toolkit**（`github.com/oneVR/VRWorldToolkit`）：不是世界本身，是一个 Unity 编辑器扩展，但里面对世界各种检查的代码本身就是学习材料。
-- **Vowgan 的免费 Prefab**（Gumroad 免费区）：完整带源工程的世界组件。
-- **GitHub 上搜 `udonsharp`**：能找到很多创作者公开的脚本仓库。
-
-读开源世界的方法：
-
-1. 把工程下载到本地，用书里同一份 SDK 版本打开。
-2. **先 Build & Test 进去玩**。先理解这世界做什么，再看代码怎么实现。
-3. 找到关键交互，看挂在哪个 GameObject 上，看 Inspector 里挂了哪几个 UdonSharp 脚本。
-4. 读源码。重点看「这一段做了我之前没想过的事」。
-
-按这个顺序读比直接打开 .cs 文件读快得多。Unity 项目离开了 Hierarchy 上下文，单看代码经常一头雾水。
-
-### 上传时打开 World Debugging
-
-SDK 上传面板里有个 `World Debugging` 开关，勾上之后允许其他玩家在你的世界里调试 Udon 脚本（看变量、看事件流）。这是社区互相学习的合规途径——找别人开了 Debugging 的开源世界，进去看一遍 Udon 流程，比单看代码直观。
-
-::::note[别依赖未公开的客户端 Inspector 快捷键]
-社区里偶尔流传「按某某组合键就能看世界 Hierarchy」之类的客户端开发者菜单提示，绝大多数是过时或针对特殊客户端版本的，跟当前正式版客户端不一定对得上。学习还是以官方 SDK + 自己的工程为主，加上别人开了 World Debugging 的世界。
-::::
-
-
-## 第四节：碰到新问题时的查资料顺序
+一条可复用的技术记录包括：
 
 ```text
-碰到问题
-   ↓
-先试一次：能不能用书里学过的知识解决？
-   ↓ 不能
-查官方文档对应章节（[附录 J · 资料导航](/appendix/resources/)）
-   ↓ 没有
-搜社区：VRChat Ask Forum、UdonSharp Discord、VR Creators 文档站
-   ↓ 仍没有
-在自己工程里做最小复现，Console 红字 + 复现步骤贴到论坛
-   ↓
-拿 `Build & Test` 或 ClientSim 结果当最终依据
+问题：
+Unity / Worlds SDK / UdonSharp 版本：
+客户端与平台：
+最小复现步骤：
+官方页面与核对日期：
+实际测试结果：
+仍未确认的条件：
 ```
 
-API 名、参数签名以 `udonsharp.docs.vrchat.com` 和 IDE 自动补全为准。社区帖子和旧教程可能对应过期 SDK。
+官方文档之间也可能存在更新不同步。优先核对与当前功能直接相关的专项页、更新记录和实际 SDK；仍有矛盾时保留差异，不把选择某一页写成已经实测。
 
-## 第五节：下一座世界做什么
+## 第三节：使用官方示例
 
-第一座世界上线之后，「下一座做什么」这个问题马上来。
+Worlds SDK 的示例和 Example Central 可提供组件、Udon Graph 与脚本的完整场景。检查示例所需版本和资源，然后在独立测试项目中运行。
 
-几个判断方向：
+观察一个示例时，分别记录：
 
-### 同一个方向再做一遍
+1. 对象层级、组件与 Inspector 引用。
+2. 输入或事件在哪里触发。
+3. 条件判断与状态变量如何变化。
+4. 哪些结果仅本地可见，哪些有网络同步。
+5. 重复操作、重生、后加入和 Owner 离开的结果。
 
-第一座世界上线的过程里学到的最多的是「平台和工作流」：VCC 怎么用、SDK 怎么打包、Quest 兼容怎么测。这些是一次性投入。
+示例可能只演示一个机制。能够运行不表示它已经覆盖项目的权限、并发、错误处理或性能要求。
 
-第二座世界沿用同样的工作流，能把心思全放在「设计和体验」上。第二座世界质量通常显著高于第一座。
+## 第四节：核对社区资料
 
-适合的人：第一座世界做的是 Chill / Gallery / Tool，对结果满意，想再做一座类似但更好的。
+[VRChat Ask Forum](https://ask.vrchat.com/)和 [VRChat 官方 GitHub](https://github.com/vrchat-community)可提供问题讨论与公开项目。中文资料可从 [VRCD 文档库](https://docs.vrcd.org.cn/)等社区入口查找。
 
-### 换一种世界类型
+选择具体资料时检查：
 
-第五部讲过八种世界类型。第一座做了 Chill，第二座可以试 Game。第一座做了 Gallery，第二座可以试 Narrative。
+- 作者与原始来源是否可识别。
+- 发布时间、更新日期和所用版本。
+- 是否给出复现项目或完整步骤。
+- 是否把观察结果与原因推断分开。
+- 代码和资源是否有可用许可证。
 
-代价：换类型几乎等于重头学。Game World 的状态机、网络同步、UI 架构跟 Chill World 的几乎不重叠。
+资料的新旧不能只靠发布日期判断；某段旧资料可能仍适用，近期发布也可能复述错误。社区回答可以提供排查方向，但接口签名、权限和平台限制需要回到对应官方来源与项目验证。
 
-适合的人：第一座做完之后想拓展能力面，不在意速度。
+## 第五节：检查公开源工程
 
-### 做扩展、工具或共享组件
+下载获得授权的工程后，先阅读 README、许可证和版本要求。保留原件，在副本中打开；Unity 编辑器脚本与工具包可以在导入时执行，不导入来源不明的可执行工具。
 
-不一定每次都做完整世界。VRChat 圈子里有大量人做的是：
+用工程要求的版本恢复依赖，再运行示例流程。选中相关 GameObject，对照脚本、组件和 Inspector 字段检查行为。直接替换为本书所用 SDK，可能引入与原问题无关的迁移错误。
 
-- **共享 Prefab**：通用的 Pickup 系统、按钮系统、状态机模板，发布到 Booth / Gumroad 给其他创作者用。
-- **Shader**：poiyomi、Liltoon 这种社区 Shader 都是单人或小团队维护的。
-- **Unity 编辑器工具**：VRWorld Toolkit 这一类辅助工具。
-- **教程内容**：写博客、做视频、维护文档。这本书也属于这一类。
+引用或分发代码时，按[素材与版权记录](/surviving/assets-and-licenses/)保留许可证。公开源码不等于可以忽略授权条件。
 
-适合的人：发现自己更喜欢「让其他创作者更轻松」这件事。
+World Debugging 可以开放某些受限调试视图，但不等于向访客开放完整 Unity 工程或任意脚本变量浏览器。调试视图用途与权限按当前官方文档核对。
 
-### 跟人合作
+## 第六节：提出可回答的问题
 
-VRChat 上越来越多的世界是团队作品：美术 + 程序 + 音效 + 活动运营。
+把问题限定到一项行为，例如：“A 开门后 B 加入，B 的同步变量为 true，但 Animator 仍显示关闭。”附上最小脚本、必要 Inspector 配置、日志片段和版本。
 
-适合的人：擅长其中一两块，但想做更复杂的世界。一个人撑全场不是必须的。
+说明已经测试过的条件，以及每次改变了什么。移除账号凭据、私密实例信息和无关玩家数据，避免公开没有分发许可的完整资源包。
 
-## 第六节：书结束之后这本书还能怎么用
+如果问题仍无法复现，记录发生时间、环境和周围事件。暂时无法下结论是有效状态，不用猜测一个确定根因填补空缺。
 
-这本书写完会持续更新。但即使停更，作为一份固定快照仍然能用：
+## 第七节：选择下一项作品
 
-- 当工具书查回某个概念怎么解释（GameObject、Prefab、UdonSharp 的脾气、网络同步、PlayerData 等）。
-- 当某一章某一节的钩子和踩坑预警仍然有效（VRChat 平台基础设计很少改，这些不会过期）。
-- 给身边想入门的朋友递一份。
+可以先写下要练习的能力、可投入的时间与完成条件，再从以下方向选一个小范围项目：
 
-会过时的部分：
+- 同类型再做一座：沿用熟悉的构建和发布流程，只集中改进一个目标，例如动线、光照或交互反馈；保留前作以便比较。
+- 换一种世界用途：从[世界类型与选读](/world-types/)选需要的机制，先做一个能验证核心体验的场景；原有 Unity 工作流仍可用，新增机制另行测试。
+- 做共享组件或资料：把一个已验证功能整理成 Prefab、Shader、编辑器工具或教程，补齐安装步骤、依赖、使用限制和许可，目标是让别人能在独立项目中复现。
+- 与他人合作：选一项边界明确的共同任务，先约定分工、源文件许可、版本管理与验收方式，再组合美术、程序、声音或活动安排。
 
-- 具体的 UI 截图（VRChat SDK 的面板会重排）。
-- 具体的快捷键（VRChat 客户端的快捷键会变）。
-- 具体的 API 名（UdonSharp 偶尔会改名、改签名）。
-- 政策细节（Community Labs 的具体阈值、Creator Economy 的分成、Quest 包大小上限）。
+例如想练“多人状态恢复”，完成条件可以是两人交替操作、第三人后加入和 Owner 离开后状态正确；不必同时新增整个游戏系统。需要定期练习时，给自己安排一段能完成这种小验证的时间，按实际结果调整节奏。
 
-碰到这些过期的部分时，按这一章前面几节的方法重新查一遍当前版本就行。骨架是稳的，细节是动的。
+也可在论坛或熟悉的创作社群建立一两个可互相求助的联系；先分享明确问题和已做的测试，尊重对方是否有空。资料入口、个人创作者与源工程可按[社区资源](/appendix/resources/#社区资源)、[视频和中文内容创作者](/appendix/resources/#视频和中文内容创作者)、[可学习的示例项目](/appendix/resources/#可学习的示例项目)查找，不把加入社群当成保证得到答复。
 
-## 这本书结束之后实际的下一步
+## 本书的来源与使用范围
 
-不是通用的「保持热情」「相信自己」这种话。是几个具体动作：
+本书的技术说明应与引用来源和项目验证对照；具体按钮名、API、政策和平台限制都可能变化。目录和索引用于定位概念，版本相关结论需要注明适用环境。
 
-1. **在常用的浏览器标签里固定收藏**：`creators.vrchat.com`、`udonsharp.docs.vrchat.com`、自己加的某个 Discord / 论坛、本书的目录页。每次开始做事前把这几个标签依次扫一眼，比临时搜要快。
-2. **维护一份自己的踩坑笔记**。每次踩到坑、查到答案、绕过一个陷阱，写一行到本地一个 Markdown 文件里。三个月后这份笔记是自己最值钱的资料。
-3. **给自己定一个节奏**。不是每天写代码，是每周固定时间打开 Unity（哪怕一小时）。VRChat 世界开发是技能型工作，间隔太久会忘工具的具体位置。
-4. **找一两个同行在线**。一个能问问题的人。VRChat 的几个 Discord（VRChat 官方、VRCD、各创作者社群）门槛都很低，进去说一句「我在做世界」就有人聊。
-5. **把自己第一座世界的源工程留好**。第一座的代码以后回头看会觉得很糙，但那是自己的入门痕迹，第二座、第三座是从那里长出来的。
-
-::::note[关于这本书的写法]
-这本书是 AI 协作生成的（前言和「关于」页里说过）。意味着：
-
-- 这本书的每一章，写法上都尽量遵循前面几条规矩（具体动手、官方文档优先、避免营销腔、避免假共情）。但 AI 协作生成的东西总有微妙的偏差，读到「这里好像不太对」的地方，请相信自己的判断。
-- 书里所有具体技术内容都对应官方文档，每章末尾的「本章参考」里能找到。任何时候书里说的跟官方文档冲突，以官方文档为准。
-- 书里也有一些经验性内容（「社区里多数人……」「常见做法是……」），这一类内容标注了「社区经验」，可信度比官方文档低，建议交叉核实。
-
-这本书会随 SDK 更新而过时。读到本章时如果距离最近一次更新已经一年以上，开头那张「全书骨架」可能仍然有效，但具体某一章的某一段可能已经跟当前 SDK 不一致。书是一份快照，不是永远正确的权威，带着这份对时间敏感的意识读。
-::::
-
-## 全书走完了
-
-47 章走完，从「VRChat 是一个别人可以走进来存在的空间」走到「世界发布之后下一座做什么」。
-
-这条路上有些事是可以教的：Unity 怎么用、UdonSharp 怎么写、网络同步是什么、性能怎么压、世界怎么发布。这些书里都讲过。
-
-有些事书教不动：第二座世界做什么、第三座世界做什么、做了五年世界之后还要不要继续做世界。这些是创作者自己一个一个决定攒起来的。
-
-VRChat 世界开发是一件**可以做很久**的事。第 1 章讲的「人类几万年来一直在做的事」如果有什么意义，意义在这里：构造一个别人可以走进去的空间这件事，在每个时代都有人做，下一代继续会有人做。这本书让其中的一个人少走一段弯路。
-
-剩下的事自己往下走就好。
+本书采用了 AI 协作生成的制作方式，相关来源记录保留在[首页](/)和[关于页](/about/)。制作方式不是技术正确性的证明；章节中的机制、代码和规则分别由官方来源与测试证据支持。
 
 ## 本章参考
 
-- [VRChat Creator Docs 主站](https://creators.vrchat.com/)
+- [VRChat Creator Docs](https://creators.vrchat.com/)
 - [UdonSharp 官方文档](https://udonsharp.docs.vrchat.com/)
-- [VRChat 官方 Discord](https://discord.gg/vrchat)
+- [VRChat Creator Companion](https://vcc.docs.vrchat.com/)
 - [VRChat Creator Forums](https://ask.vrchat.com/)
-- [VRChat 官方 GitHub Organization](https://github.com/vrchat-community)
-- [DeepWiki - VRChat Creator Docs（AI 结构化解读）](https://deepwiki.com/vrchat-community/creator-docs/)
-- [VRCLibrary（社区 Wiki）](https://vrclibrary.com/)
-- [VR Creators 文档站](https://vrcreators.net/docs/vrchat)
-- [VRCD 文档库（中文社区）](https://docs.vrcd.org.cn/)
-- [VRChat 汉化文档中心](https://docs.vrczh.org/)
+- [VRChat 官方 GitHub](https://github.com/vrchat-community)
+- [VRChat Creator Docs：World Debug Views](https://creators.vrchat.com/worlds/udon/world-debug-views/)

@@ -16,7 +16,8 @@
     "fix:chapters": "node scripts/check-chapter-refs.mjs --write",
     "shift:chapters": "node scripts/shift-chapters.mjs",
     "build:og": "node scripts/build-og.mjs",
-    "astro": "astro"
+    "astro": "astro",
+    "check:copy": "node scripts/check-copy.mjs"
   },
   "dependencies": {
     "@astrojs/rss": "^4.0.18",

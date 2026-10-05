@@ -1,75 +1,42 @@
-import { execSync } from 'child_process';
-import fs from 'fs';
+import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 
-const base = 'b7a5e7b';
-let diff = execSync(`git diff ${base}..HEAD`, { encoding: 'utf8' });
-const extra = execSync('git diff HEAD', { encoding: 'utf8' });
-if (extra.trim()) diff += '\n' + extra;
-
+const args = process.argv.slice(2);
+const value = (flag) => {
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+const baseArg = value('--base');
+const output = value('--output');
+if (!baseArg || !output) {
+  console.error('Usage: node scripts/gen-edits-doc.mjs --base <commit> --output <report.md>');
+  process.exit(1);
+}
+const git = (...a) => execFileSync('git', a, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+const base = git('rev-parse', '--verify', `${baseArg}^{commit}`).trim();
+const head = git('rev-parse', 'HEAD').trim();
+const diff = git('diff', '--no-ext-diff', base, '--');
+const stat = git('diff', '--stat', base, '--');
 const files = [];
-let cur = null;
+let current;
 for (const line of diff.split(/\r?\n/)) {
-	if (line.startsWith('diff --git ')) {
-		const m = line.match(/ b\/(.*)$/);
-		if (cur) files.push(cur);
-		cur = { path: m ? m[1] : line, del: [], add: [], deleted: false };
-		continue;
-	}
-	if (!cur) continue;
-	if (line.startsWith('deleted file')) cur.deleted = true;
-	if (line.startsWith('-') && !line.startsWith('---')) cur.del.push(line.slice(1));
-	else if (line.startsWith('+') && !line.startsWith('+++')) cur.add.push(line.slice(1));
+  if (line.startsWith('diff --git ')) {
+    if (current) files.push(current);
+    current = { path: line.match(/ b\/(.*)$/)?.[1] || line, lines: [] };
+  } else if (current) current.lines.push(line);
 }
-if (cur) files.push(cur);
+if (current) files.push(current);
 
-let md = `# 阅读反馈改动对照 · 2026-06-27
-
-基准：\`${base}\`（fact check）→ \`HEAD\` + 工作区未提交改动。
-
-- 反馈清单与待讨论：[\`reader-feedback-2026-06-27.md\`](./reader-feedback-2026-06-27.md)
-- 完整 unified diff（\`b7a5e7b..HEAD\`）：[\`_raw-diff-2026-06-27.patch\`](./_raw-diff-2026-06-27.patch)
-- \`npm install\` + \`npm run build\`：已通过（77 pages）
-
-下文按文件列出 **改前**（删除行）与 **改后**（新增行）。整段删除的 AI 章节等长 diff 会截断，全文以 patch 为准。
-
----
-
-`;
-
+let report = `# 修改对照\n\n基准提交：${base}\n\n当前 HEAD：${head}\n\n范围为基准提交与当前工作区之间的已跟踪文件差异，包含已提交和未提交修改。不包含未跟踪文件。\n\n本脚本不运行构建，不声明 Unity、VRChat 或网站测试通过。测试结果请另附命令、环境和实际输出。\n\n## 文件统计\n\n\`\`\`text\n${stat.trim()}\n\`\`\`\n`;
 for (const f of files) {
-	md += `## ${f.path}${f.deleted ? '（整文件删除）' : ''}\n\n`;
-	if (f.deleted) {
-		md += `**改前**：\`git show ${base}:${f.path}\`\n\n**改后**：文件已删除。\n\n---\n\n`;
-		continue;
-	}
-	const delText = f.del.join('\n').trim();
-	const addText = f.add.join('\n').trim();
-	if (!delText && !addText) {
-		md += '（无正文 diff）\n\n---\n\n';
-		continue;
-	}
-	const cap = (text, label) => {
-		if (!text) return `**${label}**：（无）\n\n`;
-		if (text.length > 6000) {
-			return `**${label}**（节选，全文见 patch，共 ${text.length} 字）\n\n\`\`\`\n${text.slice(0, 2500)}\n…\n\`\`\`\n\n`;
-		}
-		return `**${label}**\n\n\`\`\`\n${text}\n\`\`\`\n\n`;
-	};
-	md += cap(delText, '改前');
-	md += cap(addText, '改后');
-	md += '---\n\n';
+  const body = f.lines.join('\n').trim();
+  const limit = 14000;
+  report += `\n## ${f.path}\n\n`;
+  if (body.length > limit) report += `以下为前 ${limit} 个字符；完整内容以另附 Git patch 为准。\n\n`;
+  const excerpt = body.slice(0, limit);
+  const longestFence = Math.max(2, ...Array.from(excerpt.matchAll(/`+/g), m => m[0].length));
+  const fence = '`'.repeat(longestFence + 1);
+  report += `${fence}diff\n${excerpt}\n${fence}\n`;
 }
-
-md += `## 本轮新增、不在 git diff 基准内的文件
-
-| 文件 | 说明 |
-|------|------|
-| \`.codebuddy/rules/reader-amendments.mdc\` | 禁止预告 / 如果句式 / 不讲 AI 协作 |
-| \`design/reader-feedback-2026-06-27.md\` | 修改 list + 待讨论 |
-| \`design/edits-2026-06-27-before-after.md\` | 本文件 |
-| \`scripts/gen-edits-doc.mjs\` | 生成本文件的脚本 |
-
-`;
-
-fs.writeFileSync('design/edits-2026-06-27-before-after.md', md);
-console.log(`OK: ${files.length} files, ${md.length} chars`);
+writeFileSync(output, report);
+console.log(`Wrote ${output}: ${files.length} tracked files`);

@@ -1,8 +1,8 @@
 ---
-title: 附录 J · 资料导航
+title: 附录 I · 资料导航
 description: VRChat 官方文档、UdonSharp、Unity、社区精华、中文资料的入口汇总。
 sidebar:
-  order: 10
+  order: 9
 pagefind: true
 ---
 
@@ -26,7 +26,7 @@ pagefind: true
 | [Android / Quest](https://creators.vrchat.com/platforms/android/) | Quest 平台限制 |
 | [World Submission](https://creators.vrchat.com/worlds/submitting-a-world/) | 上传发布流程 |
 | [Performance Tips](https://creators.vrchat.com/worlds/performance-tips/) | 性能优化总览 |
-| [Current Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) | 当前钉死的 Unity 版本号 |
+| [Current Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) | 当前支持的 Unity 版本号 |
 
 ---
 
@@ -67,14 +67,12 @@ pagefind: true
 
 | 入口 | 用法 |
 |---|---|
-| [VRChat 官方 Discord](https://discord.gg/vrchat) | 实时问答场。`#world-creation` 频道里日常问题几小时内有人答 |
+| [VRChat 官方 Discord](https://discord.gg/vrchat) | 官方社区交流入口；回复时间不作保证 |
 | [VRChat Creator Forums](https://ask.vrchat.com) | 长期问题归档。比 Discord 检索方便 |
 | [VRChat 官方 GitHub](https://github.com/vrchat-community) | Creator Docs 源码、World 模板、UdonSharp 源码、官方 Prefab 都在这里 |
 | [VR Creators 文档站](https://vrcreators.net/docs/vrchat) | 社区维护的进阶教程 |
 | [VRCLibrary（社区 Wiki）](https://vrclibrary.com/) | 中英对照的社区 Wiki |
 | [VRWorld Toolkit](https://github.com/oneVR/VRWorldToolkit) | Unity 编辑器扩展，世界检查工具，源码本身也是学习材料 |
-| [DeepWiki VRChat 解析](https://deepwiki.com/vrchat-community/creator-docs/) | 社区基于官方 docs 的二次解析 |
-| [DeepWiki UdonSharp API](https://deepwiki.com/vrchat-community/UdonSharp/4-api-reference) | UdonSharp API 二次解析 |
 | [VRChat 官方包列表](https://vrchat.github.io/packages-official/) | VCC 的包源 |
 
 ---
@@ -83,8 +81,8 @@ pagefind: true
 
 | 入口 | 用法 |
 |---|---|
-| [Booth](https://booth.pm/) | 日本同人圈，Avatar / Shader / Prefab 主交易市场 |
-| [Gumroad](https://gumroad.com/) | 欧美创作者主场（poiyomi、lilToon Pro 等） |
+| [Booth](https://booth.pm/) | 提供 Avatar、Shader、Prefab 等资产；逐项查看许可证 |
+| [Gumroad](https://gumroad.com/) | 数字资产销售平台；逐项查看使用与再分发条件 |
 | [Unity Asset Store](https://assetstore.unity.com/) | Unity 官方商店，注意挑选授权允许商用 / 上传到 VRChat 的 |
 
 详细的素材授权讨论见[第 43 章 · 素材、插件和版权](/surviving/assets-and-licenses/)。
@@ -113,10 +111,10 @@ UdonSharp 能用的 C# 子集有限（详见[附录 D](/appendix/udonsharp-limit
 
 | 创作者 | 平台 | 内容类型 |
 |---|---|---|
-| Vowgan | [Gumroad](https://vowgan.gumroad.com/) / [GitHub](https://github.com/VirtualVisions/VowganPrefabs) | World 用 Prefab（菜单、本地化等），社区认可度高，多数免费 |
+| Vowgan | [Gumroad](https://vowgan.gumroad.com/) / [GitHub](https://github.com/VirtualVisions/VowganPrefabs) | World 用 Prefab，包括菜单、本地化等资产的发布入口 |
 | Liya 荔吖 | [Bilibili](https://space.bilibili.com/1577887829) | 中文「零基础 VRChat 地图制作」系列，覆盖 SDK3.0 / Udon |
 
-个人创作者的内容更新频率和准确性不如官方文档稳定，作为学习参考时注意看发布日期。Avatar 向的知名创作者（JustSleightly 等）资源丰富但本书不深入引用，等你做完世界想转头研究 Avatar 时再去顺藤摸瓜。
+社区教程需核对发布日期、适用 SDK 和许可证；与官方接口说明冲突时，以当前官方说明和实际测试为依据。
 
 ---
 
@@ -124,11 +122,11 @@ UdonSharp 能用的 C# 子集有限（详见[附录 D](/appendix/udonsharp-limit
 
 | 入口 | 用法 |
 |---|---|
-| UdonExampleScene（SDK 自带） | VCC 创建新项目时包含的官方示例场景。覆盖 Interact、Pickup、同步等基础交互，是拆解学习的第一站 |
-| [GitHub 搜 `udonsharp`](https://github.com/search?q=udonsharp&type=repositories) | 大量开源 UdonSharp 项目。按 Star 排序能找到社区认可度高的参考实现 |
-| [VRChat 官方 GitHub 模板](https://github.com/vrchat-community) | 官方维护的世界模板和工具，代码质量有保障 |
+| UdonExampleScene（SDK 自带） | VCC 创建新项目时包含的官方示例场景。覆盖 Interact、Pickup、同步等基础交互，可用于对照场景对象与脚本引用 |
+| [GitHub 搜 `udonsharp`](https://github.com/search?q=udonsharp&type=repositories) | 大量开源 UdonSharp 项目。核对许可证、更新时间和适用 SDK 后再使用 |
+| [VRChat 官方 GitHub 模板](https://github.com/vrchat-community) | 官方维护的世界模板和工具，可核对包版本、源码和示例配置 |
 
-读别人的代码是学编程最快的方式之一。进到一个喜欢的开源世界，把它的 UdonSharp 脚本拆开看，比从零写更容易建立心智模型。
+检查示例时同时查看脚本、Inspector 引用和场景层级，单独复制代码不能保留组件配置。
 
 ---
 
@@ -136,6 +134,6 @@ UdonSharp 能用的 C# 子集有限（详见[附录 D](/appendix/udonsharp-limit
 
 | 入口 | 用法 |
 |---|---|
-| [VRChat 旧版文档](https://docs.vrchat.com) | SDK2 时代留下的文档站。Community Labs、Trust Rank 等运营 / 平台规则相关内容仍以这里为权威。**注意**：原站点近期访问可能不稳定，可改用[汉化镜像 `docs.vrczh.org`](https://docs.vrczh.org/docs.vrchat.com/) 查看同样的内容（路径结构一致，去掉 `docs.vrchat.com/` 前缀） |
+| [VRChat 旧版文档](https://docs.vrchat.com) | VRChat 客户端与社区说明入口；开发接口以 Creator Docs 为准。中文辅助资料可查[汉化文档](https://docs.vrczh.org/docs.vrchat.com/) |
 
 旧版文档里涉及 SDK 和 Udon 的技术内容以 Creator Docs 主站为准。只有当 Creator Docs 里搜不到某个运营 / 平台规则时，才回旧版文档查。

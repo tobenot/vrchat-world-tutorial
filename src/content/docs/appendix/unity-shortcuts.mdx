@@ -1,6 +1,6 @@
 ---
 title: 附录 B · Unity 编辑器速查
-description: Unity 编辑器在 VRChat 世界开发中常用的面板、菜单、快捷键。覆盖范围跟着正文成长。
+description: Unity 编辑器在 VRChat 世界开发中常用的面板、菜单、快捷键。含构建、灯光、动画和资源管理入口。
 sidebar:
   order: 2
 pagefind: true
@@ -21,7 +21,7 @@ pagefind: true
 | `Project` | 下方 | 项目所有资产文件夹 |
 | `Console` | 下方（标签切换） | 报错、警告、Log |
 
-详见 [第 4 章 · 第一次面对 Unity](/getting-started/tools/#第一次面对-unity)。
+详见 [第 4 章 · Unity 面板](/getting-started/tools/#unity-面板)。
 
 ---
 
@@ -30,13 +30,13 @@ pagefind: true
 | 操作 | 快捷键 | 出处 |
 |---|---|---|
 | 保存场景 | `Ctrl + S` | [第 5 章](/getting-started/first-world/#第一步新建并保存场景) |
-| 复制选中物体 | `Ctrl + D` | [第 5 章](/getting-started/first-world/#自己改两个值看看) |
+| 复制选中物体 | `Ctrl + D` | [第 5 章](/getting-started/first-world/#参数对照测试) |
 | 删除选中物体 | `Delete` | — |
 | 撤销 / 重做 | `Ctrl + Z` / `Ctrl + Y` | — |
 | 在 Hierarchy 创建空物体 | 右键 `Create Empty` | [第 5 章](/getting-started/first-world/#第三步标记出生位置) |
-| 在 Hierarchy 创建 3D 物体 | 右键 `3D Object → Cube/Sphere/...` | [第 5 章](/getting-started/first-world/#第二步解决踩地创建地板) |
+| 在 Hierarchy 创建 3D 物体 | 右键 `3D Object → Cube/Sphere/...` | [第 5 章](/getting-started/first-world/#第二步创建地板) |
 | 切换工具：移动 / 旋转 / 缩放 | `W` / `E` / `R` | — |
-| Play 模式启停 | `Ctrl + P` | [第 7 章](/workbench/components/#play-mode-调参的陷阱) |
+| Play 模式启停 | `Ctrl + P` | [第 7 章](/workbench/components/#play-mode-修改的保存条件) |
 | 打开 Animation 窗口 | `Ctrl + 6` | [第 17 章](/come-alive/doors-and-states/) |
 | 聚焦 / 框选选中物体到 Scene 视图 | `F` | — |
 
@@ -44,7 +44,7 @@ pagefind: true
 
 ## 菜单路径速查
 
-按使用频率分组。
+按功能分组。
 
 ### 场景与文件
 
@@ -52,15 +52,15 @@ pagefind: true
 |---|---|---|
 | 新建场景 | `File → New Scene` | [第 5 章](/getting-started/first-world/#第一步新建并保存场景) |
 | 打开 SDK 控制面板 | `VRChat SDK → Show Control Panel` | [第 5 章 · 第五步](/getting-started/first-world/#第五步build--test) |
-| 设置 Playmode tint | `Edit → Preferences → Colors → Playmode tint` | [第 7 章](/workbench/components/#play-mode-调参的陷阱) |
+| 设置 Playmode tint | `Edit → Preferences → Colors → Playmode tint` | [第 7 章](/workbench/components/#play-mode-修改的保存条件) |
 
 ### 项目设置（与版本控制相关）
 
 | 菜单 | 路径 | 作用 / 出处 |
 |---|---|---|
-| Asset 序列化模式 | `Edit → Project Settings → Editor → Asset Serialization → Mode` | 必须改成 `Force Text`，YAML 文本才能 diff / merge。[第 42 章](/surviving/version-control/#asset-serialization-mode--force-text) |
-| Meta 文件可见性 | `Edit → Project Settings → Editor → Version Control → Mode` | 默认是 `Visible Meta Files`，确认一遍。[第 42 章](/surviving/version-control/#version-control-mode--visible-meta-files) |
-| Static Batching 总开关 | `Edit → Project Settings → Player → Other Settings → Static Batching` | 默认勾上。[第 38 章](/placeness/performance/#static-batching静态批处理) |
+| Asset 序列化模式 | `Edit → Project Settings → Editor → Asset Serialization → Mode` | 必须改成 `Force Text`，YAML 文本才能 diff / merge。[第 42 章](/surviving/version-control/#第一节unity-的序列化与-meta) |
+| Meta 文件可见性 | `Edit → Project Settings → Editor → Version Control → Mode` | 默认是 `Visible Meta Files`，确认一遍。[第 42 章](/surviving/version-control/#第一节unity-的序列化与-meta) |
+| Static Batching 总开关 | `Edit → Project Settings → Player → Other Settings → Static Batching` | 默认勾上。[第 38 章](/placeness/performance/#static-batching) |
 
 ### 资源与重建
 
@@ -75,24 +75,24 @@ pagefind: true
 
 打开：`Window → Rendering → Lighting`。
 
-`Scene` 选项卡里几个关键字段（默认值适合 VRChat 新世界）：
+Lighting Settings 中的关键字段；具体选项按目标平台、场景与 Unity 版本核对：
 
 | 字段 | 推荐起点 | 作用 |
 |---|---|---|
-| `Mixed Lighting → Lighting Mode` | `Shadowmask` | 直接光实时 + 间接光烘焙，性价比最高 |
-| `Mixed Lighting → Baked Global Illumination` | 开 | 必须开才有间接光 |
-| `Lightmapping Settings → Lightmapper` | `Progressive GPU` | GPU 烘焙比 CPU 快很多（看显卡） |
-| `Lightmapping Settings → Lightmap Resolution` | 30–50 texels/unit | 细节越多数值越大，烘焙时间指数增长 |
+| `Mixed Lighting → Lighting Mode` | `Shadowmask` | 静态阴影与间接光可烘焙，动态部分仍有实时开销 |
+| `Mixed Lighting → Baked Global Illumination` | 开 | 允许生成烘焙全局光照数据 |
+| `Lightmapping Settings → Lightmapper` | `Progressive GPU` | 按显卡支持、可用显存与烘焙结果选择 GPU 或 CPU |
+| `Lightmapping Settings → Lightmap Resolution` | 30–50 texels/unit | 影响每单位面积的采样密度；提高会增加贴图和烘焙成本 |
 | `Environment → Skybox Material` | 默认或自定义 | 决定室外天光颜色 |
 | `Environment → Ambient Mode` | `Baked` | 配合烘焙 |
 
 烘焙按钮：面板**右下角** `Generate Lighting`。  
 旁边的下拉箭头：
 
-- `Bake Reflection Probes` — 只重烘 Reflection Probe（[第 36 章](/placeness/light/#reflection-probe让金属表面真的反光)）
+- `Bake Reflection Probes` — 只重烘 Reflection Probe（[第 36 章](/placeness/light/#reflection-probe环境反射)）
 - `Clear Baked Data` — 旧 Lightmap 没清掉时强制清
 
-详见 [第 36 章 · 烘焙一次 Lightmap](/placeness/light/#烘焙一次-lightmap)。
+详见 [第 36 章 · 生成 Lightmap](/placeness/light/#生成-lightmap)。
 
 ---
 
@@ -119,7 +119,7 @@ pagefind: true
 - 右键空白 → `Create State → Empty` 新建 State
 - 右键 State → `Make Transition` → 拖到目标 State 创建 Transition
 - 右键 State → `Set as Layer Default State` 设默认（橙色）
-- 选中 Transition：Inspector 里调 `Has Exit Time` / `Conditions`（**Has Exit Time 默认勾着，开关响应式动画一定要取消**）
+- 选中 Transition：Inspector 里调 `Has Exit Time` / `Conditions`（需要立即按参数切换时关闭 Has Exit Time；需要播到指定进度时保留）
 
 详见 [第 17 章 · 门、机关和状态](/come-alive/doors-and-states/)。
 
@@ -127,13 +127,13 @@ pagefind: true
 
 ## 性能分析窗口
 
-### Stats 窗口（最便宜）
+### Stats 窗口
 
 打开：`Game` 视图右上角 `Stats` 按钮。
 
-主要看：`FPS`、`Batches`、`Tris`、`Verts`、`Saved by batching`、`Shadow casters`、`SetPass calls`。Editor 里数字会比 Build 后略高，看趋势就行。
+主要看：`FPS`、`Batches`、`Tris`、`Verts`、`Saved by batching`、`Shadow casters`、`SetPass calls`。编辑器与客户端结果可能不同；在固定条件下比较趋势，并用客户端实测确认。
 
-详见 [第 38 章 · 第一节：Stats 窗口](/placeness/performance/#第一节stats-窗口)。
+详见 [第 38 章 · Stats：快速查看渲染统计](/placeness/performance/#stats快速查看渲染统计)。
 
 ### Profiler
 
@@ -141,21 +141,21 @@ pagefind: true
 
 主要看三块：`CPU Usage`（脚本 / 渲染 / 物理 / UI 各耗时）、`GPU Usage`、`Memory`。点 `Game → Play` 之后开始记录。锁定某一帧（`Ctrl+点击时间轴`）能看 Hierarchy 视图里逐方法耗时。
 
-详见 [第 38 章 · 第二节：Profiler 找具体瓶颈](/placeness/performance/#第二节profiler-找具体瓶颈)。
+详见 [第 38 章 · Profiler：定位具体耗时](/placeness/performance/#profiler定位具体耗时)。
 
 ### Frame Debugger
 
 打开：`Window → Analysis → Frame Debugger`。
 
-按帧拆开 Draw Call 序列，能看到「这一帧第几次 Draw Call 画的是谁、用的什么 Shader」。找 Overdraw / 透明物体批次很有用。**比 Profiler 更深一层**，平时不开。
+按帧拆开 Draw Call 序列，能看到「这一帧第几次 Draw Call 画的是谁、用的什么 Shader」。找 Overdraw / 透明物体批次很有用。用于逐项核对绘制来源；Profiler 用于测量各系统耗时。
 
 ### Occlusion Culling 窗口
 
 打开：`Window → Rendering → Occlusion Culling`。
 
-烘焙顺序：先把场景里**不动的物体**全部标 `Static`（Inspector 右上角 `Static ▾`）→ 打开本窗口 → 底部 `Bake` 按钮 → 等几分钟 → 烘焙数据存到场景里。
+烘焙顺序：为适用对象分别配置 Occluder Static / Occludee Static 标记（Inspector 右上角 `Static ▾`）→ 打开本窗口 → 底部 `Bake` 按钮 → 等几分钟 → 烘焙数据存到场景里。
 
-详见 [第 38 章 · 第四节：Occlusion Culling 烘焙](/placeness/performance/#第四节occlusion-culling-烘焙)。
+详见 [第 38 章 · Occlusion Culling](/placeness/performance/#occlusion-culling)。
 
 ---
 
@@ -176,7 +176,7 @@ pagefind: true
 - `Build & Publish for Windows`（上传 PC 版）
 - 切平台后是 `Build & Publish for Android`（上传 Quest 版）
 
-`Settings` 标签下还能找到 **`Udon → Class Exposure Tree`**：写 UdonSharp 时查"这个 API 在不在白名单"的入口（[第 12 章](/programming/udonsharp-personality/#第一类unity--c-的某些-api-没被-udon-暴露)）。
+Unity 顶部菜单 **`VRChat SDK → Udon Sharp → Class Exposure Tree`**：写 UdonSharp 时查"这个 API 在不在白名单"的入口（[第 12 章](/programming/udonsharp-personality/#api-开放范围)）。
 
 ---
 
@@ -186,12 +186,12 @@ UdonSharp 脚本在以下时机会触发重新编译：
 
 | 触发条件 | 说明 |
 |---|---|
-| 修改 `.cs` 文件并保存（IDE 里 Ctrl+S） | Unity 检测到文件变化 → 普通 C# 编译 → UdonSharp 把 IL 翻成 Udon Assembly |
+| 修改 `.cs` 文件并保存（IDE 里 Ctrl+S） | Unity 检测脚本变化并编译；UdonSharp 按项目设置将受支持的 C# 程序转换成 Udon 程序 |
 | 在 Unity 编辑器里手动 `Ctrl+R`（Refresh） | 强制重扫资产 |
 | 进入 Play 模式（`Ctrl+P`） | 编译失败时 Play 不会启动 |
 | 切平台（PC ↔ Android） | 切完会全量重编译一次 |
 
-编译产物：`Assets/Resources/SerializedUdonPrograms/` 下生成的 `.asset` 文件（Udon 字节码缓存）。这个目录可以 `.gitignore`，每次拉项目重编自动重新生成（[第 42 章](/surviving/version-control/#第六节vrchat--vcc-特殊事项)）。
+编译产物：`Assets/Resources/SerializedUdonPrograms/` 下生成的 `.asset` 文件（Udon 字节码缓存）。这个目录可以 `.gitignore`，每次拉项目重编自动重新生成（[第 42 章](/surviving/version-control/#第六节vcc-与依赖恢复)）。
 
 详见 [第 12 章](/programming/udonsharp-personality/)。
 
@@ -199,12 +199,12 @@ UdonSharp 脚本在以下时机会触发重新编译：
 
 ## 资源管理（VCC 与 Package Manager）
 
-VRChat 世界项目用 **VCC（Creator Companion）** 管理 SDK 与社区包，**不**用 Unity 自带 Package Manager 装 VRChat 相关包：
+本书用 **VCC（Creator Companion）** 管理 VRChat SDK 与 VPM 包：
 
 - VCC 修改的是项目根 `Packages/manifest.json` 与 `Packages/vpm-manifest.json`。
 - Unity Package Manager（`Window → Package Manager`）仍可以装 Unity 官方的非 VRChat 包（如 TextMeshPro、Cinemachine）。
 
-这两份 `manifest.json` **要进版本控制**，记录了项目依赖。`Library/` 不进版本控制，新机器拉下后 Unity / VCC 会按 manifest 重建（[第 42 章 · VRChat / VCC 特殊事项](/surviving/version-control/#第六节vrchat--vcc-特殊事项)）。
+这两份 `manifest.json` **要进版本控制**，记录了项目依赖。`Library/` 不进版本控制，新机器拉下后 Unity / VCC 会按 manifest 重建（[第 42 章 · 第六节：VCC 与依赖恢复](/surviving/version-control/#第六节vcc-与依赖恢复)）。
 
 ### `.meta` 文件处理
 
@@ -212,18 +212,12 @@ VRChat 世界项目用 **VCC（Creator Companion）** 管理 SDK 与社区包，
 
 - **`.meta` 跟资源文件一起提交、一起删除**。`.gitignore` 里**不要**写 `*.meta`。
 - 在 Unity 编辑器里删资源（Unity 会同步删 `.meta`），别在资源管理器里手动删。
-- 拉到别人的项目"所有引用都变成 None"时，第一反应：他没提交 `.meta`。
+- 拉取项目后引用变成 None 时，检查相关资产与 `.meta` 是否都已提交，并核对 GUID 和合并记录。
 
-详见 [第 42 章 · Version Control Mode = Visible Meta Files](/surviving/version-control/#version-control-mode--visible-meta-files)。
+详见 [第 42 章 · 第一节：Unity 的序列化与 .meta](/surviving/version-control/#第一节unity-的序列化与-meta)。
 
 ---
 
-## 还没铺开的窗口
+## 其他窗口参考
 
-主线常用编辑器入口已基本到位。下面这几个等正文用到时再补：
-
-- Audio Mixer 窗口（如果未来章节涉及音轨混音）
-- Asset Bundle Browser（VRChat 世界用得少，按需）
-- Cinemachine 工作流（非主线）
-
-碰到这几个窗口需要查时，先去 [Unity Manual](https://docs.unity3d.com/Manual/) 对应页查。
+Audio Mixer、AssetBundle 工具与 Cinemachine 的设置以对应版本的 [Unity Manual](https://docs.unity3d.com/2022.3/Documentation/Manual/) 和包文档为准；这些工具不属于本书的基础构建流程。

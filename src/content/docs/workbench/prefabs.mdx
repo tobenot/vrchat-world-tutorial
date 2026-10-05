@@ -1,97 +1,89 @@
 ---
 title: 8. Prefab，把东西做成模具
-description: 理解 Prefab、Prefab Instance、Override，用它整理可复用的世界物件。
+description: 创建和复用 Prefab，区分实例覆盖、应用、还原与解包。
 sidebar:
   order: 3
 ---
 
-## 先动手做一个 GlowBall
+Prefab 把一组 GameObject、组件和配置保存为可复用资源。场景中的实例与这个资源保持联系，未被实例单独覆盖的属性可以随资源更新。
 
-下面通篇会拿同一个「发光球」当例子，所以这一章一开始，先花两分钟把它做出来。这一步本身没什么新概念，纯粹是给后面的讨论准备一个对象。
+## 创建带点光源的 GlowBall
 
-1. Hierarchy 空白处右键 → `3D Object` → `Sphere`，新物体命名 `GlowBall`，Position 随便放在房间里能看见的位置（比如 `0, 1.5, 0`）。
-2. 选中 `GlowBall`，Inspector 底部 `Add Component` → 搜 `Light` → 加上 Light 组件。
-3. Light 组件里：`Type` 保持默认 `Point`（点光源，向四周发光）；`Range` 改成 `5`；`Intensity` 改成 `2`；`Color` 调一个偏暖的橙黄。
-4. （可选）顺手给 `Sphere` 的 Material 颜色也调成接近的暖色，让球本身看着像在发光，而不是一颗被照亮的白球。材质细节在第 9 章展开，这里先随手调。
+1. 在 Hierarchy 右键 `3D Object → Sphere`，命名 `GlowBall`，Position 设为 `0, 1.5, 0`。
+2. 选中它，使用 `Add Component` 添加 `Light`。
+3. 将 Type 明确设为 `Point`，Range 设为 `5`，Intensity 设为 `2`，Color 设为偏暖的橙黄色。
+4. 将光源 Mode 设为 `Realtime`，Shadows 设为 `None`，观察周围受光表面。
 
-现在场景里有一颗能照亮周围的小球。下面所有的讨论都围绕它展开。
+这里的 `GlowBall` 是球体模型与 Point Light 的组合。Light 照亮周围，不代表球体材质本身具备 Emission；在未配置材质时，球体可以仍显示默认表面。
 
-## 没有 Prefab 是什么样
+需要给球本身配色和自亮时，使用[灯球材质的创建与赋值步骤](/workbench/materials-light/#给灯球设置-emission)。它与 Light 的颜色分别设置，不把灯光颜色当作材质引用。
 
-`GlowBall` 调好了：颜色不错，Range 5，Intensity 2，看着满意。
+## 直接复制与 Prefab 的区别
 
-然后在房间另外三个角落各放一个，`Ctrl+D` 复制三份拖到位。四个球了。
+直接复制一个普通场景对象，会得到独立配置。若有四个独立灯球，统一调整 Range 时需要同时选中它们批量修改，或逐个修改。
 
-第二天觉得 Range 5 太小，照不亮房间，要统一改成 8。于是逐个点四个球，改四次。
+Prefab 则把共有配置保存在一处。实例可以使用各自的位置，同时继承资源中的 Light 参数。是否采用 Prefab，取决于这些对象是否需要共享配置和统一维护，不存在必须达到几次复制的固定门槛。
 
-四个还行。再想象一下：赛博朋克走廊，两侧二十盏壁灯，要统一微调霓虹颜色。改二十次。改到第十五盏一个念头会冒出来：能不能改一次，所有同类灯一起变？
+## 创建 Prefab 资源
 
-能。这就是 Prefab。
+1. 在 Project 的 `Assets` 下新建 `Prefabs` 文件夹。
+2. 把 Hierarchy 中的 `GlowBall` 拖入这个文件夹。
+3. 确认 Project 中生成 `GlowBall.prefab`，场景对象变为 Prefab 实例。
+4. 保存场景。
 
-## 制作模具
+Project 中的是资源，Hierarchy 中的是实例。两者不是同一个对象；修改范围取决于当前编辑的是哪一处。
 
-Prefab 大致可以理解为「生产模具」。配好一个物体，把它存成模具。以后从模具里压出新实例，配置完全一致。
+## 创建多个实例
 
-操作两步：
+将 Project 中的 `GlowBall.prefab` 拖入场景三次，得到三个新增实例。分别命名为 `GlowBall_A`、`GlowBall_B`、`GlowBall_C`，并放在房间不同位置。
 
-1. 在 Project 面板的 `Assets` 下新建文件夹 `Prefabs`。
-2. 把 Hierarchy 里配好的 `GlowBall` 直接拖进 `Prefabs` 文件夹。
+实例根物体的位置和旋转可以各自不同，适合把同一灯具摆在不同区域。这些位置差异不要求创建四份独立资源。
 
-拖完会看到两个变化：Project 面板里多了一个蓝色的 `GlowBall.prefab` 文件；Hierarchy 里 `GlowBall` 的名字和图标变成了蓝色，它现在是一个 Prefab Instance（预制体实例），和磁盘上那个模具绑定了。
+## 修改共有配置
 
-:::tip[为什么是这样？]
-Prefab 的核心思路是「单一数据源」：二十盏灯的配置只存一份在 `.prefab` 文件里，每个实例只记录自己的位置和跟模具不同的地方。改模具一次，全场同步。
+1. 双击 Project 中的 `GlowBall.prefab`，进入 Prefab Mode。
+2. 将 Light 的 Range 从 `5` 改为 `8`。
+3. 保存 Prefab，并返回场景。
+4. 逐个选择实例，检查 Range。
 
-如果不这样，二十盏灯里改第十九盏漏了，进 VR 一看那一盏颜色不对，往回查就成了体力活。
-:::
+没有覆盖 Range 的实例会显示 `8`。这个更新是 Unity 编辑资源的行为，与 VRChat 多人网络同步无关。
 
-## 从模具压出实例
+## Override：实例覆盖
 
-把 Project 面板里的 `GlowBall.prefab` 拖进场景，每拖一次多一个配置好的球。拖三次，加上原来那个，四个球。
+选中场景中的 `GlowBall_C`，单独将 Light 颜色改为绿色。Inspector 会标识它与 Prefab 资源的差异，这就是 Override。
 
-## 修改模具，全场同步
+此时修改 Prefab 的 Range，`GlowBall_C` 仍可继承新范围；修改 Prefab 的颜色，实例的绿色覆盖会保留。覆盖是按具体属性或结构记录的，不是把整个实例全部断开。
 
-双击 Project 面板里的 `GlowBall.prefab`，进入 Prefab 编辑模式（四周变暗，只剩这个球）。
+在实例的 Overrides 菜单里：
 
-把 Light 的 Range 从 5 改成 8，`Ctrl+S` 保存，点左上角箭头退出。
+- **Revert**：撤销选定覆盖，恢复资源中的值。
+- **Apply**：把选定修改写回 Prefab 资源，影响其他没有覆盖该属性的实例。
 
-回到场景，四个球的灯光范围全都自动变成了 8。改一次，全部生效。
+执行 Apply 前核对资源和属性，避免把某个位置专用的配置写成全部实例的共有设置。若一组实例需要共同保留另一套配置，可以创建 Prefab Variant，使差异有明确的资源来源。
 
-## Override：允许个别实例不一样
+## Unpack 的作用
 
-二十盏灯都一样，但其中一盏想做成绿色。
+对实例使用 `Unpack Prefab`，会解除它与对应 Prefab 资源的连接，同时保留场景中当前的物体和配置。资源的后续修改不再传播到这份解包对象。
 
-选中场景里的 `GlowBall_C`，直接把 Light 颜色改成绿色。改完后这个字段旁边出现一条蓝色小标记，Inspector 右上角会多出 `Overrides` 下拉，这代表这个实例在这个参数上和模具不同了。
+存在嵌套 Prefab 时，普通 Unpack 与 Unpack Completely 的范围不同。需要保留内部嵌套资源联系时，先检查层级和菜单选项。解包不等于删除磁盘上的原 Prefab。
 
-接下来：改模具的 Range，`GlowBall_C` 的 Range 跟着变（没被 Override）；改模具的颜色，`GlowBall_C` 颜色不变（已被 Override）。
+## 项目资源分类
 
-:::caution[Override 多了会乱]
-Override 太多，实例和模具的关系会变得难以追踪。一个实例上蓝条多到看不清和模具的差异时，说明它已经偏离模具太远。这时把它做成新的独立 Prefab，或者用 Prefab Variant（预制体变体）来管，比堆 Override 干净得多。
-:::
-
-## 什么时候该做成 Prefab
-
-判断法则很简单：发现自己要复制同一组配置两次以上，就该做成 Prefab。
-
-门（模型 + 碰撞体 + 音效 + 脚本）、交互按钮、椅子、篝火、路灯、传送点，凡是有重复性质的物件，同一套配置要用第二遍时就做成 Prefab。等复制了很多份再改，得逐个实例改或逐个 Unpack。
-
-## Unpack：把实例和模具断开
-
-右键一个 Prefab 实例，选 `Unpack Prefab`，它的名字会从蓝色变回黑色。此后模具怎么改都不再影响它。
-
-适合引入了别人的 Prefab 想拆开研究的时候。但在自己的项目里慎用，解包后就失去全局一键更新的能力。
-
-## 项目目录结构
-
-随着项目推进，文件会越来越多。从第一天就建好这个目录：
+以下结构可以按资源类型区分文件：
 
 ```text
 Assets/
-├─ Scenes/       场景文件
+├─ Scenes/       场景
 ├─ Prefabs/      预制体
 ├─ Materials/    材质
 ├─ Audio/        音频
 └─ Scripts/      脚本
 ```
 
-不用追求精细，但分类要有。一周之后回头看，会感谢现在多花的两分钟。
+在 Unity 的 Project 面板中移动资源，可以同时维护对应的 `.meta` 文件及引用。分类方式可以调整，关键是同类资源位置明确、移动后引用仍然有效。
+
+## 本章参考
+
+- [Unity 2022.3：Prefab](https://docs.unity3d.com/2022.3/Documentation/Manual/Prefabs.html)
+- [Unity 2022.3：实例覆盖](https://docs.unity3d.com/2022.3/Documentation/Manual/PrefabInstanceOverrides.html)
+- [Unity 2022.3：解包 Prefab](https://docs.unity3d.com/2022.3/Documentation/Manual/UnpackingPrefabInstances.html)

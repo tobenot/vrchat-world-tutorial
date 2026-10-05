@@ -1,144 +1,115 @@
 ---
 title: 理解章 A：一个世界是怎么从你的电脑到达别人面前的
 chapterType: concept
-difficulty: 新手
-description: 把 Build & Test、上传、CDN、实例、网络同步串起来，画一张从 Unity 场景到别人客户端的全景图。
-summary: Unity 场景被 SDK 打包成 AssetBundle，上传到 VRChat 后端 CDN；别人在客户端选中你的世界，会先从 CDN 把文件下回去解包，再加入由 VRChat 网络层维护的某个实例。
+difficulty: 基础
+description: 区分 Unity 场景、世界资源包、本地测试、上传、实例和多人同步。
+summary: SDK 把场景及其资源构建为目标平台的世界包。本地测试直接加载本机结果；上传把资源交给 VRChat 分发。玩家在客户端加载资源，并加入具体实例，只有按相应机制同步的状态才会在玩家之间共享。
 sidebar:
   order: 5
 ---
 
-第一部到这里，已经做出了一个能站进去的世界。但「Build & Test」按钮按下去之后到底发生了什么？把场景上传到 VRChat 之后，别人客户端里点一下 `Go`，又是怎么把这个空间复原回他眼前的？
+[第一个世界](/getting-started/first-world/)用 `Build & Test` 加载了本机制作的场景。构建、加载和加入实例是不同环节；它们的错误需要分别检查。
 
-这一章是一张全景图，不教新操作。它把前面做过的事和后面要做的事接起来。读完之后，「网络」「上传」「同步」「Quest」这些后面几部反复出现的词就有了具体的位置。
+## 场景保存的是对象和资源引用
 
-## Unity 场景，本质是一份引用清单
-
-Hierarchy 里那一串 GameObject 看起来像一堆「物体」，但保存到磁盘上的 `MyFirstWorld.unity` 文件，本质是一份 YAML（一种纯文本的结构化格式，主打人类可读，缩进表示层级）：
+`.unity` 场景文件记录 GameObject、组件、层级和可序列化字段。使用文本序列化时，它采用 YAML 格式。以下是示意结构，不是实际文件语法：
 
 ```text
-GameObject Floor
-  Transform: position 0,0,0  scale 10,0.2,10
-  Mesh Renderer → 引用 → Cube.mesh + Default-Material.mat
-  Box Collider:  size 1,1,1
-GameObject Spawn
-  Transform: position 0,0.2,0
-GameObject WorldDescriptor
-  VRC_SceneDescriptor:  Spawns[0] → Spawn
+Floor
+  Transform：位置 0,0,0；缩放 10,0.2,10
+  Mesh Filter → Cube 网格
+  Mesh Renderer → 地板材质
+  Box Collider → 碰撞形状
+Spawn
+  Transform：位置 0,0.2,0
+WorldDescriptor
+  VRC Scene Descriptor：Spawns[0] → Spawn
 ```
 
-注意全是「引用」。`Cube.mesh`、`Default-Material.mat`、那张默认天空盒贴图，都不在场景文件里，它们躺在 `Library/PackageCache/` 或 Unity 内置资源里。场景文件只记录「我用到了它们」。
+网格、材质、贴图、音频和程序资产可以是场景之外的资源。场景保存对它们的引用，不需要把每份原始文件直接写进场景文本。因此，移动或复制工程时必须保留资源与对应的 `.meta` 信息，不能只复制 `.unity` 文件。
 
-这件事之所以重要，是因为接下来要打包，必须把所有被引用到的东西都拽进同一个文件里：别人电脑上没有这套 `Library/`。
+## 构建：把资源转换成客户端可加载的形式
 
-## 打包：Unity AssetBundle
+SDK 先检查场景要求，再调用 Unity 的构建工具。过程包括：
 
-按下 `Build & Test` 时，VRChat SDK 调用 Unity 的 BuildPipeline，做了三件事：
+1. **收集依赖**：从场景及构建配置找出所需的模型、材质、贴图、音频和程序等资源。
+2. **准备目标平台资源**：按平台处理贴图、Shader 等内容，并编译所需的 Udon 程序。
+3. **生成世界包**：构建客户端可加载的 AssetBundle；本地 VRChat 世界构建文件通常使用 `.vrcw` 扩展名。
 
-1. **依赖收集**。从 `MyFirstWorld.unity` 出发，沿着引用图把所有用到的 mesh、texture、material、shader、audio、动画、UdonSharp 编译产物全找出来。没有被引用的资源不会进包，所以 `Assets/` 里那些试做了一半又删掉的废稿，不会偷偷被传上去。
-2. **平台编译**。Shader 会被编译成对应图形 API 的字节码（图形 API 是 GPU 听得懂的指令规范，PC 用 D3D11/12 + Vulkan，Quest 用 OpenGL ES + Vulkan），UdonSharp 脚本被编译成 Udon 字节码。这一步很慢，是 Build 时间的大头。
-3. **打成 `.vrcw` 文件**。底层是 Unity 的 AssetBundle 格式，外层套一层 VRChat 的元信息（世界名、容量、推荐 PC/Quest）。这就是别人将来要下载的那个文件。
+把一个文件放进 `Assets` 不等于一定会打进世界包；是否包含还取决于引用、特殊资源目录和构建流程。检查包体时应查看实际依赖，不能只按工程目录总大小判断。
 
-:::tip[为什么是这样？]
-Unity 之所以不直接传源工程，是因为源工程里 `.cs` 脚本要现场编译、`.shader` 要按目标显卡重新编译、`.psd` 要被 Unity 重新切。把这些事在创作者电脑上做完一次，下游所有玩家就只需要消费一份编译好的二进制。一次编译，几万次播放，这就是「构建」这个词在游戏开发里的意义。
-:::
+这里构建的是供已有 VRChat 客户端加载的内容，不是把整个 Unity 工程变成一个新的独立游戏程序。原始 PSD、编辑器工具和源码也不等于它们的运行时资源形式。
 
-## Build & Test：本地的捷径
+## Build & Test：本机加载
 
-`Build & Test` 和正式发布走的不是同一条路。
+`Build & Test` 生成本地构建结果，并启动 VRChat 加载它。SDK 的 Builder 设置可以指定客户端数量及是否强制桌面模式。`Build & Reload` 则用于把运行中的客户端切到新构建结果，具体选项以当前 SDK 面板为准。
 
-`Build & Test` 打完包之后，文件直接落在本地一个临时目录（Windows 默认 `%USERPROFILE%\AppData\LocalLow\VRChat\VRChat\Worlds\`），然后通过命令行参数把本机 VRChat 客户端拉起来，让它直接读这个本地文件。整条路都不出这台电脑。所以：
+这一步不会上传或公开世界，其他人的普通客户端不能通过世界目录找到这份本地构建。官方工具允许在同一电脑上启动多个测试客户端，用来观察支持的多人行为；因此「本地测试」不等于所有网络能力都被关闭。参见 [Build & Test 文档](https://creators.vrchat.com/worlds/udon/using-build-test/)。
 
-- 别人加不进来。他没本机硬盘上那个文件。
-- 不消耗世界配额，也不会被 VRChat 后端审核。
-- 速度快，是日常迭代用的循环：改一行 → Build & Test → 进世界看 → 改一行。
+如果构建完成但客户端没有启动，检查 SDK 中的 VRChat Client 路径、客户端数量和启动日志。如果客户端启动后场景不对，确认当前打开并保存的是预期场景。
 
-这条本地捷径是开发时主要的工作模式。它解释了一件事：场景从来没传到任何地方，但已经能在一个能跑的世界里走来走去。
+## 上传：保存世界资源和描述信息
 
-## 正式上传：到 VRChat 云
+`Build & Publish` 使用账号授权把构建结果和世界信息上传到 VRChat。世界名、描述、缩略图、容量、标签和访问状态等是世界记录的一部分，不应全部当作 AssetBundle 内部字段。
 
-点 SDK 控制面板里的 **Build & Publish** 时，多了一段「往外走」的路：
+世界拥有形如 `wrld_...` 的 ID。更新同一个世界时，关联的是新的资源版本；它与「重新创建一个新世界 ID」不同。VRChat 通过自己的内容分发服务向客户端提供资源，无需在教程中假定具体存储供应商或 HTTP 请求实现。
 
-这里先垫两个词：**对象存储**可以先理解成「云端文件仓库」，负责放 `.vrcw`；**CDN**（内容分发网络）可以先理解成「离玩家更近的下载仓库」，负责让不同地区的玩家更快把文件拉下来。
+上传成功也不等于所有玩家都能搜索和进入。账号上传权限、世界可见性、发布状态和目标平台构建均有各自要求。参见 [官方世界创建与发布说明](https://creators.vrchat.com/worlds/creating-your-first-world/)。
 
-1. 同样先打成 `.vrcw`。
-2. SDK 用登录账号时拿到的 token（一段临时的登录凭证），把这个文件上传（HTTP `PUT`）到 VRChat 后端的对象存储（目前主要是 Cloudflare R2），再通过 CDN 分发给玩家下载。
-3. 同时把世界元信息（名字、描述、缩略图、容量、Tag、是 Public 还是 Private）写进 VRChat 的数据库，得到一个全局唯一的 `wrld_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` ID。
-4. 后端把这个 ID 和 CDN URL 返回给客户端。
+## 玩家加载世界
 
-到这一步为止，「世界」其实就是 CDN 上的一个文件加数据库里一行记录。
+客户端加入一个世界实例时，需要获取适合当前平台的资源版本；已有有效缓存时可以复用，否则下载资源。Unity 随后加载场景、资源和组件，VRChat 根据 Scene Descriptor 等配置放置玩家并启动相应行为。
 
-## 别人加入：从 CDN 拉，再装进 Unity Runtime
+下载与加载耗时不同：网络速度和压缩包大小影响下载；资源解压、内存占用和初始化工作影响加载。同一包再次进入时可能因缓存减少下载，但不保证省略场景加载。
 
-朋友点开他的 VRChat 客户端，搜到这个世界，按 `Go`：
+Unity 编辑器 Play Mode 与 VRChat 客户端的加载路径、输入和可用功能并不完全相同。编辑器内测试通过，仍需要客户端测试。
 
-1. 客户端向 VRChat 后端要这个 `wrld_xxxx` 的当前版本 URL。
-2. 客户端去 CDN 把 `.vrcw` 拖回本地。世界越大，别人加载越慢；这也是为什么后面 Quest 章节会反复要求压贴图，加载方可能在用 4G 网下载这些图片。
-3. 文件落地后，客户端内嵌的 Unity Runtime 解包 AssetBundle，把 mesh、material、shader 装进显存（GPU 自己用的高速内存，专门给画面渲染用），把场景结构在内存里重建出来。这一步做的事和编辑器里按 Play 时做的事**几乎一样**。
-4. 实例化 GameObject，VRC Scene Descriptor 决定把人放到 `Spawn` 物体的位置。
-
-第一次加入会有一段「Downloading」「Loading」转圈，就是步骤 2 和 3。第二次再来就快得多，因为 `.vrcw` 已经在他客户端的本地缓存里了，除非有新版本上传（那 ID 不变但版本号变了）。
-
-## 实例（Instance）才是真正在跑的东西
-
-到目前为止说的「世界」，其实只是一份**静态地图**：一份 `.vrcw` 文件加一行数据库记录。它躺在 CDN 上不会动。
-
-真正能多人玩的东西叫**实例 (Instance)**。
+## 世界与实例
 
 ```text
-World      = 一个可被加载的空间（一个 .vrcw 文件）
-Instance   = 一群人此刻一起跑这个世界的一次具体聚会
+World    世界定义及其可加载资源
+Instance 该世界的一次具体多人会话
 ```
 
-第一个进入这个世界的人会在 VRChat 的网络服务器上「开一个房间」，他成为这个实例的 **Master**（实例主）；后来的人加入的是这个具体的实例。同一个世界可以同时存在几百个实例，互相完全隔离。想和朋友在同一个世界里见面，必须确保进的是同一个实例（这就是为什么 VRChat 客户端里有 `Public / Friends+ / Friends / Invite+ / Invite` 这些访问级别和长串的 Instance ID）。
+同一个世界可以同时有多个实例。想与朋友见面，需要进入同一个实例，并满足它的访问条件。世界 ID 相同，不表示实例相同。
 
-实例本身不在 CDN 上，它活在 VRChat 自研的网络层里。所有玩家位置、按了哪个按钮、抓起了什么东西，都是通过这一层广播给同一实例里的其他人。这条线在第六部会展开。
+每位玩家的客户端都运行自己的场景。玩家移动等内置行为有平台提供的同步机制；自定义灯光、分数、按钮状态则需要作者配置相应同步。单独执行 `Light.enabled = false` 不会自动通知所有玩家。
 
-:::note
-**世界**是 CDN 上的 `.vrcw` 文件；**实例**是某次具体聚会。同一世界可以同时存在很多实例，实例之间数据不互通——上一个实例里摆好的东西不会带到新实例；最后一人离开后实例销毁，再进就是新实例。要和特定的人见面，需要进同一个实例（访问级别 + Instance ID）。
-:::
+实例内的临时状态也不等于持久化保存。需要跨会话保留的数据必须使用明确的持久化机制；不能从「已上传世界」推断运行中的一切变化都会保存。参见 [官方 Udon 网络同步说明](https://creators.vrchat.com/worlds/udon/networking/)。
 
-## 跨平台：PC、Android（含 Quest）、iOS 各一份
+## 目标平台分别构建
 
-VRChat 现在跑在 PC、Meta Quest、iOS 等平台上。GPU、CPU、可用内存差几个数量级，没法共用一个 AssetBundle。
+PC、Android 和 iOS 的资源格式、Shader 支持和设备能力不同。支持多个平台，需要为对应目标构建并上传到同一世界记录，不能只上传 PC 包就认为移动设备能访问。
 
-所以**同一个世界**在 CDN 上存的是**多份文件**：PC 版、Android 版、iOS 版。每一份都要在 Unity 里切到对应 Build Target 重新打一次包再上传。Android 版还会受 Mobile 限制：shader 白名单、实时光数量、贴图大小等（第七部第 39 章会专门展开）。
+Quest 和 Android 手机使用 Android 平台资源，但测试条件不同：VR 涉及双眼渲染、头部跟踪和控制器输入，手机使用平面屏幕和触控。手机测试可以发现部分 Android 兼容问题，不能代替 Quest 上的帧率、尺度和交互测试。反方向也不能作性能保证。各设备支持情况以 [官方平台文档](https://creators.vrchat.com/platforms/) 为准。
 
-SDK 文档里写的 **Quest**，在创作者侧通常就是指 **Android 构建**。Unity 里选 Android 打出来的包，Quest 头显和手机 App 下载的是同一份世界资源；**iOS** 另有一份构建。
+## Unity 版本为什么需要匹配
 
-没有 Quest 时，把手机连 Unity 做 Android Build & Test，能验加载、粉材质、包体超限等「Android 版能不能用」，日常开发多半到这一步就够。
+AssetBundle、资源导入器、Shader 编译和 SDK 工具都受 Unity 版本影响。VRChat 指定编辑器版本是兼容性要求，不表示所有相邻版本必然产生相同错误。安装与迁移时核对 [当前 Unity 版本](https://creators.vrchat.com/sdk/upgrade/current-unity-version/)，并保留升级前的项目副本。
 
-Quest 和手机跑的是同一份资源，体验不是一回事：Quest 走 VR 双眼渲染和手柄/手势，手机是触屏。掉帧在 VR 里会晕，平屏上不一定感觉得到；视距、尺度、VR 交互手机也验不准。Quest 上帧率过关，手机通常也没问题；反过来不成立。对外标 Quest 支持前，最好还能用 Quest 实机过一遍。
-
-服务器在玩家加入时按客户端平台返回对应那一份。PC 上 Build & Publish 完只发了 PC 版时，Quest 玩家点开会看到「This world has no Quest version」。
-
-## 那 Unity 编辑器版本为什么要钉死
-
-`.vrcw` 是用某个 Unity 版本编译出来的二进制资源。Unity 大版本之间会改 AssetBundle 格式、改 IL2CPP 中间表示、改 shader 编译流程。如果允许大家用任意 Unity 版本上传，VRChat 客户端就得同时兼容十几种 AssetBundle 格式，工程上撑不住。
-
-VRChat 的解法是钉死一个 Unity 版本（写作此书时是 `2022.3.22f1`），客户端和所有创作者都用这同一个版本。版本不对的项目根本打不出有效 `.vrcw`。这是为什么 VCC 第一件事就是检查这个特定版本的 Unity 装没装，它在保护这条管道的兼容性。
-
-## 一张可以反复回看的全景图
+## 管线与检查位置
 
 ```text
-创作者电脑                                         玩家电脑
-─────────                                         ──────────
-Unity Scene  ─[SDK BuildPipeline]→  .vrcw  ──→  VRChat CDN  ──→  下载 .vrcw
-   │                                                                │
-   │  Build & Test                                                  ▼
-   └─→ 本地临时目录 ─→ 本机 VRChat 客户端                     Unity Runtime 解包
-                                                                    │
-                                                                    ▼
-                                                    加入某个 Instance（VRChat 网络层）
-                                                                    │
-                                                                    ▼
-                                            位置 / 按钮 / 拾取 / 语音 全部走网络层广播
+Unity 场景和资源
+    → SDK 校验与目标平台构建
+    ├─ 本地结果 → Build & Test → 本机 VRChat
+    └─ 上传结果 → VRChat 内容分发 → 玩家客户端下载
+                                      ↓
+                          客户端加载场景并加入实例
+                                      ↓
+                   本地执行 + 已配置的网络状态与事件同步
 ```
 
-第一部到这里收尾。后面几部的位置可以这样找：
+构建报错查 Console 和 SDK 校验；下载失败查资源与网络状态；进入后位置错误查 Spawn 与碰撞；只有某位玩家看到变化则查该变化是否属于本地逻辑或已配置同步。
 
-- **第二部 工作台**：放大图最左上角那个 `Unity Scene` 的内部结构，包括 GameObject、Component、Prefab、Material、Light。
-- **第三、四部 编程和交互**：往 Scene 里塞 Udon Behaviour，让按钮、Trigger、门有反应，但都还在「单机」尺度。
-- **第六部 和别人一起**：图最右下角那条「网络层广播」展开。多人同步从这里讲起。
-- **第七部 让世界变成一个地方**：在每个环节里抠体验和性能：Mesh 多大、贴图多重、Light 怎么烘、加载多久。
-- **第九部 发出去**：把 `Build & Publish` 那条路走完，包括元信息、Tag、Community Labs。
+## 按管线环节查操作
+
+| 用途 | 操作入口 |
+|---|---|
+| 查看场景对象、组件与资源引用 | [场景物体与组件](/workbench/) |
+| 设置按钮、Trigger、门或拾取物的响应 | [交互与状态](/come-alive/) |
+| 判断状态由谁修改、怎样传给其他客户端 | [多人同步](/with-others/) |
+| 区分资源下载、渲染和脚本开销 | [性能与测量](/placeness/performance/) |
+| 上传、更新同一个 World ID 并核对结果 | [发布你的世界](/publishing/submit-your-world/) |
+
+查阅时从当前故障所在环节进入。例如，已有本地灯光开关但其他客户端看不到变化，使用同步章节中的对象配置与多人测试；重新上传本身不会为脚本添加同步。

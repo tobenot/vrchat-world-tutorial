@@ -1,379 +1,429 @@
 ---
 title: 29. 后来的人怎么办
-description: 第三个玩家半路加入实例。同步变量自动追上当前状态，但 SendCustomNetworkEvent 发过的一次性事件追不上。OnPlayerJoined 是迟到玩家的同步入口，OnDeserialization 在加入瞬间也会被调一次用来初始化。门半开半关、动画的当前进度怎么处理。
+description: 让中途加入者接收当前同步状态，区分初始恢复与新事件，并处理动画终态、玩家列表和 Owner 接管。
 difficulty: 进阶
 estimatedMinutes: 40
 chapterType: hands-on
 requiresSDK: true
-summary: 第六部第四章。前三章假设玩家从世界一开始就在场。这一章处理迟到玩家：同步变量在他加入时会自动追上、SendCustomNetworkEvent 发过的事件他收不到、动画当前进度需要主动维护、OnPlayerJoined 是给所有人通知「有新人来了」的钩子。讨论几种典型的「迟到看到错状态」场景，给三种修法。
+summary: 后加入者收到已同步的最新变量，而不会重放历史网络事件。OnDeserialization 用于应用状态，OnPlayerJoined 用于处理玩家名单变化；两者没有可依赖的固定先后顺序。动画可以显示终态，也可用共享时间基准恢复进度。
 sidebar:
   order: 4
 ---
 
-第 28 章那盏灯，两个客户端开始一起玩同一份状态。Alpha 第一个进，Beta 跟着进，按按钮，两边一起亮一起灭。
+让 Alpha 先把第 28 章的同步灯打开，再让 Charlie 加入同一实例。Charlie 收到最新的 `isOn` 后，通过 `OnDeserialization → ApplyState` 将灯设为开启，不需要 Alpha 再按一次。
 
-把测试改一下：Alpha 进来先把灯按灭，然后让 Charlie 第一次进入这个实例。Charlie 一进来看到的灯，是亮还是灭？
+这里的「最新」指已经同步出去的状态。Owner 尚未成功发送的本地修改，不会因为有人加入就自动成为可恢复的结果。
 
-正确答案：灭。VRChat 的同步变量机制在 Charlie 加入的瞬间，自动把所有 `[UdonSynced]` 字段的当前值发给她，并触发她客户端的 `OnDeserialization`。Charlie 的 `ApplyState` 跑一次，灯熄灭。她看到的状态跟其他人一致。
+## 状态与历史事件
 
-听起来没问题。但 Charlie 不一定每次都这么幸运：
-
-- 那扇门正在开关动画的中段，Charlie 加入时看到的是「门完全开了」还是「门停在开了一半」？
-- Alpha 五分钟前发了一次 `SendCustomNetworkEvent(All, "PlayExplosion")`，Charlie 没听到那次爆炸。她需要听到吗？
-- 计分板上写「Alpha: 3，Beta: 2」，Charlie 加入了。她的名字不在计分板上，是系统自动加进来的还是要她主动注册？
-
-这一章把这些「迟到玩家」的问题挨个看一遍。
-
-## 同步变量自动追，事件追不上
-
-这件事先在头脑里有一张分工表：
-
-| 工具 | 迟到玩家会自动收到吗？ |
+| 内容 | 后加入者的处理 |
 | :--- | :--- |
-| `[UdonSynced]` 字段 | ✅ 加入瞬间自动同步当前值，并触发 `OnDeserialization` |
-| `SendCustomNetworkEvent` | ❌ 已经发过的事件不会回放 |
-| `VRC Object Sync` 的位置 / 旋转 | ✅ 自动同步当前 Transform 状态 |
-| 一段动画播放进度 | ❌ 需要作者自己维护 |
-| 玩家头像位置 / 动作 | ✅ VRChat 内置同步，迟到也会立刻看到 |
+| UdonSynced 字段 | 收到最近已同步的值后应用 |
+| 已经发送的网络事件 | 不重放 |
+| Object Sync 管理的位置与旋转 | 由组件恢复当前同步状态 |
+| Animator 当前播放进度 | 不因同步了 bool 就自动恢复 |
+| 计分板、回合和玩家槽位 | 应由同步数据重建显示 |
 
-简单总结：**「持续状态」可以靠同步变量带过去，「发生过的瞬时事件」追不上**。要让迟到玩家正确进入世界，作者的活就是把所有持续状态都装进同步变量。
+同步到达不是加载瞬间的原子动作。可在初始同步完成前显示「同步中」，避免把临时初值误当成最终结果。
 
-## OnPlayerJoined 是欢迎新玩家的钩子
+## OnPlayerJoined 与 OnDeserialization
 
-VRChat 里每位玩家加入或离开实例，所有客户端都会触发两个事件：
+`OnPlayerJoined(VRCPlayerApi player)` 表示本机获知一位玩家加入；`OnPlayerLeft` 表示离开。新客户端也需要建立已有玩家的名单，不能假定它只收到一次「自己加入」事件。
 
-```cs
-public override void OnPlayerJoined(VRCPlayerApi player)
-{
-    // player：新加入的玩家
-    // 这段代码在所有当前客户端上都会跑一次（包括新玩家自己的客户端）
-}
+`OnDeserialization()` 表示本 Behaviour 收到了同步字段。它不是每个玩家加入都无条件调用一次，也不保证先于或后于某次 OnPlayerJoined。
 
-public override void OnPlayerLeft(VRCPlayerApi player)
-{
-    // player：刚离开的玩家
-}
-```
+分别承担责任：
 
-`OnPlayerJoined` 触发时机的几条规则：
+- OnPlayerJoined / OnPlayerLeft：更新或核对玩家名单，处理加入离开的业务条件
+- OnDeserialization：根据收到的字段重建本地灯、门、UI
+- 本地初始化标记：区分第一次显示与后续变化，不同步给别人
 
-- 实例已经在场的所有客户端都会触发，参数 `player` 是新加入的那个。
-- 新加入的玩家自己的客户端也会触发一次，参数是**她自己**。这件事第一次写常常忽略：以为这个事件是「告诉老人有新人来了」，其实新人也收到一次告诉自己「我自己进来了」。
-- 所有 UdonBehaviour 的 `OnPlayerJoined` 都会被调用。一个场景里有几十个 UdonBehaviour，全部都会跑一次。
+VRChat 会为后加入者提供同步变量，无需为了普通初始恢复在每次 OnPlayerJoined 里额外广播全部状态。只有名单等共享数据确实变化时，Owner 才需要发布新值。
 
-::::tip[OnPlayerJoined 跟 OnDeserialization 的差别]
-两个回调都在「玩家加入」时跑，但角色不同：
+## 门方案 A：首次接收时显示终态
 
-- `OnPlayerJoined(VRCPlayerApi player)`：每位玩家加入时所有 UdonBehaviour 都触发一次，参数是这位玩家。用来做「有人进来了」的反应：欢迎音效、加进玩家列表、记录加入时间戳。
-- `OnDeserialization()`：本机客户端收到服务器推过来的同步变量更新时触发。新玩家自己加入时是从「全空白」状态收到一份完整快照（snapshot，某一时刻所有同步字段当前值打包成的初始数据），所以会触发一次。已经在场的玩家不会因为有人加入而触发 `OnDeserialization`（除非有人改了同步字段）。
+设开门动画长 0.5 秒，Alpha 已经看到门开始移动。Charlie 之后才收到 `isOpen=true`：如果从头播放，他看到的进度就以自己的接收时刻为起点，不能从这个 bool 得知 Alpha 已播放多久。将动画临时改长到 5 秒，在动画途中加入，会更容易观察这一区别；两端偏差应以实际日志为准，不能把加入耗时固定成某个数值。
 
-新玩家加入实例的瞬间，她自己的客户端上：
-- 所有 UdonBehaviour 的 `OnPlayerJoined` 都跑一次，参数是她自己。
-- 所有挂着同步变量的 UdonBehaviour 都从服务器收到当前值快照，触发 `OnDeserialization`。
+如果需求是「加入后立刻看到门已打开」，可以跳到明确的 Animator 状态。用这个完整版本替换 `SyncedDoorController.cs`，不要另建第二个同名类，也不要同时挂载两个控制门的脚本。沿用第 17 章的 `Door_Closed`、`Door_Open`、`Door_Close` 状态与 `IsOpen` 参数：
 
-两件事时序上几乎同时，但功能不重合。
-::::
+```cs title="SyncedDoorController.cs（初始状态恢复版）"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
 
-## 实战修法：动画的当前进度
-
-第 28 章那扇同步门，迟到玩家会撞上一个微妙问题。考虑这条时序：
-
-- Alpha 站在门边按了一下，门开始播开门动画（半秒滑开）。
-- 动画播到第 0.2 秒时 Charlie 加入实例。
-- Charlie 的客户端上 `isOpen = true`（同步变量收到了），`OnDeserialization` 调 `StartAnimation`，门**从头**开始播开门动画。
-- Alpha 那边动画播到 0.5 秒结束，门完全开。
-- Charlie 那边动画从 0 开始播 0.5 秒结束，比 Alpha 晚了 0.2 秒。
-
-短半秒的不同步在多数场景看不出来。但要是动画长 5 秒（电梯门、机关装置），Charlie 看到一个迟到 5 秒的怪异行为：她加入时门看着已经开了，结果在她眼前又重演了一次开门动画。
-
-修法分两种思路。
-
-### 方案 A：跳到动画终点
-
-最简单：迟到玩家直接看到动画的「最终状态」，不补播过程。
-
-```cs title="DoorController.cs（迟到友好版）"
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class DoorController : UdonSharpBehaviour
+public class SyncedDoorController : UdonSharpBehaviour
 {
     public Animator doorAnimator;
     public float animationDuration = 0.5f;
 
-    [UdonSynced]
-    private bool isOpen = false;
+    [UdonSynced] private bool isOpen;
+    private bool hasInitialized;
+    private bool displayedIsOpen;
+    private float nextLocalInteractTime;
 
-    private bool isAnimating = false;
-    private bool hasInitialized = false;
-
-    public override void Interact()
+    private void Start()
     {
-        if (isAnimating) return;
-        if (!Networking.IsOwner(gameObject))
-        {
-            Networking.SetOwner(Networking.LocalPlayer, gameObject);
-        }
-        isOpen = !isOpen;
-        RequestSerialization();
-        StartAnimation();
+        if (Networking.IsOwner(gameObject)) _InitializeOwner();
     }
 
-    public override void OnDeserialization()
+    public void _InitializeOwner()
     {
-        if (!hasInitialized)
+        if (!Networking.IsOwner(gameObject) || hasInitialized) return;
+        if (!Networking.IsNetworkSettled)
         {
-            // 第一次收到同步：直接跳到终点状态，不播动画
-            ApplyStateInstant();
-            hasInitialized = true;
+            SendCustomEventDelayedSeconds(nameof(_InitializeOwner), 0.5f);
             return;
         }
 
-        // 后续状态变化：照常播动画
-        StartAnimation();
+        ApplyStateInstant();
+        hasInitialized = true;
+        RequestSerialization();
     }
-
-    private void ApplyStateInstant()
-    {
-        if (doorAnimator != null)
-        {
-            doorAnimator.SetBool("IsOpen", isOpen);
-            // Animator.Update(animationDuration) 让动画立刻推进到末态
-            doorAnimator.Update(animationDuration);
-        }
-    }
-
-    private void StartAnimation()
-    {
-        isAnimating = true;
-        if (doorAnimator != null)
-        {
-            doorAnimator.SetBool("IsOpen", isOpen);
-        }
-        SendCustomEventDelayedSeconds(nameof(OnAnimationFinished), animationDuration);
-    }
-
-    public void OnAnimationFinished()
-    {
-        isAnimating = false;
-    }
-}
-```
-
-新加的字段 `hasInitialized` 是一个本地标记（**不**加 `[UdonSynced]`，每个客户端各自维护）。第一次 `OnDeserialization` 调用时跳过动画播放，直接把门切到终态；之后正常走。
-
-`Animator.Update(deltaTime)` 是 Unity 给的工具方法：手动推进 Animator 状态的时间。传一个比动画长得多的值，状态会立刻跑到终点。
-
-::::tip[hasInitialized 是同步还是不同步]
-答案：**不**同步。
-
-每个客户端有自己的 `hasInitialized`：Alpha 加入时，她那台机器的 `hasInitialized` 从 false 变成 true（第一次 `OnDeserialization` 跑时）。Beta 后来加入，Beta 那台机器的 `hasInitialized` 从 false 开始，第一次 `OnDeserialization` 调用时也会跳过动画。
-
-如果把 `hasInitialized` 标成同步，会出怪事：Alpha 把它改成 true 后广播给 Beta，Beta 加入时拿到的是 `hasInitialized = true`，第一次 `OnDeserialization` 进入「后续状态变化」分支，反而播了动画。
-
-凡是「标记本机客户端走到了哪一步」的状态，都该是本地的、不同步的字段。
-::::
-
-### 方案 B：同步动画进度
-
-更精确的做法：把「动画开始时间」和「目标状态」一起同步。Charlie 加入时算出「动画该播到第几秒了」，从那个时间点开始播。
-
-代价：脚本复杂度升一档。多数情况下方案 A 已经够用。Chill 世界里门「啪」地从 0 跳到开了的位置，玩家很难注意到。
-
-::::caution[别为了一致追求过度同步]
-迟到玩家不可能看到「过去发生过的事的过程」。这件事的本质是：她加入之前那段时间她不在场，那段历史对她而言不存在。
-
-试图把所有动画进度同步过去给她回放，是在制造一种「过去也包括我」的错觉。错觉本身有成本（带宽、复杂度），换来的体验提升常常微乎其微。
-
-实用原则：保证迟到玩家加入后看到**正确的当前状态**，**正在进行的过程**让她跳到结果。除非那个过程本身就是世界的核心体验（VRChat 演出世界里某个 5 分钟的灯光秀），否则不值得同步进度。
-::::
-
-## 实战修法：迟到注册到玩家列表
-
-游戏世界常有「玩家列表」。第 30 章会做一个四人计分板，每个加入的玩家自动占一个槽位。这件事得在 `OnPlayerJoined` 里处理。
-
-简化版的玩家槽位管理：
-
-```cs title="PlayerSlotManager.cs（节选）"
-[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class PlayerSlotManager : UdonSharpBehaviour
-{
-    [UdonSynced]
-    private int[] playerIds = new int[4]; // 占位的 4 个玩家 ID（0 表示空槽）
-
-    [UdonSynced]
-    private int playerCount = 0;
-
-    public override void OnPlayerJoined(VRCPlayerApi player)
-    {
-        // 只让 Owner 处理这件事，其他客户端跑了也没用
-        if (!Networking.IsOwner(gameObject)) return;
-
-        // 找一个空槽位
-        for (int i = 0; i < playerIds.Length; i++)
-        {
-            if (playerIds[i] == 0)
-            {
-                playerIds[i] = player.playerId;
-                playerCount++;
-                RequestSerialization();
-                return;
-            }
-        }
-        // 满了：playerCount 不变，新玩家观战
-    }
-
-    public override void OnPlayerLeft(VRCPlayerApi player)
-    {
-        if (!Networking.IsOwner(gameObject)) return;
-
-        // 把离开玩家的槽位清空
-        for (int i = 0; i < playerIds.Length; i++)
-        {
-            if (playerIds[i] == player.playerId)
-            {
-                playerIds[i] = 0;
-                playerCount--;
-                RequestSerialization();
-                return;
-            }
-        }
-    }
-
-    public override void OnDeserialization()
-    {
-        // 收到新的 playerIds，更新 UI 显示
-        UpdatePlayerListUI();
-    }
-
-    private void UpdatePlayerListUI()
-    {
-        // ...省略：根据 playerIds 数组更新 UI 文字
-    }
-}
-```
-
-几个要点：
-
-- `OnPlayerJoined` 在所有客户端上都会触发，但只有 Owner 调 `RequestSerialization` 才会真的广播。其他客户端调也不会报错，单纯是浪费一次失败的请求。
-- `playerId` 是 VRChat 给每位玩家在实例内的唯一编号。`Networking.LocalPlayer.playerId` 拿到本机玩家的 ID。
-- 玩家加入时她自己的客户端也会跑 `OnPlayerJoined`，参数是她自己。所以「Charlie 加入」这件事，Charlie 自己的客户端也尝试了一次注册（如果她正好是 Owner，就由她注册）。
-- `OnPlayerLeft` 在所有客户端上都触发，Owner 那一台执行真正的清槽。这一段单独处理 Owner 离开的边界情况：Owner 自己离开时，VRChat 会先把所有权转给下一位玩家（触发新 Owner 客户端的 `OnOwnershipTransferred`），然后才触发那位的 `OnPlayerLeft`。所以新 Owner 拿到的 `playerIds` 会比期望多一个旧 Owner 的 ID。第 30 章会展开处理这件事。
-
-::::tip[只让 Owner 改全局状态是常用模式]
-玩家槽位、计分板、回合数这种「全局唯一的状态」，统一由 Owner 维护。其他客户端通过 `SendCustomNetworkEvent(NetworkEventTarget.Owner, ...)` 把请求发给 Owner，Owner 决定怎么改全局状态。
-
-这套模式在游戏类世界里随处可见，本质是「权威服务器」概念在 VRChat 里的轻量实现。Owner 充当临时的权威，所有人通过它协调。
-
-它的缺点是 Owner 离线后那一瞬间的过渡需要小心处理（中间没人是 Owner、状态变更可能丢失）。但对大多数 4–8 人的小型多人玩法已经够用，比尝试做无中心的分布式状态简单得多。
-::::
-
-## 实战修法：错过的事件要不要补回放
-
-考虑爆炸按钮（第 28 章）。Alpha 五分钟前按了一次，所有在场玩家听到爆炸音效。Charlie 现在加入。
-
-她需要听到那次爆炸吗？
-
-绝大多数情况：**不需要**。爆炸是事件，事件发生时不在场就错过了。这跟现实生活一样，迟到的人不需要补看错过的烟花。
-
-需要让迟到玩家「知道发生过什么」时，做法是把它转成状态。例子：
-
-- 「门 5 分钟内被推开过」：用一个 `[UdonSynced] float lastOpenTime`，记录上次开门的时间戳。Charlie 加入时通过 `OnDeserialization` 拿到这个时间，UI 上显示「这扇门最近 5 分钟有人动过」。
-- 「世界里发生过 10 次爆炸」：用 `[UdonSynced] int explosionCount`，Charlie 加入时直接看到当前总数，UI 显示「至今已爆炸 10 次」。
-
-转成状态意味着「事件本身丢了，留下一个统计性的痕迹」。这是迟到玩家能拿到的最多信息了。
-
-## 实战修法：欢迎新玩家广播
-
-需要做一个「有玩家加入时全场亮一下灯」的世界级事件，怎么做？
-
-`OnPlayerJoined` 是公平的钩子：所有客户端都会触发。每个客户端都各自亮一下自己的灯就行：
-
-```cs
-public override void OnPlayerJoined(VRCPlayerApi player)
-{
-    // 自己加入自己的事件先跳过
-    if (player == Networking.LocalPlayer) return;
-
-    // 其他人加入时，本机闪一下灯
-    StartCoroutine_FlashLight();
-}
-```
-
-注意 `if (player == Networking.LocalPlayer) return`：跳过「自己加入自己」的那次触发。否则 Charlie 自己加入实例时她也会闪自己一下，玩家会困惑。
-
-这种「OnPlayerJoined 各自跑各自的反应」是一种简单迎宾写法。不需要 Owner、不需要 RequestSerialization，每个客户端独立行动。
-
-## 把第 28 章的灯做成迟到友好版
-
-回到那盏 `LampToggle`。它已经是迟到友好的：因为所有状态都靠 `[UdonSynced]` 字段表达，迟到玩家自动能看到当前状态。`OnDeserialization` 里调 `ApplyState` 就把灯切到对应状态。
-
-唯一可能的问题：如果 `ApplyState` 里加了「翻状态时播一次咔哒音效」，那 Charlie 加入时也会听到一次「咔哒」。修法跟门一样：用一个本地 `hasInitialized` 标记跳过第一次。
-
-```cs title="LampToggle.cs（迟到友好版）"
-public class LampToggle : UdonSharpBehaviour
-{
-    public Light targetLight;
-    public AudioSource clickSound; // 翻动时的咔哒声
-
-    [UdonSynced]
-    private bool isOn = false;
-
-    private bool hasInitialized = false;
 
     public override void Interact()
     {
-        // ...同前
+        if (!hasInitialized || Time.time < nextLocalInteractTime) return;
+        if (!Networking.IsOwner(gameObject))
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        if (!Networking.IsOwner(gameObject)) return;
+
+        isOpen = !isOpen;
+        RequestSerialization();
+        ApplyAnimatedState();
     }
 
     public override void OnDeserialization()
     {
         if (!hasInitialized)
         {
-            ApplyState(playSound: false);
+            ApplyStateInstant();
             hasInitialized = true;
         }
         else
         {
-            ApplyState(playSound: true);
+            ApplyAnimatedState();
         }
     }
 
-    private void ApplyState(bool playSound)
+    public override void OnOwnershipTransferred(VRCPlayerApi player)
     {
-        if (targetLight != null) targetLight.enabled = isOn;
-        if (playSound && clickSound != null) clickSound.Play();
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        _InitializeOwner();
+    }
+
+    private void ApplyStateInstant()
+    {
+        displayedIsOpen = isOpen;
+        if (doorAnimator == null) return;
+        doorAnimator.SetBool("IsOpen", isOpen);
+        doorAnimator.Play(isOpen ? "Base Layer.Door_Open" : "Base Layer.Door_Closed", 0, 1f);
+        doorAnimator.Update(0f);
+    }
+
+    private void ApplyAnimatedState()
+    {
+        if (displayedIsOpen == isOpen) return;
+        displayedIsOpen = isOpen;
+        nextLocalInteractTime = Time.time + Mathf.Max(0f, animationDuration);
+        if (doorAnimator != null) doorAnimator.SetBool("IsOpen", isOpen);
     }
 }
 ```
 
-`Interact()` 里调 `ApplyState(true)`（自己按的当然要听到声音）。`OnDeserialization` 里第一次跳过、之后照播。
+配置条件：
 
-::::caution[hasInitialized 还有一种叫法]
-社区也叫这个标记 `firstUpdate`、`hasReceivedInitialState`、`isReady` 等等。叫什么不重要，作用都是一样：**区分「这是我第一次收到同步」和「这是远端 Owner 改了字段」**。
+1. Animator 层名为 `Base Layer`，状态名与代码一致；使用其他名称时改完整状态路径。
+2. `Door_Open` 为不循环的开门剪辑，标准化时间 `1` 对应末端姿态。
+3. `Door_Closed` 是静止关闭姿态；不能误用从打开开始的关闭动画作为初始姿态。
+4. 过渡条件与[本地门的 Animator 配置](/come-alive/doors-and-states/)一致，避免进入终态后又无条件退出。
+5. 脚本挂在门的交互对象上，保留普通 Collider，把实际 Animator 拖入 `Door Animator`，确认 Manual 模式。`Animation Duration` 填从触发过渡到门停止移动的时长；本例以 0.5 秒为测试值。
 
-凡是「OnDeserialization 里要做的反应可能会让迟到玩家感到突兀」时，都需要这个标记。常见的有：音效、特效、UI 弹出动画、计时器倒计时。
-::::
+后续本机点击和远端状态变化都调用 `ApplyAnimatedState`，因此两条路径都会开始本机点击冷却。重复收到同一个目标值不会重开动画或延长冷却。首次接收直接显示终态，不进入动画冷却。这个时间闸只限制本机输入，不是网络互斥锁；收到另一个有效目标仍会更新门。若修改了剪辑、播放速度或过渡时长，需要一并调整 `Animation Duration` 并实测。
 
-## 自己改两个版本
+`Animator.Play` 指定状态和标准化时间，`Update(0)` 立即求值当前姿态。不能仅调用 `Animator.Update(animationDuration)` 就保证任何 Controller 都到达正确终态，过渡和状态配置会影响结果。
 
-把第 28 章那扇门的同步版当骨架：
+`hasInitialized` 只表示本机完成初始显示。初始 Owner 可能不收到自己的 OnDeserialization，因此 Start 和未初始化的接管都调用 `_InitializeOwner`。它等待 `IsNetworkSettled` 后才应用当前值、允许交互并请求发布；所有权变化本身不能当作状态已经恢复。已通过 OnDeserialization 初始化的客户端保留收到的状态。
 
-- 加 `hasInitialized` 标记，第一次 `OnDeserialization` 时直接跳到终态而不播开关动画。Build & Publish 后让一个客户端先把门按开，再让第二个客户端加入，确认她进来时门已经在「开了的位置」。
-- 加一个 `[UdonSynced] int totalOpens`，记录这扇门一共被开过几次。每次 `Interact` 翻状态时 `totalOpens++`。在墙上加一块 TextMeshPro 文本显示当前 totalOpens，迟到玩家进来能看到这扇门被开过的总次数。
+## 门方案 B：恢复正在进行的进度
 
-第二个变体证明同一种数据形式（int 计数）既能保留事件发生的累积痕迹，又能让迟到玩家直接拿到最新值，不需要回放历史。
+如果动画进度影响玩法，例如长时间运行的升降台，可同步：
 
-## 迟到玩家这件事，四条要点
+- 目标状态
+- 开始状态或开始位置
+- 使用共同时间基准记录的开始时间
+- 持续时间
 
-四件事：
+接收端使用 `Networking.GetServerTimeInSeconds()` 计算已过去的时间，再限制到合法范围，并设置动画或 Transform。该 API 提供各客户端可比较的服务器时间估计，不代表所有机器在同一瞬间读取完全相同的数值。
 
-- 同步变量 + `OnDeserialization` 是迟到玩家最强的同步工具。当前状态自动追上。
-- 一次性事件（`SendCustomNetworkEvent`）追不上。要让迟到玩家「知道发生过什么」，把它转成状态。
-- 「正在播的动画」「实时进度条」等过程性状态，常用做法是迟到玩家直接跳到终点，不补播过程。
-- `OnPlayerJoined` 是给所有客户端的「有人进来了」公告事件，常用来做迎宾反应、玩家槽位注册。
+选择终态恢复还是进度恢复取决于需求。正在运行的计时器、电梯或演出不能一律跳到终点；也无需为只有当前状态有意义的开关回放全部历史。
+
+## 玩家槽位：重复事件与接管
+
+玩家列表应以 playerId 识别当前实例中的玩家，由 Owner 写共享数组。至少检查：
+
+1. 加入时先查是否已有槽位，避免重复注册。
+2. 容量满时保留明确的观战或拒绝加入状态。
+3. 离开时清理对应槽位，重算人数。
+4. Owner 接管时核对当前在线玩家，不依赖固定的 OnPlayerLeft / OnOwnershipTransferred 顺序。
+5. Owner 修改后同时更新本机 UI；不能只等待远端的 OnDeserialization。
+
+以下是加入处理的节选，不能单独作为一个脚本使用。所需的数组、查找方法、离开清槽、接管核对和 UI 都在[GameManager 完整实现](/with-others/multiplayer-mini-game/#gamemanager)中；[场景与 UI 配置](/with-others/multiplayer-mini-game/#搭场地与-ui)和[按钮引用配置](/with-others/multiplayer-mini-game/#gamebutton)给出挂载与 Inspector 接线。
+
+```cs
+public override void OnPlayerJoined(VRCPlayerApi player)
+{
+    if (!Networking.IsOwner(gameObject) || !Utilities.IsValid(player)) return;
+    if (FindSlot(player.playerId) >= 0) return;
+
+    int slot = FindEmptySlot();
+    if (slot < 0) return;
+    playerIds[slot] = player.playerId;
+    RequestSerialization();
+    UpdateUI();
+}
+```
+
+要显示已占用槽位人数，在该 GameManager 的 `UpdateUI` 中，创建计分板字符串前加入：
+
+```cs
+int registeredCount = 0;
+for (int i = 0; i < playerIds.Length; i++)
+    if (playerIds[i] != 0) registeredCount++;
+```
+
+再将原来的字符串初始化改成 `string text = $"Scoreboard / 计分板 ({registeredCount}/{playerIds.Length})\n\n";`。人数从同一份 `playerIds` 推导，不再另同步一个可能失配的计数。它表示计分槽位占用数，不包括无槽位的观战者；实例总人数可另用 `VRCPlayerApi.GetPlayerCount()`。测试两人加入、离开一人、第三人补位以及 Owner 离开，逐次核对名单、人数和剩余分数。
+
+OnPlayerJoined 不是可信外部服务器的注册接口。VRChat 的 Owner 是参与者客户端，关键操作仍要校验状态和输入。
+
+## 瞬时反馈是否补播
+
+已经结束的爆炸音效不需要默认补播给后加入者。若需要让玩家知道累计次数，可以同步 `explosionCount`；若需要显示最近发生时间，可以同步服务器时间戳。
+
+这不是后加入者能够获取信息的唯一形式：也可专门设计有界历史记录。区别在于数据被明确保存，而不是期待旧网络事件自动重放。
+
+### 灯：首次静默，后续真实变化有声
+
+下面是独立的 `SyncedLampFeedback.cs`。在测试副本中用它替换灯按钮上的 `LampToggle`，不要让两个脚本同时控制同一盏灯。它保持同步 bool 为状态来源，用两个本地字段记录「是否已显示初始状态」和「上次显示的值」。
+
+```cs title="SyncedLampFeedback.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+public class SyncedLampFeedback : UdonSharpBehaviour
+{
+    public Light targetLight;
+    public AudioSource clickSound;
+    [UdonSynced] private bool isOn;
+    private bool hasInitialized;
+    private bool displayedIsOn;
+
+    private void Start()
+    {
+        if (Networking.IsOwner(gameObject)) _InitializeOwner();
+    }
+
+    public void _InitializeOwner()
+    {
+        if (!Networking.IsOwner(gameObject) || hasInitialized) return;
+        if (!Networking.IsNetworkSettled)
+        {
+            SendCustomEventDelayedSeconds(nameof(_InitializeOwner), 0.5f);
+            return;
+        }
+        ApplyState(false);
+        hasInitialized = true;
+        RequestSerialization();
+    }
+
+    public override void Interact()
+    {
+        if (!hasInitialized) return;
+        if (!Networking.IsOwner(gameObject))
+            Networking.SetOwner(Networking.LocalPlayer, gameObject);
+        if (!Networking.IsOwner(gameObject)) return;
+
+        isOn = !isOn;
+        ApplyState(true);
+        RequestSerialization();
+    }
+
+    public override void OnDeserialization()
+    {
+        ApplyState(hasInitialized);
+        hasInitialized = true;
+    }
+
+    public override void OnOwnershipTransferred(VRCPlayerApi player)
+    {
+        if (Utilities.IsValid(player) && player.isLocal) _InitializeOwner();
+    }
+
+    private void ApplyState(bool allowSound)
+    {
+        bool changed = displayedIsOn != isOn;
+        if (targetLight != null) targetLight.enabled = isOn;
+        displayedIsOn = isOn;
+        if (allowSound && changed && clickSound != null) clickSound.Play();
+    }
+
+    // 本地调试入口：发布同一个值，不制造一次开关操作。
+    public void _ResendStateForTest()
+    {
+        if (!Networking.IsOwner(gameObject) || !hasInitialized) return;
+        ApplyState(true);
+        RequestSerialization();
+    }
+}
+```
+
+用于重复同值测试的按钮单独写在另一个文件中，测试结束可以移除这个按钮：
+
+```cs title="LampResendTestButton.cs"
+using UdonSharp;
+using UnityEngine;
+
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+public class LampResendTestButton : UdonSharpBehaviour
+{
+    public SyncedLampFeedback lamp;
+
+    public override void Interact()
+    {
+        if (lamp != null) lamp._ResendStateForTest();
+    }
+}
+```
+
+接线与验证：
+
+1. 按钮保留普通 Collider；`Target Light` 拖入 Realtime Light。初始 `isOn=false`，可在场景里也关闭这盏灯，避免加载时短暂显示另一状态。
+2. 给按钮添加 AudioSource，填写已获授权的短音效，取消 `Play On Awake` 和 `Loop`。如果存在 VRC Spatial Audio Source，还需在 `Advanced Options` 中取消 `Enable Spatialization`。这项对照用 `Spatial Blend=0` 的 2D 音频，降低音量，排除两人距离不同导致听不到的干扰；拖入 `Click Sound`。若要做空间音效，另按[声音配置](/placeness/sound-and-mood/)设置并测试距离。
+3. Alpha 首先进场，初始化完成后第一次主动按灯，应听到一次音效。不能等待初始 Owner 收到自己的反序列化才启用声音。
+4. 灯开启后让 Beta 加入：Beta 应恢复亮灯但不出声。随后 Alpha 或 Beta 按灯，已初始化的各端应在状态真实改变时播放一次。
+5. 在测试副本另建带普通 Collider 的 Cube，挂 `LampResendTestButton`，把灯按钮上的 SyncedLampFeedback 拖入 `Lamp`。由当前 Owner 按这个测试按钮，确认两端灯不变且不多播声音；在 `_ResendStateForTest` 的 RequestSerialization 前加一条 `[LampTest] resend` 日志，并在 OnDeserialization 开头加 `Debug.Log($"[LampTest] received isOn={isOn}");`。只有看到接收日志且值与上次相同，才能记为“收到同值后未播声”；若没有接收日志，只能记为“本次未观察到重复同值接收”，不能据此声称该分支已实测。
+6. 把 `Click Sound` 留空重测，灯仍应可同步。测试结束移除调试按钮。
+
+这里的声音对应本机观察到的状态变化，不代表每一次点击都有可靠音效记录。两个快速切换可能在接收端合并成同一个最终值；需要逐次瞬时反馈时可用[一次性网络事件](/with-others/tell-everyone/#一次性网络事件)，并另处理事件频率与状态到达顺序。
+
+### 扩展：累计开门次数
+
+在本章「初始状态恢复版」SyncedDoorController 上做一个可选练习：
+
+1. 添加 `using TMPro;`，类内增加 `[UdonSynced] private int totalOpens;` 和 `public TextMeshProUGUI openCountText;`。
+2. 只在 `Interact` 的 `isOpen = !isOpen;` 后加 `if (isOpen) totalOpens++;`。已有 Owner 复查必须保留；关门不增加开门次数，已有 `RequestSerialization()` 会一起发送计数。
+3. 类内加入下面的方法；在 `_InitializeOwner`、`Interact`、`OnDeserialization` 应用门状态之后各调用一次 `UpdateOpenCount()`。
+
+```cs
+private void UpdateOpenCount()
+{
+    if (openCountText != null) openCountText.text = $"开门次数：{totalOpens}";
+}
+```
+
+4. 创建 World Space Canvas 和 TMP 文本，拖入 `Open Count Text`。按开、关、开三次，预期累计为 2；让 Charlie 后加入，确认他直接看到 2，不靠重播开门事件累加。Owner 离开后再操作，检查计数继续增加而不是归零。
+
+## 加入时的欢迎效果
+
+这个可选例子只在本机初始化名单之后，为新出现的远端 playerId 播一次短音效。初始化期间已有或新到的玩家都归入初始名单，不补播欢迎；它不依赖「自己的 Join 一定最后到」这样的顺序假设。
+
+```cs title="LocalJoinWelcome.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
+public class LocalJoinWelcome : UdonSharpBehaviour
+{
+    public AudioSource welcomeSound;
+    private int[] knownIds = new int[0];
+    private bool ready;
+
+    private void Start()
+    {
+        _InitializeRoster();
+    }
+
+    public void _InitializeRoster()
+    {
+        if (ready) return;
+        if (!Networking.IsNetworkSettled)
+        {
+            SendCustomEventDelayedSeconds(nameof(_InitializeRoster), 0.5f);
+            return;
+        }
+        VRCPlayerApi[] players = new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()];
+        VRCPlayerApi.GetPlayers(players);
+        for (int i = 0; i < players.Length; i++)
+            if (Utilities.IsValid(players[i])) Remember(players[i].playerId);
+        ready = true;
+    }
+
+    public override void OnPlayerJoined(VRCPlayerApi player)
+    {
+        if (!ready || !Utilities.IsValid(player)) return;
+        if (!Remember(player.playerId) || player.isLocal) return;
+        if (welcomeSound != null) welcomeSound.Play();
+    }
+
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        if (player == null) return;
+        for (int i = 0; i < knownIds.Length; i++)
+            if (knownIds[i] == player.playerId) knownIds[i] = 0;
+    }
+
+    private bool Remember(int id)
+    {
+        for (int i = 0; i < knownIds.Length; i++)
+            if (knownIds[i] == id) return false;
+        for (int i = 0; i < knownIds.Length; i++)
+        {
+            if (knownIds[i] != 0) continue;
+            knownIds[i] = id;
+            return true;
+        }
+        int[] expanded = new int[knownIds.Length + 1];
+        for (int i = 0; i < knownIds.Length; i++) expanded[i] = knownIds[i];
+        expanded[knownIds.Length] = id;
+        knownIds = expanded;
+        return true;
+    }
+}
+```
+
+挂到一个始终激活的空物体，添加 AudioSource，取消 `Play On Awake`、`Loop`，用低音量 2D 短音效并填入 `Welcome Sound`；若带 VRC Spatial Audio Source，在 Advanced Options 取消 Enable Spatialization。Alpha 先加入并等初始化完成，再让 Beta 加入：Alpha 播一次，Beta 不为 Alpha 和自己补播。等 Beta 初始化完成后让 Charlie 加入，Alpha、Beta 各播放一次，Charlie 初次建立名单保持静默。短时间多个新人加入时 `Play()` 可能重启同一音源，这个例子没有排队播报功能。
+
+OnPlayerJoined 本来就在各客户端触发，本例不再广播 All。初始名单快照避免已在场玩家的迟到回调被误当成新人；本地的 `knownIds` 只用于去重，不是共享计分名单，也不替代 Owner 的槽位管理。
+
+## 测试矩阵
+
+- Alpha 开灯，Charlie 加入，确认无需下一次点击即可恢复开启状态
+- 门动画结束后加入，确认初次显示为终态
+- 门动画途中加入，确认符合所选终态或进度恢复方案
+- Alpha 改门后，Beta 在自己的后续动画期间按门，应被本地冷却拦住；结束后可再按
+- 重复收到同一灯值不多播声；重复门值不延长动画冷却
+- 音效已经播放后加入，确认不重播过去效果
+- 玩家离开后加入另一人，确认槽位可重用
+- 当前 Owner 离开，确认名单和状态仍可恢复
+- 网络同步尚未完成时尝试交互，确认不会用初值覆盖已存在状态
+
+## 检查清单
+
+- [ ] 已区分本机初值和收到的同步状态
+- [ ] OnPlayerJoined 与 OnDeserialization 不依赖固定顺序
+- [ ] 初始 Owner 和新 Owner 均有初始化路径
+- [ ] 动画恢复方式符合玩法条件
+- [ ] 重复注册和容量已处理
+- [ ] 当前状态恢复不误播历史反馈
 
 ## 本章参考
 
-- [VRChat Creator Docs：Udon Networking · Late Joiners](https://creators.vrchat.com/worlds/udon/networking/)
-- [VRChat Creator Docs：Player API](https://creators.vrchat.com/worlds/udon/players/)
-- [Udon Networking Decision Guide · Late Joiners（VR Creators，2026-05）](https://vrcreators.net/docs/vrchat/udon-networking-decision-guide)
-- [Implementing Doors（UhiyamaLab，2025-12，含同步版本）](https://uhiyama-lab.com/ja/notes/vrchat/udonsharp-gimmick-door/)
+- [VRChat Creator Docs：Late Joiners & Sync Issues](https://creators.vrchat.com/worlds/udon/networking/late-joiners/)
+- [VRChat Creator Docs：Network Components](https://creators.vrchat.com/worlds/udon/networking/network-components/)
+- [VRChat Creator Docs：Object Ownership](https://creators.vrchat.com/worlds/udon/networking/ownership/)
+- [VRChat Creator Docs：Event Nodes](https://creators.vrchat.com/worlds/udon/graph/event-nodes/)
+- [VRChat Creator Docs：Getting Players](https://creators.vrchat.com/worlds/udon/players/getting-players/)
+- [Unity 2022.3 API：Animator.Play](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/Animator.Play.html)

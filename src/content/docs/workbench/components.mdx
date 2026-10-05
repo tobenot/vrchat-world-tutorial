@@ -1,125 +1,109 @@
 ---
 title: 7. 组件，给物体装能力
-description: 看清 Unity Component 系统怎么用：怎么加、怎么调、怎么删，以及 VRChat SDK 自带的那批组件是干嘛的。
-difficulty: 新手
+description: 添加、配置和移除 Unity 组件，检查对象引用、运行模式和 VRChat 组件的职责。
+difficulty: 基础
 estimatedMinutes: 22
 chapterType: hands-on
-summary: Inspector 里的每一块组件都是一种「能力」。学会按需挂、按情况删，以后看任何 GameObject 都不再害怕。
+summary: GameObject 的行为由组件和配置共同决定。Inspector 用于编辑参数与引用；修改前需区分编辑模式、运行模式及组件之间的依赖。
 sidebar:
   order: 2
 ---
 
-上一章验证过一件事：关掉 Mesh Renderer 物体隐形，拿掉 Collider 玩家穿过去。能力是组件给的，不是物体本身有的。
+在[物体与层级](/workbench/gameobjects/)中，禁用 Mesh Renderer 后地板不再显示，但 Collider 仍能阻挡玩家。组件可以分别控制外观、物理、声音或行为。
 
-这章正式看 Component 这套系统。
+## 查看 Cube 的组件
 
-## 拆解一个 Cube
+创建一个 Cube，选中后在 Inspector 中检查：
 
-新建一个 Cube，选中它看 Inspector，会看到四个组件叠在一起：
+1. **Transform**：位置、旋转、缩放。
+2. **Mesh Filter**：引用网格资源。
+3. **Mesh Renderer**：引用材质并绘制网格。
+4. **Box Collider**：定义盒形碰撞区域。
 
-1. **Transform**：位置、旋转、大小。每个物体的标配，删不掉。
-2. **Mesh Filter**：存几何数据（「我是一个立方体」）。
-3. **Mesh Renderer**：负责把它画出来（「让我可见」）。
-4. **Box Collider**：负责物理边界（「踩到我会停」）。
+组件之间可以独立配置，也可能存在依赖。例如，Mesh Renderer 需要可用的网格和材质，拾取物体需要同时满足 SDK 对碰撞与物理组件的要求。
 
-每个组件只管一件事，这是 Unity 的「单一职责」。所以可以只要视觉不要碰撞（天上飘着的装饰云），也可以只要碰撞不要视觉（隐形的空气墙）。
+## 添加组件
 
-## Add Component：按需加能力
+Inspector 底部点 `Add Component`，输入组件名并选择结果。添加以后仍需填写字段；组件存在不等于效果已经配置完成。
 
-Inspector 底部有一个 `Add Component` 按钮。点它，搜关键字，就能给物体加上新能力：
-
-- `Light`：物体开始发光。
-- `Audio Source`：能播声音。
-- `Rigidbody`：获得重力，会下坠和碰撞。
-- `Sphere Collider`：加一个球形碰撞边界。
-
-不需要一开始就记住上千种组件。只要记住一个直觉：想让物体有某种能力，去 Add Component 搜对应的组件。
-
-VRChat 世界里常用的组件大体就这些：
-
-| 组件 | 干什么 | 常见场景 |
+| 组件 | 作用 | 配置示例 |
 | :--- | :--- | :--- |
-| Light | 发光 | 灯具、霓虹、氛围光 |
-| Audio Source | 播声音 | 背景音乐、音效、环境音 |
-| Collider（Box / Sphere / Mesh） | 物理碰撞与点击区域 | 地板、墙壁、按钮 |
-| Rigidbody | 重力与物理模拟 | 可推倒的杯子、可滚的球 |
-| Animator | 平滑运动 | 开关门动画、电梯、风扇 |
-| Udon Behaviour | 自定义交互逻辑 | 开关灯、传送玩家 |
-| VRC Pickup | 可拾取 | 让玩家拿起物品 |
-| VRC Object Sync | 多人位置同步 | 让所有人看到同一个被丢出去的物体 |
+| Light | 提供光源 | 类型、颜色、强度、范围 |
+| Audio Source | 播放音频 | Audio Clip、音量、循环、空间化 |
+| Collider | 定义碰撞或触发形状 | 形状、尺寸、Is Trigger |
+| Rigidbody | 参与刚体物理 | 重力、质量、是否 Kinematic |
+| Animator | 按控制器播放动画 | Controller、参数 |
+| Udon Behaviour | 承载 Udon 程序 | 程序资产、字段引用 |
+| VRC Pickup | 配置拾取行为 | 拾取方式及抓握设置 |
+| VRC Object Sync | 同步物体的 Transform 和相关物理状态 | 所有权及同步配置 |
 
-## 在 Inspector 里调参数
+添加 Rigidbody 后是否下落，还取决于 `Use Gravity`、`Is Kinematic`、约束和碰撞条件。添加 Light 不会把网格材质自动改成自发光。
 
-组件挂上后，到 Inspector 里调参数。
+## 在 Inspector 调整字段
 
-比如给一个球加 `Light`，Inspector 会出现这些：
+Light 的字段包括：
 
-- `Type`：`Point` 像灯泡向四周散光，`Spot` 像手电筒打锥形光束，`Directional` 像太阳平行照亮一切。
-- `Color`：光的颜色。
-- `Intensity`：亮度。
-- `Range`：照射半径。
+- `Type`：Point、Spot、Directional 等光源类型。
+- `Color`：光色。
+- `Intensity`：光照强度。
+- `Range`：Point、Spot 的影响范围；Directional 不使用局部范围。
 
-再比如 `Audio Source`：
+Audio Source 的字段包括：
 
-- `Audio Clip`：放哪个音频文件。
-- `Play On Awake`：场景加载时是否自动播放。
-- `Loop`：循环播放（适合背景音和雨声）。
-- `Spatial Blend`：`0` = 2D 全场等响，`1` = 3D 离远了变小。
+- `Audio Clip`：要播放的音频资源。
+- `Play On Awake`：音源启动时是否自动播放。
+- `Loop`：音频结束后是否重复。
+- `Spatial Blend`：`0` 为 2D，`1` 为完整 3D 混合。
 
-没必要背字段表，先看到了再说，常用的那几个反复调一调就熟了。
+2D 音源不根据听者与声源的距离、方向计算空间衰减，但仍受音量和混音设置影响。3D 音源的实际方向与衰减还受空间化器、距离参数等影响。空间化并不决定「进入某区域才播放」，那是另一项播放控制需求。
 
-## 引用槽：最容易卡的一关
+## 引用槽连接具体对象
 
-有些组件参数不是数值字段，而是一个写着 `None (Object)` 的空槽。
+Inspector 中显示 `None (Light)` 等文字的字段用于保存对象引用。例如，控制灯光的脚本声明了 `Target Light`，就需要指定要控制的那一个 Light 组件。
 
-举例：写了一个按钮脚本，脚本上有一个 `Target Light` 字段。点按钮的时候要控制哪盏灯，脚本不知道，必须把 Hierarchy 里那盏具体的灯拖进这个空槽。这叫显式指定引用。
+1. 在 Hierarchy 找到具有 Light 组件的物体。
+2. 拖到 `Target Light` 槽中。
+3. 检查槽里显示的是预期对象，而不是另一个同名物体。
 
-:::caution[忘了拖引用]
-如果脚本和 Collider 都对，但 Interact 后灯不亮，先查引用槽是不是 `None (Object)`。
+如果字段仍为 `None`，脚本就没有这个目标引用。发生交互但灯不变化时，应同时检查事件是否执行、引用是否有效，以及灯是否处于能影响场景的设置下。
 
-第一件事去 Inspector 看引用槽是不是写着 `None (Object)`。三个按钮控制三盏灯，三个引用槽要分别拖对应的灯进去，一个都不能漏。
+引用不会替作者决定目标。场景里有多盏灯时，给每个开关指定对应引用，才能明确它控制哪一盏。
 
-为什么不让 Unity 自动找？因为场景里可能有十盏灯，引擎不知道作者想控制哪一盏。手动拖几秒钟，逻辑就清楚了：一盏灯归一个开关，加灯不会影响已有逻辑。
-:::
+## 禁用与移除组件
 
-## 删组件之前停一下
+支持启用开关的组件可以临时取消勾选，观察其影响。需要移除时，使用组件菜单的 `Remove Component`。部分组件没有独立启用开关，不能一概用取消勾选代替移除。
 
-不要某个组件了，点它右上角的三个点，选 `Remove Component`。
+- 禁用或移除 Collider 会改变碰撞；依赖该碰撞区域的交互也可能不再触发。
+- 禁用 Renderer 会停止显示，但不自动关闭 Collider。
+- 移除 Rigidbody 会改变依赖该刚体的物理行为。
 
-但删之前停一秒，有没有别的逻辑在依赖它？
+若其他脚本保存了该组件的引用，移除组件后应检查引用是否失效。移除前可以保存场景或保留可恢复版本。
 
-拿掉 Collider，玩家穿过去，点击交互也失效。拿掉 Mesh Renderer，看不见了，材质和特效都没了。拿掉 Rigidbody，依赖物理的行为全部消失。
+## Play Mode 修改的保存条件
 
-不确定后果就先取消勾选（临时禁用）测一下，没问题再删。
+按 Unity 顶部的 Play 按钮，会进入编辑器运行模式。此时修改场景对象，可以观察运行中的效果；退出时，场景对象的运行时修改通常会恢复。
 
-## Play Mode 调参的陷阱
+需要保留某组运行时数值时：
 
-Unity 顶部那个三角形按钮是 **Play Mode**，按下去场景会在编辑器里运行起来。在里面可以随便改参数看效果：灯不够亮拉 Intensity，声音吵就调 Volume，画面立刻响应。
+1. 记录字段名和数值，或使用组件菜单复制组件值。
+2. 退出 Play Mode。
+3. 在编辑模式中重新填写或粘贴需要的字段。
+4. 保存场景或 Prefab。
 
-但有一条铁律：退出 Play Mode 后，里面调的所有改动全部还原。
+项目资源文件的直接修改不一定随退出 Play Mode 撤销，不能把「所有改动都会还原」当作保护机制。可以在 `Edit → Preferences → Colors` 调整 `Playmode tint`，帮助区分当前模式。
 
-正确的工作流：进 Play Mode 调，找到满意数值后记下来；退出 Play Mode（数值会还原）；在正常编辑状态下把数值填回去，按 `Ctrl+S` 保存。
+## VRChat 组件的职责
 
-:::caution[把 Play Mode 染上颜色]
-Play Mode 下界面只是稍微变暗。如果调了半小时退出后发现全没了，多半是没注意到当前在 Play Mode，改动没有写回场景。
+- `VRC Pickup`：配置可拾取物体。
+- `VRC Object Sync`：同步其支持的物体状态，不会自动同步所有自定义脚本字段。
+- `VRC Spatial Audio Source`：配置 VRChat 的音频空间化参数，配合 Audio Source 使用。
+- `VRC Mirror Reflection`：配置镜面反射。
+- `VRC Station`：定义玩家使用站点时的位置和行为，可用于座位。
 
-去 `Edit` → `Preferences` → `Colors`，把 `Playmode tint` 改成显眼的颜色（比如淡红），一眼就能分辨。
-:::
+这些组件有各自的实现和使用条件，不能统一称为 Udon 脚本。选用哪些组件取决于当前功能需求。
 
-## VRChat SDK 自带的那批组件
+## 本章参考
 
-装上 VRChat SDK 后，工具箱里多了一批 `VRC` 开头的组件：
-
-- `VRC Pickup`：让玩家能拿起物品。
-- `VRC Object Sync`：多人同步物体位置。
-- `VRC Spatial Audio Source`：3D 空间音效，离远了变小。
-- `VRC Mirror Reflection`：生成镜子。
-- `VRC Station`：让椅子、沙发能坐下。
-
-:::note[不同世界不同活法]
-做什么类型的世界，决定要打交道的组件清单。休闲世界主力是 Mirror、Spatial Audio 和灯光；游戏世界主力是 Pickup、Object Sync 和 Udon 脚本。一开始不用全学，做到哪用到哪。
-:::
-
----
-
-下一章学 Prefab，配好的物体怎么做成模具，改一处全场同步。
+- [Unity 2022.3：使用组件](https://docs.unity3d.com/2022.3/Documentation/Manual/UsingComponents.html)
+- [VRChat 世界组件](https://creators.vrchat.com/worlds/components/)
+- [VRC Spatial Audio Source](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)

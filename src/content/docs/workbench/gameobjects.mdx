@@ -1,110 +1,88 @@
 ---
 title: 6. Unity 里的一切都是物体
-description: 用 GameObject、Scene、Hierarchy、Transform 看清 Unity 工作台是怎么组织三维空间的。
+description: 用 GameObject、Scene、Hierarchy 和 Transform 组织场景中的对象。
 sidebar:
   order: 1
 ---
 
-站进了第一个世界之后，问号通常已经一堆：Spawn 到底是什么？Hierarchy 里那几行又是什么？Inspector 里的参数在控制什么？
+Unity 场景中的对象用 GameObject 组织。GameObject 包含组件，Hierarchy 显示对象之间的层级，Inspector 显示选中对象的组件和参数。材质、贴图等项目资源则不是场景 GameObject，需要通过组件引用。
 
-这一章把这些问题一次理清。核心只有一件事：Unity 是怎么组织三维空间的。
+## 对照渲染与碰撞
 
-## 一个小实验：让地板消失
+打开[第一个世界](/getting-started/first-world/)的场景，选中 `Floor`：
 
-打开第一部建好的世界项目。Hierarchy 里点选 `Floor`，去右侧 Inspector，找到 `Mesh Renderer` 组件，把它名字前面的小勾取消掉。
+1. 在 Inspector 中取消 `Mesh Renderer` 组件的启用勾选。
+2. 确认 `Floor` 物体本身仍然激活，`Box Collider` 也仍启用。
+3. 保存并执行 `Build & Test`。地板不可见，但玩家仍能站在其碰撞表面。
+4. 恢复 Mesh Renderer，保存场景。
 
-Scene 视图里地板没了。但 Hierarchy 里 `Floor` 还在，按 `Build & Test` 进去，玩家照样站得住，只是脚下空空。
+禁用 Renderer 只停止绘制，不会自动关闭同物体上的 Collider。若禁用的是 GameObject 顶部的激活开关，组件及其子物体的活动状态都会受影响，结果不同。
 
-把小勾打回去，地板又出现。
+## GameObject 与组件
 
-这就奇怪了：取消一个勾就能让地板隐形，物理碰撞却保留下来，到底是怎么回事？
+`Floor` 的主要配置是：
 
-## GameObject 只是一个空壳
+- **Transform**：记录位置、旋转和缩放。
+- **Mesh Filter**：引用地板使用的网格。
+- **Mesh Renderer**：用指定材质绘制网格。
+- **Box Collider**：定义盒形碰撞区域。
 
-这个实验指出 Unity 的核心规则：GameObject（游戏物体）本身没有任何能力。它只是一个空壳。
+名字 `Floor` 便于查找，但不会自动赋予「地板」功能。能否显示、能否碰撞，由组件及其设置决定。
 
-往这个壳子里放什么组件，它就变成什么东西。
+这套结构允许渲染和碰撞分别配置。例如，装饰物可以只显示而不阻挡玩家，边界也可以只提供碰撞而不显示网格。
 
-拿 `Floor` 来说，它能被看见、能被踩、能被定位，是因为身上挂了三个 Component（组件）：
+## 场景与面板
 
-- `Mesh Filter`：赋予它几何形状（「我是一个扁平的方块」）。
-- `Mesh Renderer`：把它画出来（「让别人看见我」）。
-- `Box Collider`：赋予它物理实体（「让玩家站在我上面」）。
+- **Scene 文件**（`.unity`）：保存场景对象及其配置。
+- **Scene 视图**：用于查看和编辑三维场景的窗口，不是场景文件本身。
+- **Hierarchy**：列出当前打开场景的对象和父子关系。
+- **Inspector**：编辑选中对象的属性、组件或资源配置。
 
-刚才把 Mesh Renderer 关掉，等于告诉 Unity 不用画它了。但 Box Collider 还在，所以玩家照样踩得住。
+排查时，在 Hierarchy 中选择目标，再通过 Inspector 核对组件。Scene 视图可以辅助定位，但画面中看不到某物体，不代表它不存在。
 
-观察任何物体，先看它挂了什么组件，别只看名字。名字只是给人看的标签，能力来自组件。
+## Transform 与坐标
 
-:::tip[为什么是这样？]
-Unity 为什么不直接给一个「地板类型」「大门类型」，而要拆成「空壳 + 组件」？
+普通 GameObject 带有 Transform，UI 对象使用派生的 RectTransform。位置、旋转和缩放共同决定对象在空间中的变换。
 
-因为世界上的物品组合无穷无尽，写死类型行不通。组件系统像乐高：零件本身没固定用途，怎么拼由作者决定。一个 GameObject 可以同时是光源、音响、按钮，只要挂上对应的组件。
-:::
+Inspector 中的 Transform 值相对于父级。没有父级时，位置相对于世界原点；有父级时，父级的移动、旋转和缩放会影响子物体的最终位置与形状。
 
-## 三块面板的分工
+例如，`Floor` 的 Scale Y = 0.2 把单位 Cube 压成薄板；`Spawn` 的 Rotation Y = 180 改变出生方向。调整父级缩放时，子物体与碰撞范围也可能一起变化。
 
-日常做事时，视线会在这三块面板之间跳：
+## 父子层级
 
-- **Scene**：一个 `.unity` 文件，里面摆着物体和灯光。
-- **Hierarchy**：当前场景里所有 GameObject 的目录清单。
-- **Inspector**：点 Hierarchy 里某个物体，这里展示它身上的所有组件和参数。
-
-排查问题的标准动作：在 Hierarchy 找到目标物体，去 Inspector 看它挂了什么组件、填了什么数值。
-
-## Transform：每个物体的标配
-
-每个 GameObject 一出生就自带 Transform，删不掉。它只管三件事：在哪（Position）、朝哪（Rotation）、多大（Scale）。
-
-把 Cube 的 Scale Y 改成 0.2，它就成了扁平地板；把 Spawn 的 Rotation Y 改成 180，玩家出生朝向就反了。后面绝大部分基础搭建，就是找对物体、改对 Transform。
-
-## 父子层级：让一组物体一起动
-
-在 Hierarchy 里，把一个物体拖到另一个物体下面，它就变成了对方的子物体。
-
-以后做一扇门（门框 + 门板 + 把手），不用层级要逐个零件搬。用了层级：建一个空物体 `Door` 当父级，零件拖进去：
+把一个物体拖到 Hierarchy 中另一个物体下面，可以建立父子关系：
 
 ```text
-Door
-├─ DoorFrame
-├─ DoorPanel
-└─ Handle
+Room
+├─ Floor
+├─ Wall_Left
+└─ Wall_Right
 ```
 
-移动 `Door`，底下三件零件跟着走。「一堆零散几何体」就成了「一个完整物件」，Hierarchy 也因此保持清晰。
+移动 `Room` 时，三个子物体随父级变换。父级因此适合管理一组需要整体移动的对象。
 
-## 空物体：看不见但很有用
+空 GameObject 默认只有 Transform，没有可见网格。它可以标记位置、组织层级或作为组件的挂载点。`Spawn` 用的就是位置标记功能。
 
-空物体（Empty GameObject）不挂渲染组件，画面里看不见。但它在项目里用处很大。
+## 给对象明确命名
 
-`Spawn` 就是个空物体，没有外观，只用 Transform 标记一个位置和朝向。
+`Cube (1)`、`Cube (2)` 无法表达用途。使用 `Floor`、`Wall_Left`、`Spawn` 等名字，可以在 Hierarchy 搜索和引用槽中辨认对象。需要多个同类对象时，可按用途或位置加后缀，例如 `Lamp_Entrance`。
 
-空物体在场景里常见的几种活法：当一组零散模型的父级容器；当一扇门旋转时的轴心点；挂脚本和触发区域用的逻辑挂载点。看不见，但骨架靠它撑着。
+改名不会自动改变组件行为。依赖名字查找的脚本可能受改名影响；Inspector 中已建立的对象引用通常不依赖显示名称。
 
-## 现在开始改名
+## 添加两面墙并测试层级
 
-项目刚起步时，Hierarchy 一周后通常长这样：
+以位置在原点、Scale 为 `10, 0.2, 10` 的地板为基准：
 
-```text
-Cube
-Cube (1)
-Cube (2)
-GameObject
-GameObject (1)
-```
+1. 新建空物体 `Room`，Position 和 Rotation 都设为 `0, 0, 0`，Scale 设为 `1, 1, 1`。
+2. 复制 `Floor`，命名 `Wall_Left`，Position 设为 `-5, 1.6, 0`，Scale 设为 `0.2, 3, 10`。
+3. 再复制为 `Wall_Right`，Position 设为 `5, 1.6, 0`，保持相同 Scale。
+4. 把 `Floor` 和两面墙拖到 `Room` 下方，核对世界中的位置没有意外改变。
+5. 临时移动 `Room`，检查三块板是否一起移动。
+6. 把 `Room` 恢复到原点并保存，保持它与 `Spawn` 的位置关系。
 
-五个物体还行，上百个时根本分不清哪个 `Cube (14)` 是地板、哪个是灯座。
+此时场景有地板和两面侧墙，还没有屋顶、后墙或室内陈设。
 
-随手改个名字：地板叫 `Floor`，出生点叫 `Spawn`，灯光开关叫 `Button_LightSwitch`。名字乱起不会报错，但两周后自己都分不清东西在哪，改一处要翻半天。
+## 本章参考
 
-## 自己加两面墙
-
-打开项目，动手做一遍：
-
-1. 选中 `Floor`，`Ctrl+D` 复制一份，改名 `Wall_Left`。
-2. 在 Transform 里改数值，让它竖起来贴在地板左边缘。
-3. 再 `Ctrl+D` 一份当 `Wall_Right`，平移到右边缘。
-4. Hierarchy 空白处右键 `Create Empty`，命名 `Room`。
-5. 把 `Floor`、`Wall_Left`、`Wall_Right` 全拖进 `Room` 下面。
-6. 拖动 `Room`，看三块板是不是一起动。
-
-做完之后：拖一下 `Room`，三块板一起走。这就是层级的意义。
+- [Unity 2022.3：GameObject](https://docs.unity3d.com/2022.3/Documentation/Manual/class-GameObject.html)
+- [Unity 2022.3：Transform](https://docs.unity3d.com/2022.3/Documentation/Manual/class-Transform.html)

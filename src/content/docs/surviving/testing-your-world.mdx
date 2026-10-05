@@ -1,212 +1,152 @@
 ---
 title: 41. 测试你的世界
-description: ClientSim、Build & Test、Friends 实例三层测试，各自能验出什么，不能验出什么。多客户端用 SDK 控制台的 Number of Clients，多账号同时登录用 --profile 参数。Quest 单独测一遍。一份发布前的分层测试清单。
+description: ClientSim、本地客户端、上传版本与目标设备各自能验证的内容，以及多人、后加入和跨平台测试记录。
 difficulty: 进阶
 estimatedMinutes: 50
 chapterType: hands-on
 requiresSDK: true
-summary: 一个世界在自己电脑上「能跑」远不等于「能发」。VRChat 世界的可见行为有三层：单客户端逻辑、多客户端同步、跨平台限制。每层要在不同的环境里验。这一章把 ClientSim、Build & Test、Number of Clients、--profile 多账号、Friends-Only 私密上传几件工具串成一份分层测试流程。
+summary: 测试结果必须附带环境和条件。ClientSim 不能代替真实网络与头显；Last Build 不包含尚未重新构建的修改；Private 世界和 Friends 实例属于不同层级，Android 世界也不套用头像专属 Shader 限制。
 sidebar:
   order: 2
 ---
 
-第 40 章把单条 bug 怎么查讲完了。但「能查 bug」和「世界能拉去给陌生人玩」之间还隔着一层：那些只在多人、只在 Quest、只在后加入者身上才出现的问题，单人调试根本撞不到。多数发布后差评累积、收藏数掉头的世界，问题不是单人 bug 没修，是这一层根本没测。
+[第 40 章](/surviving/debugging-mindset/)中的日志方法用于定位具体问题。测试则检查一组明确的预期：哪些功能应当发生、谁应当看到、在什么平台和条件下成立。
 
-这一章按「成本由低到高」的顺序铺一遍 VRChat 世界开发的三层测试环境，把它们各自能验出什么、不能验出什么写清楚。每发一次新版本，按这个顺序走一遍。
+## 第一节：分层测试
 
-```text
-ClientSim          单人/伪多人，秒级反馈，遗漏多
-Build & Test       本地多客户端，分钟级反馈，最接近真实
-Friends 私密上传   真实 VRChat 网络，邀请朋友测，最贵
-```
+| 环境 | 适合检查 | 不能据此确认 |
+| :--- | :--- | :--- |
+| Unity + ClientSim | 本地交互、引用、UI 和状态逻辑 | 真实多人时序、设备性能、VR 舒适度 |
+| Build & Test | 构建后的真实客户端行为、多客户端状态 | 不同网络和设备的全部条件 |
+| 上传后创建受限访问实例 | 下载、账号差异、真实参与者与网络 | 没有参加测试的平台和人数 |
+| 目标设备 | 该设备上的渲染、操作、音视频和性能 | 其他型号或不同显示设置 |
 
-三层不是替代关系，是补足关系。每层只能验证一部分事。
+每次测试记录版本、Unity / SDK 版本、客户端、设备、人数和结果。“通过”只适用于已执行的用例与条件。
 
-## 第一节：ClientSim 是 VRChat 世界的快速预演
+## 第二节：ClientSim
 
-ClientSim 是 VRChat 官方的客户端模拟器，作为 Worlds SDK 的一部分附带。在 Unity 编辑器里按下 `Play` 按钮就启动，几秒钟内就能行走、按按钮、捡东西，不用编译、不用上传。
+Worlds SDK 附带 ClientSim，可在 Unity 的 Play Mode 中模拟部分 VRChat 交互。保存场景后进入 Play，检查行走、Interact、Pickup、Station 和 UI；同时在 Inspector 和 Console 观察脚本状态。
 
-按官方文档（[ClientSim](https://creators.vrchat.com/worlds/clientsim/)）和社区指南（[VRCreators ClientSim Testing](https://vrcreators.net/docs/vrchat/clientsim-world-testing)）的总结，它能模拟的：
+Remote Player 是编辑器中的模拟对象，不是另一个通过真实网络连接的客户端。它不能验证两台设备之间的所有权竞争、同步延迟或真实后加入流程。
 
-- **行走、跳跃、视角控制**：在 Game 视图里 WASD 移动、鼠标转视角，跟桌面 VRChat 客户端一致。
-- **`Interact` 事件**：靠近可交互物体，发起 Interact 触发。
-- **`VRC Pickup`**：靠近能抓的物体，右键握住、再右键松手。
-- **`VRC Station`**（座椅）：进站、出站。
-- **World Space UI**：Canvas 上的按钮、Toggle、Slider 都能点。
-- **简单的 Udon 变量变化**：能在 Inspector 里实时看到 `[UdonSynced]` 字段当前值。
-- **PlayerData / PlayerObject**：可以做初步观察和逻辑检查，但真实保存、回访恢复、不同玩家隔离和多人生命周期仍要在 VRChat 客户端里验证。
-- **本地玩家事件的初步检查**：ClientSim 可用于检查部分玩家状态和本地事件，但不能把它当成真实多人网络环境。
+持久化工具可辅助观察 PlayerData / PlayerObject，但重新加入、恢复顺序和不同玩家的数据隔离仍要在客户端确认。编辑器中能执行某个 API，也不代表其客户端条件已满足。
 
-它不能替代真实环境验的：
+ClientSim 使用编辑器的渲染和输入环境。桌面视角不能替代头显中的可读性、伸手操作或移动舒适度测试。
 
-- **真实的网络同步**：ClientSim 模拟 Master / Guest 切换是简化版，时序跟真实 VRChat 网络对不上。所有权竞争（两个真实玩家同时按一个按钮）的细节，ClientSim 看不出。
-- **真实的 Late Joiner 行为**：ClientSim 加入的「Remote Player」是脚本造的，跟一个真人客户端从零开始接入世界、拉同步数据的过程不一样。
-- **Quest / Android 平台限制**：所有内容都跑在 PC 编辑器里，Shader 白名单（允许在 Quest / Android 上使用的 Shader 清单）、纹理 1K 上限、面数预算这些 Android 限制全部不生效。
-- **VR 舒适度**：晕动、走廊宽度、视高，ClientSim 是桌面视角，体感为零。
-- **真实多人混乱**：十个人在一个房间各按各的、各抓各的、各开各的镜子，性能怎么样、网络稳不稳，没法在编辑器里复现。
+## 第三节：Build & Test
 
-::::tip[ClientSim 的定位]
-官方文档把 ClientSim 描述成「本地 QA 层」（local QA layer）：发现明显问题用，作为最终验证不够。
+打开 `VRChat SDK → Show Control Panel`。确认 Authentication 已登录，并在 Settings 中检查 VRChat 客户端路径。Builder 中先处理阻止构建的错误。
 
-实务做法是：每改一处脚本立刻 Play 一下，让 ClientSim 兜住 90% 的低级失误（引用没拖、按钮根本没触发、变量没翻转）。剩下 10% 留给后两层。
-::::
+当前 SDK 的 Build Type 包含构建、测试和重载选项，界面名称随版本可能不同：
 
-ClientSim 安装方式：[第 4 章](/getting-started/tools/) 装的 Worlds SDK 已经把它带进项目，不用单独装。Unity 里按 Play，下方会冒出 ClientSim 的设置浮窗（玩家身高、Add Remote Player、PlayerData 视图等）。
+- **Build & Test Your World**：重新构建并启动测试客户端。
+- **Build & Reload Your World**：重新构建，交给已经启用世界监听的客户端重载。
+- **Test / Reload Your Last Build**：复用上一份构建，不包含之后尚未构建的场景或脚本修改。
+- **Clients / Number of Clients**：启动客户端数量；大于 1 可检查多客户端行为。
+- **Force Non-VR**：以桌面模式启动。
 
-## 第二节：Build & Test 是真正的本地客户端
+先设两个客户端，交替操作并记录两端状态。多开会共享同一台机器的 CPU、GPU、内存和网络资源，其帧率不能直接当成单客户端性能结果。
 
-ClientSim 之后下一层是 `Build & Test`。这是 VRChat SDK 提供的一键流程：把当前世界编译成一份临时构建包，在本地启动一个或多个真实的 VRChat 客户端进入这个世界。
+Build & Test 使用真实 VRChat 客户端，但不能仅凭“同一台电脑”推断所有网络通信都是零延迟本地回环。真实远端用户、网络和平台仍需要单独测试。
 
-打开 `VRChat SDK Control Panel`（菜单 `VRChat SDK` → `Show Control Panel`），切到 `Builder` 标签。下方有一栏 `Local Testing`：
+客户端未启动时，依次检查客户端能否手动运行、SDK 设置中的路径、登录状态以及 Console 和客户端日志。若安全软件报告拦截，检查具体报告与文件来源，不把关闭防护或添加整个目录的排除规则作为通用排错步骤。
 
-| 字段 | 作用 |
-| :--- | :--- |
-| `Number of Clients` | 启动几个 VRChat 客户端实例（1-N） |
-| `Force Non-VR` | 全部以桌面模式启动（不进 VR） |
-| `Build & Test New Build` | 编译一份新构建并按上面设置启动 |
-| `Last Build` | 不重新编译，重新启动上次构建（小调整后跳编译省时间） |
+## 第四节：不同账号与 profile
 
-`Number of Clients` 设成 `2` 是常用值，Master + 一个 Guest，能把多数同步问题挑出来。设成 `4` 时机器需要扛得住四份 VRChat。设成 `1` 时跟普通桌面客户端没区别。
-
-按 `Build & Test New Build`，Unity 走一遍 Build 流程（视场景大小，几十秒到几分钟），完成后自动启动若干 VRChat 客户端，每个都进入这个测试世界。
-
-::::caution[踩坑预警]
-按了 `Build & Test` 之后 VRChat 客户端没启动？检查这几件：
-
-- VRChat 客户端必须**先在桌面或 Steam 上至少登录过一次**。SDK 是用本地保存的登录态启动客户端的。如果从来没登录过，会卡在登录页。
-- `Local Testing` 那一栏里 VRChat 安装路径是不是对的（默认 Steam 路径，自定义安装目录要在 SDK 设置里指）。
-- 杀毒软件 / Windows Defender 有时会把 VRChat 临时构建文件当成可疑，构建中断。VRChat 安装目录加一条信任规则。
-- `Number of Clients` 设大了机器扛不住，第二个客户端启动到一半超时挂掉。先用 `2` 测，机器允许再加。
-::::
-
-Build & Test 跟编辑器内的 ClientSim 比，区别核心是「跑的是真正的 VRChat 客户端」：
-
-- Shader 走真实 VRChat 渲染管线（从场景数据到屏幕画面的绘制流程），纹理、光照、Skybox 显示效果跟发布后一致。
-- 网络同步走本地局域网回环，但用的是真实的 VRChat 客户端和本地测试流程。Master / Guest 行为、同步变量、网络事件和所有权转移，比 ClientSim 更接近真实环境，但仍不能替代私密上传后的公网测试。
-- 性能数据是真实数据。FPS、Draw Call、显存占用都准（[第 38 章](/placeness/performance/) 里 Stats 提到「编辑器有 overhead（额外开销）」，Build & Test 没这层 overhead）。
-
-它不能模拟的：跨平台（Android / Quest 必须切平台单独构建测）、外部 VRChat 网络的延迟和丢包（公网走的不止本地环回）、真实陌生玩家的乱按。
-
-## 第三节：用 --profile 让两个 VRChat 同时登不同号
-
-`Number of Clients` 启动的多个 VRChat 客户端默认全用同一个账号登。这在测「同步」够用，但有几种场景需要不同账号：
-
-- 测玩家展示名（DisplayName）相关逻辑（同账号显示一样的名字）
-- 测私密上传后的 Friends-Only 实例（账号 A 上传，账号 B 用好友身份进）
-- 测好友区分逻辑（IsFriend 之类的判断）
-
-VRChat 客户端用 `--profile=N` 参数把每个实例的本地数据隔离开。`N` 是任意整数，每个值对应一份独立的登录态、设置、缓存。
-
-最简单的做法是在 VRChat 安装目录建几份 `bat`：
+需要验证账号隔离或权限时，用独立 profile 启动客户端，分别登录测试账号：
 
 ```bat title="vrchat_a.bat"
-VRChat.exe --profile=1
+VRChat.exe --profile=1 --no-vr --watch-worlds
 ```
 
 ```bat title="vrchat_b.bat"
-VRChat.exe --profile=2
+VRChat.exe --profile=2 --no-vr --watch-worlds
 ```
 
-第一次运行各自登录不同账号，之后每次双击对应 `bat` 就用对应账号启动。两份 VRChat 可以同时跑。
+profile 区分客户端配置与登录状态；它不会自动创建账号。`--watch-worlds` 让手动启动的客户端参与本地世界重载。若使用 SDK 的 Build & Reload 流程，确认两个客户端进入了同一个测试实例。
 
-社区还有专门的多窗口启动器（如 [VRCMultiLauncher](https://github.com/Loliption/VRCMultiLauncher)），把 `--profile`、分辨率、`--no-vr`、OSC 端口等参数做成可视化配置。如果只是偶尔多账号测，`bat` 够用；如果经常需要四五个账号同时上线测大场景，启动器更省事。
+公网测试中使用两个不同账号，并按实例加入条件进入同一实例。不要将 ClientSim 的模拟玩家、同账号本地测试与不同账号公网测试视为同一种证据。
 
-启动一份再启动一份的工作流：
+## 第五节：上传版本的受限测试
 
-```text
-1. 账号 A 上 PC，开 VR 当 Master，进自己的世界。
-2. 账号 B 用 vrchat_b.bat 桌面启动，从 VRChat 菜单加入账号 A 的实例。
-3. 同时开两个 VRChat 客户端，分别测 Master 视角和 Guest 视角。
-```
+世界首次上传默认是 Private；Friends、Invite、Group 等是实例访问类型，不是上传时世界可见性的四选一。
 
-VRChat 客户端支持同一台机器同时跑多份。各账号要分别登录，不要在不同 profile 间共用同一个账号（VRChat 服务端会判定「账号在两个地方登录」，可能踢线）。
+上传后从自己的世界列表或 SDK Content Manager 打开世界，再创建适合测试人员的受限访问实例，邀请测试者。Private 不表示资源只保留在本地，也不等于向所有持有链接的人保证保密。
 
-::::tip[ClientSim Remote Player vs --profile 多账号]
-两件事看起来都是「多人」，作用层不一样：
+测试顺序示例：
 
-- **ClientSim 的 Remote Player** 是脚本伪造的，用来在编辑器里测「我这边的脚本能不能识别远端玩家」「同步变量在两端的赋值是不是预期的」。它不通过真实网络。
-- **`--profile` 多账号 + Build & Test** 用的是真实 VRChat 网络协议（即便走的是本地回环），能测真正的 Master / Guest 切换、Late Joiner 时序、所有权竞争。
+1. A 进入，记录初始状态。
+2. A 改变共享状态，B 随后加入，核对当前状态。
+3. A 与 B 同时操作同一对象，检查写入方和结果。
+4. Owner 离开，剩余玩家继续操作。
+5. 重生或重新加入，核对初始化与持久化恢复。
+6. 创建新实例，确认哪些状态重置、哪些个人数据保留。
 
-第六部教多人同步时两者都用得到。前者验代码，后者验网络。
-::::
+每个开关先写明本地或共享。个人镜子不同步可能正是预期；共享门不同步才是相应测试的失败。
 
-## 第四节：Friends 私密上传是最后一道关
+## 第六节：Android / Quest
 
-Build & Test 跑通之后，下一步是真的把世界传上去，但只对自己 / 朋友可见。VRChat SDK Control Panel → Builder 里点 `Build & Publish`，上传完成后世界默认是 `Private`（私密），只有自己和被邀请的好友能进。
+选择 Android 构建前，确认对应 Unity 编辑器已安装 Android Build Support。切换平台会重新导入资源；检查并保存项目改动。
 
-为什么需要这一层：
+两条测试路径：
 
-1. **真实公网延迟**：Build & Test 在本地回环上跑，往返几乎零延迟。公网平均往返几十到几百毫秒，丢包偶发。同步逻辑里假设「立刻收到」的代码，公网上会暴露成「按按钮三秒后灯才亮」。
-2. **真实账号分隔**：好友、关注、陌生人之间的权限边界，本地客户端走不全。
-3. **真实平台路径**：上传 → CDN（分布在各地的下载节点）→ 玩家下载 → 进世界，这条链路里任何一步出错都只有真上传才发现（构建包过大被截断、特定资源 import settings 在线上炸、缩略图缺失等）。
+- **上传 Android 构建**：保持同一个 World ID，上传后用独立运行的 Quest 或 Android 客户端进入测试实例。
+- **Android Build & Test**：按官方移动设备流程配置 ADB、开发者模式和 USB 调试，通过 SDK 把本地构建传到已连接设备。USB 调试会授予电脑较强的设备操作能力，只对可信电脑启用，并按官方设备说明操作。
 
-Friends 私密上传后的测试流程：
+手机或平板可检查部分 Android 兼容性，但不能代替 Quest 头显的输入、视角和性能。通过 Link / Air Link 运行 PC VRChat 加载的是 PC 构建，也不能作为独立 Quest 构建的验证。
 
-1. 私密上传成功后，VRChat 客户端里去 `Worlds` → `Mine`，找到刚上传的世界。
-2. 邀请几位朋友（在线或离线邀请都行）。
-3. 让朋友报「现在你那边看到什么」「按按钮有没有反应」「门是开还是关」。手机上同步开个语音通话，跟自己进世界后的对照效率最高。
-4. 故意制造测试场景：让朋友先进，自己后进（测 Late Joiner）；自己按一下按钮立刻退出，让朋友报有没有看到（测同步是不是发出去了）。
-5. 让朋友重启 VRChat 客户端再加入，确认重新进的人状态正确。
+检查材质、贴图、Lightmap、后处理、视频与 UI。官方 Android 文档中的“头像只允许指定 Shader”等限制有明确适用范围；不能推导为所有世界材质会自动替换成 Standard Lite，或所有纹理强制降到 1K。
 
-每发布一次重大改动（新功能、动了同步逻辑、改了出生点），私密版本至少跑一轮再公开发布。多数发布后口碑下滑的世界，都是没经过这一层就 `Public` 了。
+## 第七节：性能与可访问性
 
-## 第五节：Quest / Android 必须单独测一遍
+按目标设备的刷新率和项目预算记录帧时间、内存、人数与开启功能。没有适用于所有设备、所有世界的单一 FPS 上传门槛。
 
-[第 39 章](/placeness/pc-and-quest/) 已经讲过 Quest 平台的限制。这里只补「测试流程怎么做」。
+至少覆盖：入口、最复杂的视角、镜子开启、视频播放和计划人数。记录头像显示设置，以便区分世界负载与头像负载。
 
-PC 平台测好之后，切到 Android：菜单 `File` → `Build Settings` → 选 `Android` → `Switch Platform`。等待资源重新导入（首次切平台 5-30 分钟，之后切回来用 Library 缓存几秒就行）。
+操作测试还应覆盖：
 
-切完 Android 后再走一遍 Build & Test：
+- 桌面与 VR 输入。
+- 坐姿、不同 Avatar 身高和左 / 右手操作。
+- 静音、字幕、界面语言与缺字。
+- 关闭附加特效后的通路和关键反馈。
 
-- 如果有 Quest 头显，挑一台 Quest 直接进自己的私密世界，看能不能进、纹理有没有掉、帧率能不能上 72。
-- 没有 Quest 也可以用桌面端的 Android 客户端（VRChat 在 Android 平板 / 移动端有客户端）替代验。
-- 重点看 SDK Validation（SDK 上传前的自动检查）上有没有红色错误。Quest 平台 Validation 比 PC 严格得多：超规格的 Shader 会被替换成 Standard Lite，纹理超过 1K 会强制压。这些行为用 Build & Test 能直接看到。
+## 发布测试清单
 
-PC 上最华丽的世界到 Quest 上经常需要砍一半内容（关掉实时光、合并镜子、换 Shader）。这种砍在私密发布前做完，比公开发布之后再修代价小得多。
+- [ ] 记录本次世界、SDK 和客户端版本
+- [ ] 本地交互与必要引用正确
+- [ ] 构建包含本次修改，没有误用 Last Build
+- [ ] 两个客户端验证共享与本地状态
+- [ ] 后加入、Owner 离开、重生和重入有明确结果
+- [ ] 上传版本的下载与进入流程通过
+- [ ] 每个宣称支持的平台都在对应设备上测试
+- [ ] 性能结果注明设备、人数、头像与效果设置
+- [ ] 未测试的条件和已知问题单独列出
 
-## 第六节：发布前的分层测试清单
+## 测试练习
 
-把上面四节合成一份清单。每发一个版本走一遍：
+把一个共享灯开关写成测试表：A 首先进并开灯，B 后加入，A 离开，B 关灯，再创建新实例。每一步记录两端预期与实际状态。对个人音量开关使用相同流程，比较其预期为何不同。
 
-**ClientSim 层（5–10 分钟）**
+### 同一次交互在不同环境中的日志
 
-- [ ] 进入 Play Mode，无 Console 红字
-- [ ] 主路线走一遍：出生点 → 主交互 → 关键 UI
-- [ ] 每个按钮、Pickup、Station、传送门各点一次
-- [ ] 临时禁用一个关键引用，看看是否优雅降级（不挂整个场景）
+在场景副本中建立[本地门调试示例](/surviving/debugging-mindset/#第二节在执行边界记录日志)，填好 `doorAnimator`，保留 `[Door]` 前缀。每轮从关门状态开始，只按一次；它没有同步代码，预期只改变操作者本机的门。
 
-**Build & Test 层（10–30 分钟）**
+1. ClientSim 中按一次，在 Unity Console 记录入口、isOpen 和 SetBool 完成日志。
+2. Build & Test 的客户端数设为 2，在 A 按一次，分别查 A、B 的画面与本次客户端日志；记录哪个进程产生了 `[Door]`。多开日志可按启动时间和该次操作标记区分，不把两个文件拼成一条执行链。
+3. 按本章 profile 步骤登录两个测试账号，确认处在同一本地测试实例，重复操作，记录身份、配置与日志文件。
+4. 再把同一测试版本上传为 Private 世界，由两个账号进入同一受限实例，重复一次。另列这次结果，不能把 profile 隔离本身当作公网测试。
 
-- [ ] `Number of Clients = 2`，两个 VRChat 客户端同时进
-- [ ] 用 `--profile` 至少试一次双账号 Master / Guest
-- [ ] 按 `R Shift + ` ` ` + `3` 看实时日志，无红字 halted
-- [ ] Stats 浮窗 FPS 90+ / Quest 72+
-- [ ] 关键同步交互：开关灯、抓 Pickup、坐 Station，两端一致
+只替换测试环境，不同时替换门脚本或同步方式。要比较共享门，再单独使用[同步门实现](/with-others/tell-everyone/#同步门的目标状态)，按同样步骤重测；预期与观察均单独记录。
 
-**Friends 私密层（30 分钟+）**
+### 可选引用缺失时的降级
 
-- [ ] `Build & Publish` 成功，世界设为 Private
-- [ ] 邀请至少 1 位朋友进，全程开语音通话
-- [ ] 测 Late Joiner：朋友先进、自己后进
-- [ ] 测随机崩溃：朋友重启客户端再加入
-- [ ] 平台抽测：用 Quest 头显或 Android 客户端进一遍
+使用[短效果广播的 ExplosionButton](/with-others/tell-everyone/#一次性网络事件)，在副本中先填好 `explosionSound` 和 `explosionEffect`，确认一次交互有声音与粒子。停止运行，只清空 `explosionSound` 引用，重新构建测试：预期仍收到交互并播放粒子，声音不播，也不出现这次缺少引用引起的 halted。查客户端日志确认，再恢复音源并重测。
 
-每一项都能勾上，再考虑公开发布。漏掉某一层而出问题的世界，玩家进去十秒就退是常态。
-
-## 自己改两组
-
-挑一个练手：
-
-- 当前项目里把第 17 章的门加上 `Debug.Log`，分别用 ClientSim、Build & Test（`Number of Clients = 2`）、`--profile` 双账号三种方式各按一次门。对比三处看到的日志和行为差异。第二种和第三种里，Master 和 Guest 看到的是不是同一件事？
-- 故意制造一个 Late Joiner 场景：账号 A 先进世界、按一下开关把灯打开。然后账号 B 用 `--profile=2` 启动后加入。账号 B 看到的灯是开还是关？这是 [第 29 章](/with-others/late-joiners/) Late Joiner 同步的实际表现，亲眼看一次比看十遍文字描述都管用。
-
-走完这两个之后，发布前测试这件事就有了一份分层清单可以照走，不再凭感觉「跑一下试试」。
+这一脚本分别检查两个可选引用，因此缺少声音不会跳过粒子。若换成必需引用，应先写明“提示配置错误并停止该功能”等预期；不能把所有缺失都默默忽略。需要实际制造 Udon 停止的对照时，使用[受控故障实验](/surviving/debugging-mindset/#在副本中比较无保护与有保护)。
 
 ## 本章参考
 
 - [VRChat Creator Docs：ClientSim](https://creators.vrchat.com/worlds/clientsim/)
 - [VRChat Creator Docs：Using Build & Test](https://creators.vrchat.com/worlds/udon/using-build-test/)
-- [VRChat Creator Docs：Publishing Your World](https://creators.vrchat.com/worlds/publishing-your-world/)
-- [VRCreators：ClientSim World Testing（2026-05 修订）](https://vrcreators.net/docs/vrchat/clientsim-world-testing)
-- [VRChat 启动参数（VRCMultiLauncher 文档）](https://github.com/Loliption/VRCMultiLauncher)
-- [UhiyamaLab：Debugging and Testing Basics（2025-12 修订）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-debugging-testing/)
+- [VRChat Creator Docs：Creating Your First World](https://creators.vrchat.com/worlds/creating-your-first-world/)
+- [VRChat Creator Docs：Build and Test for Android Mobile](https://creators.vrchat.com/platforms/android/build-test-mobile/)
+- [VRChat Creator Docs：Android Content Limitations](https://creators.vrchat.com/platforms/android/quest-content-limitations/)

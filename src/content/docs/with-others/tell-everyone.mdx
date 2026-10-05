@@ -1,48 +1,29 @@
 ---
 title: 28. 告诉别人发生了什么
-description: 给灯加 [UdonSynced]、[UdonBehaviourSyncMode(Manual)]、RequestSerialization 和 OnDeserialization。两个客户端的灯第一次「同时亮、同时灭」。再用 SendCustomNetworkEvent 做一次性的全员广播：放一个会让所有人都听到的爆炸音效。
+description: 用 Manual 同步变量保存灯和门的状态，用网络事件触发当前在场客户端的一次性效果。
 difficulty: 进阶
 estimatedMinutes: 60
 chapterType: hands-on
 requiresSDK: true
-summary: 第六部最关键的一章。把第 27 章那盏灯接上 [UdonSynced]、Manual Sync、RequestSerialization 和 OnDeserialization 四件套，A 按一下 B 那边的灯也亮。再用 SendCustomNetworkEvent 让一个按钮在所有人客户端上都播一次爆炸音效。两种工具的边界各自在哪儿讲清楚：状态用同步变量、一次性事件用网络事件，混着用就出乱子。
+summary: Owner 修改 UdonSynced 字段并请求序列化，其他客户端在 OnDeserialization 中应用状态。网络传输有延迟，发送请求不等于立即到达；NetworkCallable 网络事件适合瞬时效果或交给 Owner 校验的操作请求。
 sidebar:
   order: 3
 ---
 
-第 27 章那盏灯，所有权能正常切换了。但两个客户端的灯还是各亮各的：A 按一下，A 这边灯灭，B 那边灯亮如旧。
+第 27 章的所有权决定谁负责发布状态。要让灯在不同客户端一致，还需要将开关状态放进同步字段，并在接收后更新本地 Light。
 
-差的就是「广播」这一步。脚本本地翻完字段，得告诉 VRChat：「这个变化要发出去」。这一章把这件事接通。
+## Manual 状态同步的四个部分
 
-完成之后，两个客户端的灯第一次能同步切换：A 按一下，B 那边的灯也跟着灭。这个瞬间值得花时间把流程看穿，往后所有同步逻辑都是这套机制的变体。
+1. `[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]` 固定此 Behaviour 的同步模式。
+2. `[UdonSynced]` 标记要发送的脚本字段。
+3. Owner 修改字段后调用 `RequestSerialization()` 请求序列化。
+4. 其他客户端在 `OnDeserialization()` 中将收到的字段应用到表现。
 
-最后顺手介绍另一种同步工具：`SendCustomNetworkEvent`。它跟同步变量是两件不同的事，混着用容易出 bug。
+序列化是把字段值编码为网络数据；反序列化是把收到的数据还原为字段。`OnDeserialization` 不负责让字段本身变成同步字段，它负责示例中的 Light、UI 等表现更新。
 
-## 同步变量四件套
+## 同步灯开关
 
-让一个字段同步到所有客户端，需要四件东西。每一件都不能漏：
-
-1. **`[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`**：写在脚本类上方，告诉 UdonSharp 这个脚本走「手动同步」模式。
-2. **`[UdonSynced]`**：写在要同步的字段上方，标记它是「需要广播给所有人」的字段。
-3. **`RequestSerialization()`**：在 Owner 改完字段后调用一次，告诉 VRChat「现在打包发出去」。serialization 中文叫「序列化」，意思是把字段值打包成网络数据。
-4. **`public override void OnDeserialization()`**：远端客户端收到打包过来的字段后，VRChat 会调一次这个方法，让脚本根据新字段更新本地表现。deserialization 是「反序列化」，把网络数据解包还原回字段值。
-
-四件凑齐了字段才能跨客户端同步。少一件就有具体的失败模式：
-
-| 漏的件 | 失败现象 |
-| :--- | :--- |
-| `[UdonBehaviourSyncMode]` | 同步模式没有被脚本固定，Inspector 里的设置可能和教程预期不一致 |
-| `[UdonSynced]` | 字段不进同步打包，跟没标一样 |
-| `RequestSerialization()` | Manual 模式下不调就不发，远端永远收不到 |
-| `OnDeserialization()` | 远端收到了字段但不知道要根据它做什么，灯仍然不变 |
-
-下面把第 27 章那盏灯按这四件挨个补上。
-
-## 第一步：声明同步模式和同步字段
-
-回到 `LampToggle.cs`。第 27 章的版本里 `targetLight.enabled` 是「直接读写 Light 组件」的方式。要让它同步，得把状态拆出来放进一个本脚本字段：让脚本拥有「灯应该是亮还是灭」这个真相，再让那盏 Light 跟着这个字段走。
-
-```cs title="LampToggle.cs（28 章版）"
+```cs title="LampToggle.cs（同步版）"
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -62,248 +43,177 @@ public class LampToggle : UdonSharpBehaviour
 
     public override void Interact()
     {
-        // 抢所有权
         if (!Networking.IsOwner(gameObject))
-        {
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
-        }
+        if (!Networking.IsOwner(gameObject)) return;
 
-        // 翻字段
         isOn = !isOn;
-
-        // 把这个新状态打包广播
         RequestSerialization();
-
-        // 本地立刻看到效果（不等远端回应）
         ApplyState();
     }
 
     public override void OnDeserialization()
     {
-        // 远端 Owner 改完发过来了，更新本地表现
         ApplyState();
     }
 
     private void ApplyState()
     {
-        if (targetLight != null)
-        {
-            targetLight.enabled = isOn;
-        }
+        if (targetLight != null) targetLight.enabled = isOn;
     }
 }
 ```
 
-逐项扫一遍：
+将这个版本替换原有 `LampToggle.cs` 的全部内容，不另建同名类。脚本挂在有普通 Collider 的按钮上，填写 `Target Light`，确认 Inspector 同步模式为 Manual。Light 使用 Realtime 模式；关闭 Light 不会移除已有的烘焙照明。
 
-- 类的最上面 `[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`：声明这个脚本走 Manual 同步模式。Owner 调一次 `RequestSerialization` 才发一次。
-- `[UdonSynced] private bool isOn`：脚本拥有「灯应该是开还是关」这件事。这是本脚本的**单一真相**。
-- `Start()` 里调 `ApplyState()`：保证场景刚加载时 Light 跟字段一致。
-- `Interact()` 里：抢所有权 → 翻字段 → 调 `RequestSerialization` → 调 `ApplyState`。前三步是同步必须，最后一步是「本地立刻看到」的优化（不优化也行，但本地看着会有一小段延迟）。
-- `OnDeserialization()`：远端推过来的新值已经写进 `isOn`，调一次 `ApplyState` 把灯跟着翻。
-- `ApplyState()`：把字段值反映到 `Light.enabled`。这种「单一函数集中处理状态到表现」的写法第 17 章那个红黄绿信号灯里见过。
+本例 `isOn` 初始为 false，因此 Start 后灯关闭。脚本字段是共享状态，Light 只是本地显示结果。Owner 本机也要调用 `ApplyState()`；不能把它删掉并等待自己的 `OnDeserialization` 自动更新表现。
 
-把脚本存盘，回 Unity。Inspector 里 `LampToggle` 的 Sync Mode 显示成 `Manual`，`Target Light` 字段还是要拖那盏 `GlowBall` 进去（跟第 13 章一样）。
+## 双客户端测试与时间线
 
-::::tip[为什么要让脚本「拥有」这个状态]
-之前 13 章那种 `targetLight.enabled = !targetLight.enabled` 直接读写 Light 组件的写法，让 Light 自己成了真相。这件事在多人下麻烦：
+两边加载初始关闭状态后：
 
-- Light 组件的 `enabled` 字段不能加 `[UdonSynced]`（同步标记只能加在脚本字段上）。
-- 不同客户端的 Light 各自被本地脚本翻，各自独立。
+1. Alpha 按一次，获得所有权，`isOn` 变为 true，本机灯开启。
+2. 序列化请求按网络调度发送；Beta 收到 true 后执行 `ApplyState`，灯开启。
+3. Beta 按一次，获得所有权，`isOn` 变为 false，本机灯关闭。
+4. Alpha 收到 false 后关闭自己的灯。
 
-把状态搬进脚本里的 `bool isOn`，Light 退到「输出端」：脚本说亮就亮，脚本说灭就灭。这下 `isOn` 可以同步，所有客户端的 Light 都跟着同步过的字段走。
-
-这种做法叫「数据 / 视图 分离」。第 17 章那扇门也是这套（脚本里 `isOpen`，Animator 当视图）。所有要同步的状态机最后都会变成这个样子。
-::::
-
-## 第二步：试一次同步
-
-Build & Publish 重新发布。两个客户端进同一个实例。
-
-Alpha 按一下 `LampSwitch`：
-
-- Alpha 本地：`Interact` 跑，抢所有权（已经是 Owner 不抢），翻 `isOn` 为 `false`，`RequestSerialization`，`ApplyState` 把灯灭。
-- Beta 本地：VRChat 收到 Alpha 客户端打包来的同步字段（`isOn = false`），写进 Beta 客户端这台脚本的 `isOn`，触发 `OnDeserialization`，`ApplyState` 把 Beta 这边的灯也灭。
-
-两边的灯**同时**灭。
-
-Beta 按一下：
-
-- Beta 本地：`Interact` 跑，发现自己不是 Owner，调 `SetOwner`，所有权转给 Beta（Alpha 那边触发 `OnOwnershipTransferred`），翻 `isOn` 为 `true`，`RequestSerialization`，本地灯亮。
-- Alpha 本地：收到 Beta 打包过来的 `isOn = true`，触发 `OnDeserialization`，灯亮。
-
-两边的灯第一次同时亮。
-
-来回按几次确认状态稳定一致。如果还有偏差，下面这个表是按顺序的检查清单。
-
-::::caution[第一次接同步常见的几条沉默错误]
-按下面顺序自查，多数是这几条：
-
-1. **类上没加 `[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]`**：Inspector 里 Sync Mode 显示是 `Any` 或别的值。VRChat 编辑器有时候不会强报错，但行为飘忽。
-2. **`[UdonSynced]` 漏写**：字段在 Inspector 里看起来正常，但远端不会收到值变化。
-3. **改完字段忘调 `RequestSerialization`**：本地改了，远端看不到。
-4. **没重写 `OnDeserialization`**：远端字段值变了，但脚本不知道要做什么。需要把更新逻辑从 `Interact` 抽到 `ApplyState` 里、`OnDeserialization` 里再调一次。
-5. **没抢所有权就改字段**：本机不是 Owner，改字段加 `RequestSerialization` 不会发出去（VRChat 内部会忽略非 Owner 发起的同步请求）。
-
-第 5 条是最绕的。脚本表面上看着完整，调试日志里也看着翻了字段。但跨客户端测就发现状态不传。有 `if (!IsOwner) SetOwner(...)` 那一步在前，能挡掉这个失误。
-::::
-
-## 这条同步链路具体在做什么
-
-把刚才那次按按钮拆成时间线，大概是这样：
+两边达到相同状态，但不保证在同一帧改变。
 
 ```text
-T=0    Alpha 按 LampSwitch
-T=0    Alpha 本地：Interact 跑，SetOwner（已是 Owner，跳过）
-T=0    Alpha 本地：isOn = !isOn
-T=0    Alpha 本地：RequestSerialization()
-T=0    Alpha 本地：ApplyState（灯立刻熄灭）
-       ↓
-       VRChat 把脚本里所有 [UdonSynced] 字段打包成网络数据包
-       ↓
-T~50ms 数据包通过 VRChat 服务器发给所有其他客户端
-       ↓
-T~150ms Beta 客户端收到数据包
-T~150ms Beta 客户端：写入 isOn 字段
-T~150ms Beta 客户端：触发 OnDeserialization()
-T~150ms Beta 客户端：ApplyState（灯熄灭）
+发起端：Interact → 检查所有权 → 修改 isOn
+                            ├→ ApplyState（本地表现）
+                            └→ RequestSerialization（请求发送）
+网络：等待调度与传输
+接收端：写入 isOn → OnDeserialization → ApplyState
 ```
 
-Alpha 看到瞬间反应，Beta 看到延迟约 100ms 的反应。延迟的大小取决于网络情况，在 PC 局域网里可能更短，跨大陆 200ms 都正常。
+延迟取决于网络、同步数据量和发送限速，不应给教程填入固定的 50 ms / 150 ms 时间线。所有权竞争仍需单独测试；本例不保证累计每一次同时点击。
 
-::::tip[为什么按钮开关更适合 Manual]
-`[UdonBehaviourSyncMode]` 还能填 `Continuous` 选项。Continuous 模式会高频自动同步变量，但它受网络 tick、带宽和限速影响，不等于「每帧一定发送」，也不保证每个中间值都可靠到达。
+### 按现象检查
 
-按按钮翻一次 bool 这种事，用 Continuous 是浪费：绝大多数时间字段都没变，却仍然让这个 Behaviour 处在高频同步模式里。
+| 现象 | 检查项 |
+| :--- | :--- |
+| 本机变化、远端字段不变 | Owner、UdonSynced、Manual 模式和 RequestSerialization |
+| 远端字段变化、灯不变 | OnDeserialization 是否调用 ApplyState、Light 引用 |
+| Owner 本机不更新 | Interact 是否应用本地表现 |
+| 关灯后墙仍亮 | 是否存在其他灯或烘焙照明 |
+| 更新延迟或不连续 | 发送结果、网络拥堵与同时操作 |
 
-Manual 模式下作者明确说「现在打包」，VRChat 才请求发送一次。带宽主要花在按按钮的瞬间。
+## Manual 与 Continuous
 
-Continuous 真正的用武之地是高频变化、且中间值丢几次也能接受的字段。物体位置类状态多数情况下用 `VRC Object Sync` 就够，不需要自己写 `[UdonSynced]`。
+Manual 适合开关、棋子位置等离散变化，由脚本请求发送。Continuous 适合高频变化且允许中间值近似的状态；它不是每帧发送，也不保证每一个中间值都到达。
 
-实战里写自定义开关、门、计分板这类离散状态，几乎都优先用 Manual 模式。这本书后面的章节也以 Manual 为主。
-::::
+物体位置与旋转可以优先检查 `VRC Object Sync` 是否满足需求，而不是重复实现已有同步。
 
-## 把门也接上同步
+Manual 请求也有调度与限速。多次调用 `RequestSerialization()` 不能当作可靠地保存每一个操作历史；需要每次操作的语义时应单独设计请求、确认或状态版本。
 
-第 17 章那扇门用同样的四件套接通。`DoorController.cs` 改成：
+## 同步门的目标状态
 
-```cs title="DoorController.cs（28 章同步版）"
+沿用[本地动画门的 Animator 配置](/come-alive/doors-and-states/)中的 `IsOpen` bool 参数。另建 `SyncedDoorController.cs`，用它替换交互物体上的本地 AnimatedDoorController，不让两个脚本同时控制同一 Animator：
+
+```cs title="SyncedDoorController.cs（同步版）"
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class DoorController : UdonSharpBehaviour
+public class SyncedDoorController : UdonSharpBehaviour
 {
     public Animator doorAnimator;
     public float animationDuration = 0.5f;
 
-    [UdonSynced]
-    private bool isOpen = false;
+    [UdonSynced] private bool isOpen;
+    private float nextLocalInteractTime;
+    private bool displayedIsOpen;
 
-    private bool isAnimating = false;
+    private void Start()
+    {
+        ApplyState();
+    }
 
     public override void Interact()
     {
-        if (isAnimating) return;
-
+        if (Time.time < nextLocalInteractTime) return;
         if (!Networking.IsOwner(gameObject))
-        {
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
-        }
+        if (!Networking.IsOwner(gameObject)) return;
 
         isOpen = !isOpen;
         RequestSerialization();
-
-        StartAnimation();
+        ApplyState();
     }
 
     public override void OnDeserialization()
     {
-        // 远端 Owner 翻了 isOpen，本机也跟着播一次动画
-        StartAnimation();
+        ApplyState();
     }
 
-    private void StartAnimation()
+    private void ApplyState()
     {
-        isAnimating = true;
-        if (doorAnimator != null)
-        {
-            doorAnimator.SetBool("IsOpen", isOpen);
-        }
-        SendCustomEventDelayedSeconds(nameof(OnAnimationFinished), animationDuration);
-    }
-
-    public void OnAnimationFinished()
-    {
-        isAnimating = false;
+        if (displayedIsOpen != isOpen)
+            nextLocalInteractTime = Time.time + Mathf.Max(0f, animationDuration);
+        displayedIsOpen = isOpen;
+        if (doorAnimator != null) doorAnimator.SetBool("IsOpen", isOpen);
     }
 }
 ```
 
-跟灯几乎一样的骨架：四件套加上原本的防双击锁。注意几件事：
+把实际 Animator 拖入 `Door Animator`，确认交互物体有普通 Collider、脚本模式为 Manual。`Animation Duration` 应覆盖实际剪辑和过渡的持续时间，本例先填 0.5 秒。
 
-- `isAnimating` 没标 `[UdonSynced]`。每个客户端各管各的动画播放，不需要同步。
-- `OnDeserialization` 里调 `StartAnimation`：远端的玩家也能看到门「滑动着开」，不只是状态突变。
-- 门按一下，A、B 两边都看到门同时滑开半秒。
+同步的是目标状态，不是逐帧动画进度。每台客户端收到字段后通过自己的 Animator 过渡；本机操作和远端真实变化都会设置本机点击冷却，重复同值不会延长冷却。这不是全局锁，也不能防止别人同时按门。A 开门后，B 在自己动画期点击应无效，动画结束后才可再按。
 
-把 `LampToggle` 那条「九成代码不用动」的承诺兑现了。第 17 章脚本到这里只补了三个东西：类标 `[UdonBehaviourSyncMode]`、字段标 `[UdonSynced]`、加 `RequestSerialization` + `OnDeserialization`。
+本例初次收到 true 也会从本地姿态过渡。需要初始恢复直接跳终态、并在初始同步前禁止交互时，用[门的初始状态恢复版](/with-others/late-joiners/#门方案-a首次接收时显示终态)替换同一脚本。
 
-## 同步字段能装什么
+## 同步字段与数据量
 
-`[UdonSynced]` 不是任何字段都能标。能装的类型大致这几类：
+可以同步的类型包括 bool、数值、string、Unity 向量与颜色、VRCUrl 及支持类型的一维数组，具体以当前 SDK 文档为准。
 
-| 类别 | 类型 | 备注 |
-| :--- | :--- | :--- |
-| 数值 | `sbyte` / `byte` / `short` / `ushort` / `int` / `uint` / `long` / `ulong` / `float` / `double` | 都行 |
-| 布尔 | `bool` | 一个字节 |
-| 字符 | `char` / `string` | string 可同步但有长度上限，避免装大段文本 |
-| Unity 数学 | `Vector2` / `Vector3` / `Vector4` / `Quaternion` / `Color` / `Color32` | 可补间，能加 `UdonSyncMode.Linear` 平滑插值（让数值在两次同步之间平滑过渡，不瞬跳） |
-| URL | `VRCUrl` | VRChat 的视频 / 图片 URL 类型 |
-| 数组 | 上面这些类型的一维数组 | 多维数组不行 |
+不能直接把任意 GameObject、Transform 或自定义对象引用当作网络字段传输。若要表示「选中了哪一个场景物体」，可在两边约定相同数组，用同步 int 作为索引。
 
-不能直接同步的：
+按当前 [Networking Specs & Tricks](https://creators.vrchat.com/worlds/udon/networking/network-details/)：
 
-- `GameObject` / `Transform` / `Component` 类型的字段：这些是引用，跨客户端没意义。
-- 自定义的类对象：UdonSharp 不支持类的网络序列化。
-- `List<T>` / `Dictionary<K,V>`：UdonSharp 多数集合类型本来就不能用，更不用说同步。
+- Manual 单次序列化上限约 `280,496` 字节
+- Continuous 单次约 `200` 字节
+- Udon 脚本发送速率约 `11 KB/s`
 
-要同步「指向场景里某个物体的引用」，做法是把 `int` 当索引，所有候选物体在 Inspector 里拖进一个数组，同步那个 int 索引。
+这些是会调整的网络规格，不是推荐把字段填满的目标。字符串编码、数组长度和协议开销会影响实际尺寸；可在 `OnPostSerialization` 的结果中查看 `success` 与 `byteCount`。例如两个 16 项 int 数组的元素数据约为 `128` 字节，实际发送还包含其他字段与开销。
 
-要同步复杂结构，多数情况下能拆成几个基础类型字段。第 30 章会演示：四人计分板用 `int[] scores` 一个数组同步所有人的分数。
+拥堵时 Manual 与 Continuous 的处理不同，不能统一写成「全部丢弃」。检查 `Networking.IsClogged`、序列化结果和日志；按需要降低频率或精简数据。
 
-::::caution[同步带宽不是无限的]
-VRChat 对每个 UdonBehaviour 单次序列化的数据量有限制。官方 *Network Specs and Tips* 给出的数字大致是：
+### 可选对照：Continuous 字段插值
 
-- **Manual 模式**单次序列化上限约 **49 KB**。
-- **Continuous 模式**单次约 **200 字节**——所以 Continuous 字符串大概只能装 126 个字符。
-- 整个客户端**总发送速率**约 **11 KB/s**。Manual 模式发得越多，下次允许发的间隔会被自动拉长。
-- 超限时这次同步会被丢弃，Console 里会有报错日志，但脚本逻辑本身仍会继续跑（一种不容易发现的 silent fail）。
+`[UdonSynced(UdonSyncMode.Linear)]` 可让支持插值的字段在接收端线性插值。它不是发送频率设置，也不能把 bool 开关变成动画。在 SDK 3.10.5 的 UdonSharp 校验中，Manual 不能使用 Linear / Smooth；因此使用独立的 Continuous 示例，不把插值标记直接贴到上面的 Manual 灯上。
 
-实用做法：
+```cs title="SyncedLightIntensity.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
 
-- 每个 UdonBehaviour 的 `[UdonSynced]` 字段保持精简。要同步十几个字段时考虑拆成几个 UdonBehaviour。
-- 字符串字段尽量短。要同步长文本（聊天记录之类），多数世界用 `VRCUrl` 把内容放外部 CDN，只同步 URL。
-- 数组长度有限。`int[] scores` 装 8 个人没问题，装 80 个就该担心。
+[UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
+public class SyncedLightIntensity : UdonSharpBehaviour
+{
+    public Light targetLight;
+    [UdonSynced(UdonSyncMode.Linear)] private float syncedIntensity;
 
-第六部不深挖带宽优化，第 30 章做小游戏时会顺手提一句怎么估算自己同步的尺寸。
-::::
+    private void Update()
+    {
+        if (Networking.IsOwner(gameObject))
+            syncedIntensity = 1f + Mathf.PingPong(Time.time, 3f);
+        if (targetLight != null) targetLight.intensity = syncedIntensity;
+    }
+}
+```
 
-## 一次性事件：SendCustomNetworkEvent
+在空物体上挂这个脚本，引用一盏独立的 Realtime Light，确认没有别的脚本改它的强度。Owner 持续计算示例值，Continuous 负责调度发送；接收端在 Update 中应用当前插值值。两次测试保持同一场景、两客户端、Owner 和观察位置，只把字段标记由 Linear 改为 None，记录远端强度变化与发送情况。不能因本机平滑就认定网络端也平滑，后加入与 Owner 离开还需各测一次。字段插值定义见 [UdonSharp Attributes](https://udonsharp.docs.vrchat.com/udonsharp/#udonsynced)。
 
-同步变量解决「状态」。还有一种需求是「事件」：按一下按钮，所有人的客户端都播一次爆炸音效。事件触发完就完了，没有「状态」要被记住。
+## 一次性网络事件
 
-用同步变量也能做：标一个 `[UdonSynced] int explosionCount`，每次按按钮自加一，`OnDeserialization` 里跟上次比较，不一样就播音效。但麻烦：
-
-- 第三个加入的玩家收到 `explosionCount = 5`，他客户端会以为「漏了一次」吗？还是已经过去的就过去了？
-- 两个玩家同时按按钮，count 怎么算？
-
-这种场景 VRChat 给了另一种工具 `SendCustomNetworkEvent`。在某个客户端调用，让指定的方法在所有客户端（或仅 Owner）上各自跑一次。
+爆炸音效只需要让当前在场者播放一次，不需要为后加入者重播：
 
 ```cs title="ExplosionButton.cs"
 using UdonSharp;
 using UnityEngine;
-using VRC.SDKBase;
+using VRC.SDK3.UdonNetworkCalling;
 using VRC.Udon.Common.Interfaces;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
@@ -314,115 +224,150 @@ public class ExplosionButton : UdonSharpBehaviour
 
     public override void Interact()
     {
-        // 让所有客户端（包括自己）都跑一次 PlayExplosion
         SendCustomNetworkEvent(NetworkEventTarget.All, nameof(PlayExplosion));
     }
 
+    [NetworkCallable]
     public void PlayExplosion()
     {
-        if (explosionSound != null)
-        {
-            explosionSound.Play();
-        }
-        if (explosionEffect != null)
-        {
-            explosionEffect.Play();
-        }
+        if (explosionSound != null) explosionSound.Play();
+        if (explosionEffect != null) explosionEffect.Play();
     }
 }
 ```
 
-值得停一下的几件事：
+挂到一个带普通 Collider 的按钮上；AudioSource 填短音效并取消 Play On Awake、Loop，ParticleSystem 取消 Play On Awake，分别拖入两个引用。任选一种效果也能测试，但留空的引用不会产生反馈。先让两位测试者在场，按一次确认双方各播放一次，再让第三位加入确认不重播。
 
-- 类上面是 `[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]`，因为这个脚本没有 `[UdonSynced]` 字段，明确声明「不需要同步变量」。
-- `using VRC.Udon.Common.Interfaces;` 是 `NetworkEventTarget` 这个枚举的命名空间。第一次写时常会被编辑器红线提醒，加上就好。
-- `SendCustomNetworkEvent(NetworkEventTarget.All, nameof(PlayExplosion))`：让所有客户端都调 `PlayExplosion()` 方法。
-- `PlayExplosion` 必须声明为 `public`。VRChat 网络事件只能调 `public` 方法，跟第 17 章 `SendCustomEventDelayedSeconds` 一样的规则。
-- 这个脚本不需要 `Networking.SetOwner`：网络事件不需要 Owner，任何客户端都可以发起。
+这个版本使用 SDK 3.8.1+ 引入的 `[NetworkCallable]`。接收方法需符合官方规则，例如 public、void、不重载。兼容旧代码的不带参数 public 方法仍有旧式调用路径，但新例子显式标记可远程调用的方法。
 
-::::caution[别用 BehaviourSyncMode.None]
-`BehaviourSyncMode` 这个枚举有两个长得像「不同步」的值，只差一个字，行为却差很远：
+`NoVariableSync` 禁用同步变量但允许网络事件；`None` 不允许 SendCustomNetworkEvent。`None` 并不禁止普通本地脚本引用调用。
 
-- **`None`**：完全禁用，**`SendCustomNetworkEvent` 在这种脚本上不会工作**（官方原话：*Nothing is synced and SendCustomNetworkEvent will not work on the behaviour*）。这种模式适合纯本地的 UI 控件、装饰物。
-- **`NoVariableSync`**：禁用同步变量但允许网络事件，且能与同 GameObject 上其他模式的 UdonBehaviour 共存。
+| 目标 | 接收者 |
+| :--- | :--- |
+| `All` | 当前实例中的所有玩家，包括发送者 |
+| `Others` | 除发送者外的玩家 |
+| `Owner` | 目标对象的 Owner |
+| `Self` | 本机，立即执行，不经过远端网络 |
 
-「没有同步变量但要发网络事件」的脚本（像这个 `ExplosionButton`）必须用 `NoVariableSync`。挑成 `None` 的话脚本里写的 `SendCustomNetworkEvent` 会安静地什么都不发，调试半天找不到原因。
-::::
+发送到 All 时，本机执行与远端到达时机不同。事件有速率与数据量限制，不应每帧无条件发送。
 
-这一章先用两个 `NetworkEventTarget`：
+## 发给 Owner 的请求
 
-- `NetworkEventTarget.All`：所有当前在实例里的客户端，包括发起者。
-- `NetworkEventTarget.Owner`：仅这个 UdonBehaviour 的 Owner。
+网络事件也可用来请求 Owner 修改共享状态。下面例子让请求者登记自己的 playerId，Owner 发布最近一次登记的 ID：
 
-较新的 SDK 还提供 `Self` / `Others` 等目标。入门阶段先把 `All` 和 `Owner` 用熟，后面需要精细分发时再查当前 SDK 文档。
+```cs title="RegistrationRequest.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+using VRC.SDK3.UdonNetworkCalling;
+using VRC.Udon.Common.Interfaces;
 
-::::tip[为什么 Owner 模式有用]
-看起来「就发给 Owner」是个奇怪的需求。常见的用法是这样：
-
-A 是普通玩家，B 是这个游戏管理器的 Owner（实例第一个进来的人）。A 想「申请加入下一回合」，但状态字段（队伍列表）只有 Owner 能改。A 在自己客户端上按按钮：
-
-```cs
-public override void Interact()
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
+public class RegistrationRequest : UdonSharpBehaviour
 {
-    // 让 Owner 跑 RegisterPlayer，把当前 LocalPlayer 加进队伍
-    SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(RegisterPlayer));
-}
+    [UdonSynced] private int lastRegisteredPlayerId;
 
-public void RegisterPlayer()
-{
-    // 这段代码在 Owner 客户端上跑（B 的客户端）
-    if (!Networking.IsOwner(gameObject)) return;  // 双保险
+    public override void Interact()
+    {
+        SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(RegisterCaller));
+    }
 
-    // 这里能安全改 [UdonSynced] 字段
-    teamMembers[teamCount] = ???   // 但是「请求人是谁」不知道，下面会讲
-    teamCount++;
-    RequestSerialization();
+    [NetworkCallable]
+    public void RegisterCaller()
+    {
+        if (!Networking.IsOwner(gameObject)) return;
+        VRCPlayerApi caller = NetworkCalling.CallingPlayer;
+        if (!Utilities.IsValid(caller)) return;
+        lastRegisteredPlayerId = caller.playerId;
+        RequestSerialization();
+        ShowRegistration();
+    }
+
+    public override void OnDeserialization()
+    {
+        ShowRegistration();
+    }
+
+    private void ShowRegistration()
+    {
+        Debug.Log($"[Registration] playerId={lastRegisteredPlayerId}");
+    }
 }
 ```
 
-这是「让 Owner 替我改全局状态」的标准模式。不写 Owner 模式时也能用 `All` 加 `IsOwner` 检查实现，但 Owner 模式更省一点带宽。
+在 Owner 客户端里，`Networking.LocalPlayer` 是 Owner 自己；`NetworkCalling.CallingPlayer` 才是当前网络调用的发送者，脱离网络调用时为 null。不要把请求者传来的任意 ID 当成已验证身份。
 
-不过 `RegisterPlayer` 里有一个新问题：B 的客户端跑的是 B 的代码，怎么知道是 A 申请加入的？老版本 SDK 这件事得靠预先同步 `requestingPlayer` 字段绕一圈。Worlds SDK 3.8.1+ 的 `SendCustomNetworkEvent` 支持带参数调用：被调用的方法需要加 `[NetworkCallable]`，最多 8 个参数，类型大致跟同步变量一致；带 `[NetworkCallable]` 的方法不能用方法重载或默认参数。发起者本身不是普通参数自动塞进方法签名里，较新 SDK 可通过 `VRC.SDK3.UdonNetworkCalling.NetworkCalling.CallingPlayer` 读取，或者自己把 `playerId` 当参数传过去。第 30 章做小游戏时会展开。
-::::
+较新 SDK 的网络事件也支持最多 8 个受支持类型的参数。发送值与方法签名的类型和顺序必须一致，参数不能有默认值，也不能用 `params`。例如 `SendCustomNetworkEvent(NetworkEventTarget.Owner, nameof(SubmitHit), buttonIndex, roundId)` 对应 `public void SubmitHit(int buttonIndex, int observedRound)`；`buttonIndex` 表示场景按钮索引，`observedRound` 是请求端看到的回合。Owner 仍需验证范围、当前回合和真实发送者资格，完整请求链见[GameManager](/with-others/multiplayer-mini-game/#gamemanager)。
 
-## 哪个用同步变量、哪个用网络事件
+RegistrationRequest 挂到独立的带 Collider 的按钮，使用 Manual 模式。Alpha 先进入、Beta 后按按钮，双方日志应显示 Beta 的 playerId，而不是固定显示 Owner 的 ID。日志字段代表最近一次已处理的登记，不是完整玩家名单；名单与离开清理见[玩家槽位](/with-others/late-joiners/#玩家槽位重复事件与接管)。
 
-两种工具放一起会乱。判断标准就一条：**这个东西是「状态」还是「事件」？**
+## 状态与事件的边界
 
-| 它是什么 | 用什么 | 例子 |
-| :--- | :--- | :--- |
-| 当前的状态，迟到的人也要看到 | 同步变量 `[UdonSynced]` | 灯的开关、门的开关、计分板分数、当前回合 |
-| 一次性发生的事，过了就过了 | 网络事件 `SendCustomNetworkEvent` | 爆炸音效、UI 闪烁、临时 VFX |
+| 需求 | 保存方式 |
+| :--- | :--- |
+| 灯当前开关、门目标状态、分数 | 同步变量 |
+| 当前在场者的一次音效或特效 | 网络事件 |
+| 玩家要求加入或按下某个按钮 | 发给 Owner 的请求，由 Owner 验证并写同步状态 |
+| 后加入者知道累计发生次数 | 同步计数，不靠回放旧事件 |
 
-混着用最容易出的两种错：
+如果状态变化和音效分别发送，不要假设两条通道的到达顺序固定。音效只做瞬时反馈，共享状态仍以同步字段为准。
 
-- **状态当事件**：用 `SendCustomNetworkEvent(All, "OpenDoor")` 来开门。第 5 个进来的玩家完全不知道门已经开过了，他那边门是关的。
-- **事件当状态**：用同步变量记「爆炸了几次」，远端在 `OnDeserialization` 里依靠「跟上次相比变化了」判断要播放音效。第 5 个进来的玩家拿到 `count = 5`，他要不要播 5 次音效？这件事得作者自己决定，复杂度上去了。
+## All 事件：各客户端作用于自己的玩家
 
-简单原则：状态用同步变量，事件用网络事件。需要既同步状态又触发瞬时反馈，两个工具一起用。门的同步版就是这样：`isOpen` 是状态（同步变量），开门时播一次 `WoodCreak.wav` 是事件（同步变量在 `OnDeserialization` 里调 `audio.Play()` 也能做到，但更纯净的写法是从 Interact 里发一次 `SendCustomNetworkEvent(All, "PlayCreak")`，状态和事件分两条线）。
+这个受控实验使用一块无遮挡的平地，提前告知参与者会发生轻微上抛，得到所有测试者同意后再触发。不要把它放在世界入口自动执行。每台客户端接收同一事件，但只修改自己客户端的 LocalPlayer：
 
-## 自己改三个版本
+```cs title="BounceAllButton.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
+using VRC.SDK3.UdonNetworkCalling;
+using VRC.Udon.Common.Interfaces;
 
-把同步开关 `LampToggle.cs` 当骨架：
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
+public class BounceAllButton : UdonSharpBehaviour
+{
+    public float upwardSpeed = 2f;
 
-- 把灯的颜色也加进去：`[UdonSynced] private Color currentColor;` 加 `[UdonSynced] private float currentIntensity;`，按按钮时随机生成颜色和亮度，所有人客户端都看到一样的灯光变化。
-- 加一个「广播范围」开关：在 `LampToggle` 里加 `[UdonBehaviourSyncMode]` 切到 `Continuous`，看看带宽监控里同步频率是不是变密了。改完记得切回 `Manual`，按按钮的场景 Continuous 是浪费。
-- 把 `ExplosionButton` 改成「按下后让所有玩家被弹起 3 米」：用 `SendCustomNetworkEvent(All, "BounceLocal")`，`BounceLocal` 里调 `Networking.LocalPlayer.SetVelocity(...)`。每个客户端各自把自己的本机玩家弹一下。
+    public override void Interact()
+    {
+        SendCustomNetworkEvent(NetworkEventTarget.All, nameof(BounceLocal));
+    }
 
-第三个有一个值得注意的点：每个客户端调 `Networking.LocalPlayer.SetVelocity` 改的都是「自己的本机玩家」，不是「所有玩家」。让所有人弹起来正是因为每个客户端都各自弹了自己一下。这是网络事件的一种常见用法：所有人各自跑一段「对自己生效」的代码。
+    [NetworkCallable(maxEventsPerSecond: 1)]
+    public void BounceLocal()
+    {
+        VRCPlayerApi local = Networking.LocalPlayer;
+        if (!Utilities.IsValid(local)) return;
+        Vector3 velocity = local.GetVelocity();
+        velocity.y = upwardSpeed;
+        local.SetVelocity(velocity);
+        Debug.Log($"[Bounce] localId={local.playerId}, upwardSpeed={upwardSpeed}");
+    }
+}
+```
 
-## 状态用变量，事件用网络事件
+挂到带普通 Collider 的测试按钮，提示写明「全员上抛测试」。先保持 `Upward Speed=2`，两位玩家站在平地，按一次后核对两端日志中的 localId 各不相同。速度值不是高度值，实际高度受重力、碰撞和移动规则影响；从低值实测，不承诺固定升高几米。
 
-最重要的两条：
+在副本中仅把目标 All 改为 Self，重测时应只作用于按按钮的人；再改回 All，确认两位当前玩家各执行一次。让第三位在事件之后加入，确认不会补弹。这组对照说明 All 的分发范围与 LocalPlayer 的本机作用范围是两件事，并没有从一台客户端直接控制远端玩家对象。API 见 [Player Positions](https://creators.vrchat.com/worlds/udon/players/player-positions/#setvelocity)。
 
-- **状态用同步变量**：`[UdonBehaviourSyncMode(Manual)]` + `[UdonSynced]` + `RequestSerialization` + `OnDeserialization`。Owner 改字段，所有人收到。
-- **事件用网络事件**：`SendCustomNetworkEvent(All, "Method")`。所有客户端各跑一次该方法，不留状态。
+## 对照练习
 
-这两件齐了，VRChat 多人世界绝大多数同步需求都能解。但还有一个坑：第三个迟到加入的玩家，他能拿到当前的 `[UdonSynced]` 字段值，但拿不到之前发过的 `SendCustomNetworkEvent`。这件事第 29 章专门讲。
+- 为灯增加同步 Color 与 float 强度字段，并统一在 ApplyState 中应用
+- 在两个场景副本中保留同一组字段、灯、客户端数和操作节奏，分别用 Manual 与 Continuous；每隔两秒按一次，记录 Owner 的 OnPostSerialization 次数、success、byteCount 和远端收到的值。一次只变同步模式，不把同步模式叫作「广播范围」
+- 将 ExplosionButton 的效果改成短提示音，验证两位当前玩家收到、后加入者不补播
+
+## 检查清单
+
+- [ ] 初始字段值与测试预期一致
+- [ ] 只有 Owner 发布同步状态
+- [ ] Owner 本地与远端均应用字段到表现
+- [ ] 事件的接收方法显式标记，Sync Mode 允许网络事件
+- [ ] 请求者身份与参数经过验证
+- [ ] 延迟、重复操作和后加入情况均测试
 
 ## 本章参考
 
-- [VRChat Creator Docs：Udon Networking](https://creators.vrchat.com/worlds/udon/networking/)
-- [UdonSharp Attributes & Features（DeepWiki，2025-05）](https://deepwiki.com/vrchat-community/UdonSharp/4.2-udonsharp-attributes-and-features)
-- [Methods and Custom Events: Script Communication（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-methods-events/)
-- [Udon Networking Decision Guide（VR Creators，2026-05）](https://vrcreators.net/docs/vrchat/udon-networking-decision-guide)
+- [VRChat Creator Docs：Network Variables](https://creators.vrchat.com/worlds/udon/networking/variables/)
+- [VRChat Creator Docs：Network Events](https://creators.vrchat.com/worlds/udon/networking/events/)
+- [VRChat Creator Docs：Networking Specs & Tricks](https://creators.vrchat.com/worlds/udon/networking/network-details/)
+- [UdonSharp：Attributes](https://udonsharp.docs.vrchat.com/udonsharp/#udonbehavioursyncmode)

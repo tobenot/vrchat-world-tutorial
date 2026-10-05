@@ -1,128 +1,126 @@
 ---
 title: 15. 拿起来，丢出去
-description: 用 VRC Pickup + Rigidbody 让物体能被拿起，捏 OnPickup / OnDrop / OnPickupUseDown 三个事件做基础玩具，用 VRC Object Sync 给后面的多人同步留一个口子。
-difficulty: 新手
+description: 配置 Collider、Rigidbody 和 VRC Pickup，用抓取、放下、使用事件控制灯光，并校准持握锚点。
+difficulty: 基础
 estimatedMinutes: 40
 chapterType: hands-on
 requiresSDK: true
-summary: 第 13 章按按钮，第 14 章走进区域，这一章伸手抓东西。三件套（Collider + Rigidbody + VRC Pickup）凑齐物体就能被拿起来，OnPickup / OnDrop / OnPickupUseDown 三个事件做出「抓起来发光、放下熄灭、按 Use 切颜色」的基础玩具。
+summary: 可抓取小球使用 Collider、Rigidbody、VRC Pickup。脚本在拿起时增亮、放下时恢复亮度、Use 时循环颜色。Orientation 决定持握对齐，Auto Hold 决定松开抓取输入后是否继续持有，两者分别配置。
 sidebar:
   order: 3
 ---
 
-`VRC Pickup` 加在带 Collider 和 `Rigidbody` 的物体上，VRChat 才允许抓取。对准物体发起 **Interact** 可拿起；键位在 VRChat Settings → Controls。
+`VRC Pickup` 与同一物体上的 Collider、Rigidbody 一起提供抓取功能。`OnPickup`、`OnDrop`、`OnPickupUseDown` 分别处理拿起、放下、持有时使用的动作。
 
-这一章把第二部那颗 `GlowBall` 改造成一个能拿起来的小球：抓起来时灯加亮、放下时变暗、拿在手里按 **Use**（使用键，同在 Settings → Controls）时切颜色。
+本章制作一个可抓取的发光小球：拿起时调高 Light 强度，放下时恢复，持有时用 Use 循环切换颜色。灯光代码只作用于当前客户端。
 
-## 让物体可被抓取的三件套
+## 三个组件分别负责什么
 
-VRChat 不需要写任何代码就能让一个物体可拿起。组合三个组件：
+1. **Collider**：定义可命中的形状与碰撞形状。
+2. **Rigidbody**：处理重力、速度和物理运动。是否反弹还取决于物理材质，添加刚体本身不保证弹跳。
+3. **VRC Pickup**：提供 VRChat 的抓取、持有和使用行为。
 
-1. **Collider**：决定玩家手能不能「碰」到它。Box / Sphere / Capsule 都行。
-2. **Rigidbody**：让它有物理表现。重力下坠、丢出去带初速度、撞到墙会反弹。
-3. **VRC Pickup**：告诉 VRChat「这个物体可以被抓」。
+无需脚本也能拿起物体；脚本用于增加拿起、放下、使用时的反馈。
 
-三件齐了，物体就具备被拿的资格。要在拿起、放下、按 Use 那一刻做点别的，再加一段 UdonSharp 监听对应事件。
+## 第一步：制作独立的小球
 
-::::tip[为什么是这样？]
-拆成三件而不是一个组件搞定，是 Unity 的「组合优于继承」在 VRChat 工具上的延伸：
+在场景里复制一份第二部的 `GlowBall`，命名 `PickupBall`。需要断开 Prefab 关联时，对这个副本右键 `Prefab` → `Unpack Prefab`；原物体保留。
 
-- Collider 还可以单独用来挡人 / 做 Trigger，不必跟 Pickup 绑死。
-- Rigidbody 是 Unity 标准物理组件，第二部讲过的所有刚体行为这里都通用。
-- VRC Pickup 只补「能不能被抓」这一件 VRChat 特定的事。
+修改场景中的 Prefab 实例可以产生实例覆盖，不会自动改掉所有实例。只有把修改应用到 Prefab 资源，才会影响使用该资源且没有相应覆盖的实例。本例 Unpack 是为了得到独立练习对象。
 
-不这样的话每加一个 VRChat 特性都要复刻一份 Unity 已有的功能，工具箱会变得又大又重复。
-::::
+把 `PickupBall` 放在有地板的位置，例如 `0, 1.2, 0`。检查已有 Mesh Filter、Mesh Renderer、Sphere Collider 和 Light；`Sphere` 是创建时使用的原始体类型，不是额外的组件。
 
-## 第一步：从 GlowBall 复制一个 PickupBall
-
-打开第二部那间小屋。
-
-第二部把 `GlowBall` 做成了 Prefab。直接抓 Prefab 改不太合适，那会影响所有原始光球。第 8 章提过一个解法：
-
-选中场景里的一个 `GlowBall` Prefab Instance，右键 `Prefab` → `Unpack Prefab`。它的名字从蓝色变回普通颜色，跟磁盘上那份模具断开了。改它不会影响其他实例。
-
-把这个 Unpack 之后的物体重命名为 `PickupBall`，位置摆在桌面上方一点（没桌子就放半空中，比如 `0, 1.2, 0`）。它身上现在已经有 `Sphere`、`Mesh Filter`、`Mesh Renderer`、`Sphere Collider`、`Light`，缺 `Rigidbody` 和 `VRC Pickup`。
-
-## 第二步：加 Rigidbody 和 VRC Pickup
+## 第二步：添加刚体和 Pickup
 
 选中 `PickupBall`：
 
-1. `Add Component` → 搜 `Rigidbody`，加上。`Use Gravity` 默认勾选。
-2. `Add Component` → 搜 `VRC Pickup`，加上。
+1. 添加 `Rigidbody`，勾选 `Use Gravity`，取消 `Is Kinematic`，让放下的小球能落下。
+2. 保留启用的 `Sphere Collider`，本例取消 `Is Trigger`，以便与地面实体碰撞。按小球实际模型调整半径。
+3. 添加 `VRC Pickup`，确认它与上述两个组件位于同一 GameObject。
+4. 确认对象没有标为静态，并检查地面有实体 Collider。
 
-加 `VRC Pickup` 时如果物体上还没 `Rigidbody`，VRChat 会主动补一个。提前手工加是为了让物理行为更可控，比如关掉重力做「漂浮的发光体」。
-
-`VRC Pickup` Inspector 里几个常看的字段（左侧是 Inspector 显示名）：
-
-```text
-Interaction Text     Hold        # 鼠标对准时头顶提示
-Use Text             Use         # 拿在手里时显示的提示
-Pickupable           True        # 是否允许被抓（false 暂时锁住）
-Proximity            2           # 可被触及的最大距离（米）
-```
+设置交互字段：
 
 ```text
-Orientation          Any         # 持握朝向：Any（不强制）/ Grip / Gun
-Exact Gun            None        # Orientation = Gun 时手心对齐这个 Transform
-Exact Grip           None        # Orientation = Grip 时手心对齐这个 Transform
-Auto Hold            Auto Detect # 松开抓取键后是否仍持握：Auto Detect / Yes / No
-                                 # 只对 Desktop、Vive 这种没有独立 Use 输入的方案生效
-Allow Manipulation When Equipped  False
-                                 # VR 里允许玩家在手里旋转物体
-Disallow Theft       False       # 别人能不能从你手里抢走
+Interaction Text   拿起 / Pick up
+Use Text           切换颜色 / Change color
+Pickupable         开启
+Proximity          2
+Orientation        Any
+Exact Gun          None
+Exact Grip         None
+Disallow Theft     关闭
 ```
 
-`Orientation` 和 `Auto Hold` 留默认值 `Any` 即可。下面单独说 `Gun` / `Grip`。
+`Interaction Text` 在指向／靠近 Pickup 时显示；`Use Text` 在持有时提示使用动作，且要求 Auto Hold 开启。自定义文字不会自动翻译，双语提示的设置原则见[第 13 章](/come-alive/press-and-light/)。`Proximity` 有桌面触及补偿和 VR Hover 规则，不是固定从模型中心测距。
 
-## 持握朝向：Any、Grip、Gun
+`Allow Manipulation When Equipped` 控制键鼠或手柄输入下的持有物体调整，并非专门开启 VR 手部旋转。启用时，官方列出的键鼠旋转键为 I/J/K/L/U/O；按项目需求选择是否允许。
 
-`Orientation` 决定物体被抓进手里时怎么对齐玩家手部：
+### Auto Hold 与组件版本
 
-| 值 | 适用 | 行为 |
-|----|------|------|
-| `Any` | 荧光棒、杯子、装饰球 | 不强制角度，抓起来就能用 |
-| `Grip` | 剑柄、工具握把 | 按 `Exact Grip` 锚点对齐「握持」姿势 |
-| `Gun` | 手枪、手电筒 | 按 `Exact Gun` 锚点对齐「枪口/灯头朝前」 |
+先看 `VRC Pickup` 自身的 Version 选择器。它的 `1.0 / 1.1` 是组件行为版本，不是整个 Worlds SDK 的版本号。
 
-要做 `Grip` 或 `Gun`：
+- **Pickup 1.1**：`Auto Hold` 是复选框。勾选后释放初次 Grab 仍保持持有，再次 Grab 或 Drop 才放下；不勾选则释放初次 Grab 时放下。
+- **Pickup 1.0**：`Auto Hold` 是下拉框。`Yes` 保持持有，`No` 松开即放下；旧选项 `Sometimes` 只对键盘、鼠标、Gamepad、Vive Wand 输入采用保持，`Auto Detect` 在相同输入条件外还要求 Gun/Grip 配置。旧资源可保留这些字段，但不能把它们当成所有版本的同一个默认值。
 
-1. 在物体下新建空 GameObject，命名 `GripAnchor` 或 `GunAnchor`。
-2. 移动 / 旋转这个空物体，让它的轴向跟期望的握法一致（Scene 视图里切到物体本地坐标轴看）。
-3. Inspector 里 `VRC Pickup` → `Orientation` 选 `Grip` 或 `Gun`。
-4. 把锚点拖进 `Exact Grip` 或 `Exact Gun` 槽。
+本章需要桌面玩家拿起后继续按 Use，因此明确开启 Auto Hold：1.1 勾选，1.0 选择 `Yes`。`Any` 是 Orientation 的值，不能填到 Auto Hold。版本与旧选项条件见[官方 Versions](https://creators.vrchat.com/worlds/components/vrc_pickup/#versions)。
 
-`Build & Test` 里抓一次，不对就回 Unity 只改锚点旋转，不必改脚本。
+## 持握朝向：Any、Gun、Grip
 
-`Sphere Collider` 这一章可能比 `GlowBall` 自带的稍小，建议把 Radius 调成 0.4，让玩家容易「对准」小球。第 13 章那条规则在这里也成立：抓不准多半是 Collider 太小。
+Orientation 控制拿起时的对齐方式，Auto Hold 控制是否保持持有。更改其中一项不会代替另一项。
 
-::::caution[Collider 是 IsTrigger 的物体抓不起来]
-`VRC Pickup` 要求物体身上的 Collider 是非 Trigger 的实体 Collider。如果在第 14 章给它打过 `Is Trigger` 之后没改回来，物体会「没有触感」，VR 玩家手伸过去什么也抓不到。
+- **Any**：不指定固定握姿，适合本例这样的球形物体，无需 Exact 锚点。
+- **Gun**：按 `Exact Gun` 对齐，适合要求固定指向的物体，例如手电筒或指示器；名字并不限制物体必须是枪。
+- **Grip**：按 `Exact Grip` 对齐，但 VR 与非 VR 的朝向规则不同，适合需要两种持握方向的物体，例如手杖。
 
-抓不起来时优先检查这条：选中物体看 `Sphere Collider`（或别的 Collider），`Is Trigger` 必须**不勾选**。
-::::
+### 锚点的位置与旋转
 
-## 第三步：先 Build & Test 一次
+`Exact Gun` / `Exact Grip` 填的是 Transform。锚点位置表示模型中的握持位置，旋转表示用于对齐的坐标系。只调旋转不能修正手握在错误位置的问题。
 
-不写一行代码，先跑一次。`Build & Test` 进世界。
+以手电筒为例：
 
-桌面玩家：走到 `PickupBall` 附近，光标对准，头顶提示 `Hold`。Interact 一次拿起，球贴在视角中心。再 Interact 一次放下，球受重力下坠。
+1. 在 Pickup 根物体下新建空子物体 `GunAnchor`，Scale 保持 `1,1,1`。
+2. 把它的局部 Position 移到希望手握住的把手位置；不要默认放在灯头或整个模型中心。
+3. 在 Scene 视图切为 Local 坐标，旋转锚点，使它的局部轴与模型的目标方向对应。
+4. 将 Orientation 设为 `Gun`，把 `GunAnchor` 拖入 `Exact Gun`。Grip 则建立 `GripAnchor` 并填入 `Exact Grip`。
 
-VR 玩家：手伸到球上，用 Pickup 抓起，松手扔出去，球带着初速度飞出去再撞地。
+使用 Pickup 的子 Transform，可让锚点随物体移动。官方不建议空置对应 Exact 槽或引用物体层级外的 Transform。
 
-不到半分钟，世界里多了一个能玩的物理小球。这就是为什么 Pickup 是 VRChat 世界最让人愿意试的交互之一：它不靠界面、不靠脚本，伸手抓就行，符合人在真实空间的直觉。
+官方当前规定的轴向是：
 
-桌面下扔球的初速度跟鼠标视角晃动的快慢相关。VR 下扔球的初速度跟手的实际挥动速度相关。`Rigidbody` 物理表现完全交给 Unity 标准物理引擎，不需要写一行代码。
+| 模式 | 对齐规则 |
+| :--- | :--- |
+| Gun | `Exact Gun` 的局部 `+X` 对准瞄准前方，`+Z` 朝上 |
+| Grip，VR | 先把 `Exact Grip` 的 `+X` 对准前方、`+Z` 朝上，再向前俯转 30° |
+| Grip，非 VR | `Exact Grip` 的 `+Z` 对准前方，`+X` 朝下 |
 
-## 第四步：用三个事件让球更有个性
+这些是 Pickup 的具体约定，不能照一般 Transform「蓝色 +Z 就是所有握持模式的前方」来猜。依据是[官方 Orientation Rules](https://creators.vrchat.com/worlds/components/vrc_pickup/#orientation-rules)；位置字段也见[官方 UdonSharp VRChat API](https://udonsharp.docs.vrchat.com/vrchat-api/#vrcpickup)。
 
-光是能抓起来已经不错。再加点反馈：
+### Build & Test 校正锚点
 
-- 拿起时灯亮一档。
-- 放下时灯回原来亮度。
-- 拿在手里按 Use 时切换颜色。
+1. 在桌面模式拿起，检查握持点、模型前方以及模型是否挡住视线。
+2. 在 VR 中分别用左右手拿起，检查把手位置、朝向、相对控制器的倾斜。尤其要单独测试 Grip 的两种输入模式。
+3. 手握偏了：回 Unity 调锚点的局部 Position。方向反了或倾斜不对：调锚点局部 Rotation。
+4. 确认实际引用的是刚调整的锚点，保存场景，重新 Build & Test；只在编辑器改 Transform 不会更新已运行的外部客户端。
+5. 重复放下与拿起，确认每次对齐相同。记录组件版本、输入方式和所用 Avatar，避免把不同测试条件下的差异当作同一次设置结果。
 
-`Assets/Scripts/` 下新建 `PickupGlow.cs`：
+本章小球保留 `Any`，锚点步骤用于有明确握把和前方的模型。
+
+## 第三步：测试拿起、使用、放下
+
+运行 `Build & Test`，走近 `PickupBall`：
+
+- **桌面默认键鼠**：对准后左键拿起；Auto Hold 已开启，松开仍持有。持有后左键执行 Use，右键放下。不能把第二次左键统一写成放下。
+- **VR**：靠近或指向后执行 Grab，持有时执行 Use。Grab 通常是握把，Use 通常是扳机；具体操作由设备、绑定和 Auto Hold 决定。开启 Auto Hold 后，松开握把不一定放下，需执行 Drop 或再次 Grab。
+- **物理结果**：放下后球受重力下落，与地面碰撞。VR 投掷与释放时的运动有关，Pickup 的投掷增强参数也会影响结果；桌面可按官方的 `Right Click + F (Hold)` 投掷操作测试，不要只凭鼠标转动速度推断抛出方式。
+
+若小球不可抓取，检查三个组件是否同物体、Collider 是否启用、`Pickupable` 和玩家抓取权限、可触及距离及遮挡。若球穿过地面，检查双方 Collider、碰撞层、刚体设置与移动速度。
+
+输入依据见[官方键鼠操作](https://docs.vrchat.com/docs/keyboard-and-mouse)和[Input Events](https://creators.vrchat.com/worlds/udon/input-events/)。
+
+## 第四步：添加灯光反馈
+
+在 `Assets/Scripts/` 新建 `PickupGlow`，内容为：
 
 ```cs title="PickupGlow.cs"
 using UdonSharp;
@@ -146,6 +144,10 @@ public class PickupGlow : UdonSharpBehaviour
         if (targetLight != null)
         {
             targetLight.intensity = restIntensity;
+            if (colors != null && colors.Length > 0)
+            {
+                targetLight.color = colors[colorIndex];
+            }
         }
     }
 
@@ -176,119 +178,113 @@ public class PickupGlow : UdonSharpBehaviour
 }
 ```
 
-把它挂到 `PickupBall` 上，把 `PickupBall` 自身的 `Light` 组件拖到 `Target Light` 槽里。
+把脚本挂到 `PickupBall`，将它的 Light 拖到 `Target Light`。`Colors` 的 Size 设为 3，依次填写橙黄 `#FFB347`、青蓝 `#6EE7F9`、粉紫 `#F472B6`。
 
-`Colors` 数组需要手工填几条。Inspector 里点开 `Colors` → `Size` 改成 3 → 三条颜色分别填：
+脚本在 Start 中应用第一种颜色与待机强度。Build & Test 的预期是：
 
-- `Element 0`：橙黄（`#FFB347`）
-- `Element 1`：青蓝（`#6EE7F9`）
-- `Element 2`：粉紫（`#F472B6`）
+- 开始时：第一种颜色，强度 `1.0`。
+- 拿起时：强度变为 `3.5`。
+- 每次 Use：切到数组的下一种颜色，到末尾后回到第一种。
+- 放下时：强度恢复 `1.0`，颜色保留当前值，并不会恢复初始颜色。
 
-存盘，重新 `Build & Test`。
+这些值控制 Light，不会同时修改网格材质。需要球体表面也变色时，需另行更新材质颜色或 Emission。
 
-抓起来：球更亮了。  
-放下：球回原色亮度。  
-拿在手里按 Use：球颜色循环切换。
-
-四个事件，每一个 VRChat 都给了名字：
+事件入口包括：
 
 ```text
-OnPickup            被拿起的瞬间，调一次
-OnDrop              被放下的瞬间，调一次
-OnPickupUseDown     拿在手里按下 Use 的瞬间，调一次
-OnPickupUseUp       拿在手里松开 Use 的瞬间，调一次
+OnPickup          本地玩家拿起物体
+OnDrop            本地玩家放下物体
+OnPickupUseDown   本地玩家持有物体时按下 Use
+OnPickupUseUp     本地玩家持有物体时释放 Use
 ```
 
-跟第 13 章 `Interact` 一样，这些事件方法都得写 `public override`。漏 `override` 是不会报错但行为消失的沉默错误。
+事件方法按文档写 `public override`。`OnPickupUseDown / Up` 在桌面模式要求开启 Auto Hold。`Interact` 是对场景交互对象的操作，不能当作手持物体的 Use 回调。[官方事件定义](https://creators.vrchat.com/worlds/udon/graph/event-nodes/)
 
-::::tip[为什么 OnPickupUseDown 不直接用 Interact]
-`Interact` 要靠近物体才能按。物体被拿起后已经在玩家手里，「靠近」这件事就没意义了。VRChat 给手里物体单独发了一组 `OnPickupUseXxx` 事件，让「持有时按一下」变成另一个独立动作。
+## 掉出测试范围后复位
 
-实战里常这么用：手枪被抓起后按 Use 是开火、手电筒被抓起后按 Use 是开关、荧光棒被抓起后按 Use 切颜色。手不在物体上时这些动作都不该被触发，所以 VRChat 把「持有触发」和「靠近触发」做成了两套事件。
-::::
+本地物理小球可用明确的高度条件复位。创建另一个脚本 `PickupReset`，也挂到 `PickupBall`：
 
-## 处理掉到地下的烦恼
+```cs title="PickupReset.cs"
+using UdonSharp;
+using UnityEngine;
+using VRC.SDKBase;
 
-`Rigidbody` 加上重力之后，球扔出去多半会滚到玩家够不着的地方，甚至直接掉出地图。两条常用的解法：
-
-**方案 A：监听物体的 Y 坐标，掉到一定高度自动归位。**
-
-```cs
-public Transform respawnPoint;
-
-private Vector3 spawnPos;
-private Quaternion spawnRot;
-
-private void Start()
+public class PickupReset : UdonSharpBehaviour
 {
-    spawnPos = transform.position;
-    spawnRot = transform.rotation;
-}
+    public float resetBelowY = -10f;
 
-private void Update()
-{
-    if (transform.position.y < -10f)
+    private Vector3 spawnPosition;
+    private Quaternion spawnRotation;
+    private Rigidbody body;
+    private VRC_Pickup pickup;
+
+    private void Start()
     {
-        transform.position = spawnPos;
-        transform.rotation = spawnRot;
-        var rb = GetComponent<Rigidbody>();
-        if (rb != null)
+        spawnPosition = transform.position;
+        spawnRotation = transform.rotation;
+        body = GetComponent<Rigidbody>();
+        pickup = GetComponent<VRC_Pickup>();
+    }
+
+    private void Update()
+    {
+        if (transform.position.y >= resetBelowY) return;
+        if (pickup != null && pickup.IsHeld) return;
+
+        transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+        if (body != null)
         {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            body.velocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
         }
     }
 }
 ```
 
-简单粗暴，单人世界够用。
+`resetBelowY` 使用世界坐标，应低于正常活动地面。记录的出生位置也必须高于这条界限。代码缓存组件引用，避免每次检测重新查找；持有时不强行复位，放下并越界后回到启动位置并清空速度。
 
-**方案 B：给物体挂 `VRC Object Sync`，用它自带的 Respawn 字段。**
+此脚本针对未加 Object Sync 的本地练习物体。场景描述器也有 `Respawn Height Y` 与 `Object Behaviour At Respawn`，用于跌出世界的对象处理。自定义阈值应与它们协调，否则另一套复位／销毁规则可能先执行。
 
-`VRC Object Sync` 这一章先不当主角，原因是它真正发挥作用要等多人同步聊清楚。但它有一个副作用刚好能用：勾选 `Allow Collision Ownership Transfer` 和 `Use Gravity` 之后，它会自动维护一个出生位姿，物体掉到一定高度（默认很低）会被传回生成位置。
+### 复位测试
 
-挂法：给 `PickupBall` `Add Component` → 搜 `VRC Object Sync` → 加上。其它字段保持默认。
+在场景副本中找一块允许小球落下的位置，确保复位高度高于 Scene Descriptor 的跌出世界处理高度，出生位置又高于复位高度。保存后重新 Build & Test：
 
-这一章里这两个方案都先选一个就行，第六部《和别人一起》会专门讲 `VRC Object Sync` 的网络同步行为，到时候回头看会更通透。
+1. 将小球丢到地板外，让它降到阈值以下，检查是否返回启动时的位置和朝向，而不是停在越界处。
+2. 检查它返回后没有保留先前的线速度或旋转速度。
+3. 若测试路线允许持球经过阈值以下，确认持有时不被强制拉走，放下后才复位。
+4. 暂时停用 PickupReset 再测试一次，区分自定义复位与 Scene Descriptor 处理；完成后恢复组件设置。编辑器拖动物体不能替代外部客户端里的这一测试。
 
-::::caution[VRC Object Sync 让单人调试看起来「乱了」]
-加上 `VRC Object Sync` 后，物体的位置会被它接管。在 Unity 编辑器里直接拖物体可能不生效（被 Sync 校正回原位）；ClientSim 里也会出现「扔出去就被拽回来」的现象。
+### Object Sync 是另一项功能
 
-不是 bug，是网络同步的预期行为：所有客户端要看到同一份位置。先做最小验证再补 Sync 反而省事，所以这一章把 Sync 当成「未来要加」的口子，不当主角。
-::::
+`VRC Object Sync` 同步位置、旋转、重力和 Kinematic 状态。它提供 `Respawn()` 方法回到原始出生位置；`Allow Collision Ownership Transfer` 的作用是碰撞时允许所有权转移，并不是打开自动复位。不要把这两个功能绑定成同一开关。
 
-## 给小球做一份 Prefab
+添加 Object Sync 不会自动同步本例的灯光强度和颜色。物理对象同步后，也不能继续让每个客户端无条件运行上述复位写入；复位需要遵循对象所有权。这里保留本地物理测试配置。
 
-第 8 章总结过的判断规则在这里又应了：要做第二个、第三个 Pickup（颜色不同的小球、形状不同的方块），从头配三遍是浪费时间。
+## 保存为 Prefab
 
-把 `PickupBall` 拖进 `Assets/Prefabs/`，做成 Prefab。下次想加一个绿色版，从 Prefabs 拖一份出来，改 Albedo 和 Light 颜色就完事。
+将已验证的 `PickupBall` 拖到 `Assets/Prefabs/`。创建变体时可复用 Collider、Rigidbody、Pickup 和脚本配置，再调整模型与颜色。更换模型后重新核对 Collider 尺寸、重心和握持锚点。
 
-VRChat 大多数玩具世界的根基就是这套：一个被反复打磨好的「可拿起物体」 Prefab，再批量做颜色和形状变体。基础物理逻辑和事件接线只调一次。
+## 调整与练习
 
-## 自己改三个版本
+- 添加 `AudioSource clickSound`，在 `OnPickup` 中判空后调用 `Play()`，让拿起动作带有音效。
+- 在 `OnDrop` 中对 Rigidbody 调用 `AddForce`，比较添加冲量与只保留投掷速度的结果，并明确所选 `ForceMode`。
+- 将颜色分成两组，用布尔字段选择当前数组。切换数组时检查长度并重置或限制 `colorIndex`，避免访问越界。
 
-把 `PickupGlow` 当骨架，加一点：
+## 抓取交互的组成
 
-- 在 `OnPickup` 里同时播放一个 `Click` 音效。提示：再加一个 `public AudioSource clickSound` 字段，里面调 `Play()`。
-- 让球被丢出去时（`OnDrop`）同时给 `Rigidbody` 加一个向上的力，模拟「自带反弹」。提示：Rigidbody 有一个方法叫 `AddForce`，第 11 章用过类似的「取一个引用 + 调一个方法」的模式。
-- 把循环颜色数组改成两组：白天组（暖色三色）、夜晚组（冷色三色）。再加一个布尔字段控制走哪一组。
-
-第三个会让你顺便练一遍「用 if 选不同数组」。如果脑子里第一反应是「再写一个脚本」，那是把简单事写复杂的征兆，能用变量解决就别加脚本。
-
-## 一段抓取交互的骨架
-
-回头看这一章的结构，跟第 13、14 章惊人地相似：
-
-- 一个 GameObject + 一个 Collider（非 Trigger） + 一个 Rigidbody + 一个 VRC Pickup，决定「能抓」。
-- 一段 UdonSharp，重写 `OnPickup` / `OnDrop` / `OnPickupUseDown`，决定「被抓时干什么」。
-- 通过 `public` 字段引用到的目标对象（这一章是 Light 和颜色数组）。
-- 一组具体动作：改 `Light.intensity`、改 `Light.color`、`Play()` 音效。
-
-主动 `Interact` → 被动 `OnPlayerTriggerEnter` → 抓握 `OnPickup`：第四部到现在已经走过三种触发方式，剩下「坐到上面 / 看到镜子里 / 走过一道传送门」三种常见配件，第 16 章一次拿下。
+Collider 与 Rigidbody 提供形状和物理行为，VRC Pickup 提供抓取配置，Exact 锚点控制指定模式的持握对齐。事件脚本连接本地操作与灯光反馈，复位脚本处理明确的越界条件。每项功能有各自的状态与测试条件。
 
 ## 本章参考
 
 - [VRChat Creator Docs：VRC Pickup](https://creators.vrchat.com/worlds/components/vrc_pickup/)
+- [VRChat Creator Docs：Input Events](https://creators.vrchat.com/worlds/udon/input-events/)
+- [VRChat Docs：Keyboard and Mouse](https://docs.vrchat.com/docs/keyboard-and-mouse)
+- [VRChat Creator Docs：Event Nodes](https://creators.vrchat.com/worlds/udon/graph/event-nodes/)
+- [UdonSharp Docs：VRChat API / VRCPickup](https://udonsharp.docs.vrchat.com/vrchat-api/#vrcpickup)
 - [VRChat Creator Docs：VRC Object Sync](https://creators.vrchat.com/worlds/components/vrc_objectsync/)
-- [Unity Manual：Rigidbody](https://docs.unity3d.com/Manual/class-Rigidbody.html)
-- [Introduction to Pickup Objects（UhiyamaLab，2025-12）](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-gimmick-pickup/)
+- [VRChat Creator Docs：VRC Scene Descriptor](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)
+- [Unity Manual：Rigidbody](https://docs.unity3d.com/2022.3/Documentation/Manual/class-Rigidbody.html)
+
+原稿参考来源（第三方，保留来源记录）：
+
+- [UhiyamaLab：Pickup 拿起、使用与放下](https://uhiyama-lab.com/en/notes/vrchat/udonsharp-gimmick-pickup/)

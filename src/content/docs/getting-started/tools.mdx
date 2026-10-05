@@ -1,123 +1,98 @@
 ---
 title: 4. 装好工具，准备出发
-description: 安装 VRChat 世界开发需要的工具链，理解每个工具在做什么。
+description: 安装 VRChat 世界开发工具，核对 Unity 版本、Worlds SDK 和项目状态。
 sidebar:
   order: 3
 ---
 
-这一章把工具装好。
+本章使用 Windows 上的 VRChat Creator Companion（VCC）图形界面创建世界项目。Unity 编辑器、SDK 和项目依赖需要兼容，VCC 可以协助安装官方指定版本并管理包。
 
-直接打开 Unity 动手很有诱惑力，但 VRChat 开发有一条铁律：**版本必须配对**。Unity 版本、VRChat SDK 版本、项目模板，三者要严格对齐。版本对不上，后面会撞上各种诡异的编译报错，且很难定位。
-
-最省心的路线，是跟着官方的 VRChat Creator Companion（简称 VCC）走，由它统一管理版本。
-
-## 即将装的几样东西
-
-四样工具，各管一摊：
+## 工具的分工
 
 ```text
 VRChat Creator Companion (VCC)
-  │  项目管家：建项目、装 SDK 包、提醒更新
-  │
-  ├─► Unity Hub
-  │     管理本机的多个 Unity 编辑器版本
-  │
-  ├─► Unity Editor
-  │     真正搭世界的工作台
-  │
-  └─► VRChat SDK – Worlds
-        装在 Unity 项目里，让场景能被 VRChat 识别
+  ├─ 创建项目、管理 VRChat 包和依赖
+  ├─ Unity Hub：安装与管理 Unity 编辑器
+  └─ Unity Editor：编辑场景、资源与脚本
+       └─ Worlds SDK：检查、构建和上传世界
+
+VRChat 客户端：加载本地构建结果进行测试
+代码编辑器：编辑 .cs 文件并显示语法诊断
 ```
 
-VCC 是这套链条的入口。它负责下载正确版本的 Unity，给项目装好对应版本的 SDK，以后还会在版本过期时提醒升级。绕过 VCC，自己点开 Unity Hub 装一个 Unity 起手，多半装不进 VRChat 项目。版本号差一位都可能让 SDK 罢工。
+VCC、Unity Hub 和 Unity Editor 是不同程序。SDK 则安装在 Unity 项目中。VRChat 账号的 SDK 登录入口在 Unity 的 VRChat SDK 控制面板，不是创建 VCC 本地项目的前置登录步骤。
 
-## 第一步：装 VCC
+## 第一步：安装 VCC
 
-打开官方页面 [creators.vrchat.com/sdk](https://creators.vrchat.com/sdk/)，下载 VRChat Creator Companion 安装包，按默认提示装下去。
+1. 打开 [VRChat 官方 SDK 页面](https://creators.vrchat.com/sdk/)，进入 Creator Companion 下载入口。
+2. 运行官方安装包，完成安装并打开 VCC。
+3. 按 VCC 的设置提示检查 Unity Hub 和 Unity Editor。
 
-打开后会要求登录 VRChat 账号，登一下。后面 Build & Test 和发布世界都要用这个账号验证身份，保持登录状态即可。
+VCC 的图形界面以 Windows 工作流为主。其他操作系统的支持范围和命令行工具见 [VCC 入门文档](https://vcc.docs.vrchat.com/guides/getting-started/)。
 
-以后开项目都从 VCC 进，由它检查 SDK 版本是否对齐。
+## 第二步：安装支持的 Unity 版本
 
-## 第二步：装官方指定版本的 Unity
+1. 打开 [Current Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/)，核对官方指定的完整版本号。
+2. 优先使用 VCC 提供的安装流程；已有 Unity Hub 时，也可以用官方页面的安装链接。
+3. 在 Hub 中确认安装的是同一个完整版本，包括末尾的 `f1` 等修订标记。
+4. 按 Unity Hub 的提示完成账号和许可证设置。
 
-这一步是最容易翻车的一步。
+本章测试 Windows 世界，不需要同时安装所有平台模块。制作 Android 构建时需要为这个 Unity 版本安装 Android Build Support 及其依赖；可在 Hub 中对已安装版本使用 `Add Modules`。
 
-VRChat 对 Unity 版本管得很死。装错（哪怕只差最后一位）轻则 SDK 不工作，重则项目文件被破坏。
+:::caution[打开项目时核对版本]
+Unity Hub 可能提示安装其他版本。这个提示不表示该版本受到 VRChat SDK 支持。用其他编辑器版本打开已有项目，可能触发资源重新导入或项目升级；升级前保存可恢复的项目备份，并遵循官方迁移说明。
+:::
 
-正确做法：打开 [Current Unity Version](https://creators.vrchat.com/sdk/upgrade/current-unity-version/) 页面，看官方当前指定的版本号是什么。然后在 Unity Hub 里装**完全一致**的版本，包括末尾那个 `f1`。安装模块默认勾上 Windows 平台基础编译支持就够了。
+## 第三步：创建 World 项目
 
-::::caution[踩坑预警]
-Unity 的版本号长得像 `2022.3.22f1`，最后的 `f1` 也是版本号的一部分。`2022.3.21f1` 和 `2022.3.22f1` 是两个版本，错装会出问题。一定要和官方页面上那一串字符逐字对齐。
+1. 在 VCC 中选择创建新项目。
+2. 模板选择 **World**。
+3. 名称填写 `MyFirstWorld`。
+4. 选择本地目录，例如 `D:\VRChatProjects\MyFirstWorld`。
+5. 创建项目，等待模板和依赖安装完成。
 
-如果以后想让世界支持 Quest 或手机端，可以在 Unity Hub 里给当前版本「Add Modules」勾上 Android 支持，不需要重下整个 Unity。
-::::
+选择较短、便于辨认的路径，可以减少长路径对工具兼容性的影响。避免把正在编辑的工程放在会实时同步或产生冲突副本的目录中；如果桌面受 OneDrive 同步，也有同样的问题。中文路径本身不等于工程不可用，关键是实际使用的工具是否支持该路径，以及总长度、权限和同步状态。
 
-## 第三步：用 VCC 创建第一个世界项目
+## 第四步：打开并检查项目
 
-打开 VCC 进 Projects（项目）页，点创建新项目。模板选 **World**，另一个 Avatar 模板是用来做人物模型的，别选错。
+在 VCC 项目列表中打开 `MyFirstWorld`。首次打开时，Unity 需要导入资源、解析包和编译脚本，所需时间取决于硬件、网络和项目内容。任务仍有进度或日志输出时，让导入完成。
 
-项目命名用小写英文为主，比如 `MyFirstWorld`。存放位置选一个干净目录，例如 `D:\VRChatProjects\MyFirstWorld`。
+检查以下内容：
 
-点创建，VCC 会在后台下载并搭出一个干净的、装好 Worlds SDK 的 Unity 项目。
+1. 顶部菜单有 `VRChat SDK`。
+2. Project 面板的 `Packages` 中能看到 Worlds SDK 相关包。
+3. 打开 `Window → General → Console`，检查是否存在阻止编译或导入的错误。
+4. 用 `Ctrl+S` 保存当前场景；如果没有场景路径，保存到 `Assets/Scenes/`。
 
-::::caution[踩坑预警]
-不要把项目放在中文路径下（如 `D:\我的项目\`），不要放在桌面，不要放在网盘同步目录里（OneDrive、Google Drive、坚果云）。
+警告与错误需要按具体内容处理。黄色警告不一定阻止构建，但也不能统一忽略。
 
-原因有两条，都很硬：
+## Unity 面板
 
-1. **Windows 的 `MAX_PATH` 限制**。Win32 API 的传统上限是 **260 个字符**（结构是「盘符 + `:\` + 256 字符路径 + 末尾 `\0` 终止符」），Unity 项目里随便一个 `Library/PackageCache/com.vrchat.worlds@xxxxxxxx/Samples~/.../Materials/xxx.mat` 就能轻松撑到 200 字符以上，再叠一层"中文项目名 + OneDrive 同步目录"就溢出了。Windows 10 1607 之后系统层面可以通过组策略 + 应用 manifest 解锁长路径，但 Unity、Visual Studio、各种 Asset 打包工具默认仍走旧 API，一旦超限就会出现「文件存在但读不到」「编译报 `IOException`」「.meta 找不到对应资源」等怪现象，且报错信息往往不指向真正原因。
-2. **网盘的实时同步会和 Unity 的文件监视互相打架**。Unity 编译时会高频读写 `Library/`、`Temp/`、`Logs/` 这些缓存目录，OneDrive / Google Drive / 坚果云会把这些频繁变动的中间文件也当成"用户文件"上传，结果是：上传途中文件被锁，Unity 读不到；多设备协同时一边同步一边 Unity 还在写，`.asset` 直接损坏；冲突文件名（`xxx (1).asset`）混进 Project，编辑器一加载就崩。
+- **Scene 视图**：编辑场景中的位置、形状和灯光。
+- **Hierarchy**：当前打开场景的 GameObject 层级。
+- **Inspector**：选中对象的组件、字段和资源属性。
+- **Project**：项目资源与包的文件视图。
+- **Console**：编译、导入与运行日志。
+- **Game 视图**：显示场景摄像机的输出；编辑器模拟结果不等于完整 VRChat 客户端行为。
 
-把项目放在 `D:\VRChatProjects\` 这种短英文路径下，关掉所在目录的所有同步客户端，是最省事的预防。这些问题真出了，排查起来都很贵。
-::::
+需要编辑 C# 时，在 `Edit → Preferences → External Tools` 选择已安装且支持 Unity 的代码编辑器。双击 `.cs` 文件，确认它可以打开。
 
-## 第四步：第一次打开项目
+## 保持可核查的初始环境
 
-回到 VCC 项目列表，点 `MyFirstWorld` 右边的 Open。
+初始项目只保留 World 模板所需的官方包，便于确认工具链本身能构建。添加外部资源时，记录资源版本和新增依赖，每次导入后检查 Console 与构建结果。若导入前正常、导入后出现错误，这份记录可以缩小排查范围。
 
-这次启动会比较慢。Unity 第一次打开新项目要解析依赖、编译初始脚本、导入场景资源，3 到 10 分钟很常见。进度条卡在右下角是正常的，倒杯水回来差不多。
+## 启动问题检查
 
-进 Unity 之后，做四件事确认工具链完整：
+- **VCC 找不到 Unity**：在 Hub 确认完整版本已经安装，再在 VCC Settings 中指定对应编辑器路径。
+- **导入没有进展**：检查进度窗口、Console、编辑器日志、磁盘空间和包下载状态。没有统一的超时分钟数能判断所有导入任务是否失败。
+- **脚本编译失败**：记录第一条相关错误及文件位置，核对编辑器版本和包依赖。错误也可能来自资源脚本，不能一律归因于版本号。
+- **SDK 菜单缺失**：检查 World 模板和 Worlds SDK 安装状态，并先处理阻止脚本编译的错误。
+- **客户端未启动**：确认本机装有 VRChat，并在 SDK 的 Settings 中检查 VRChat Client 路径。
 
-1. 顶部菜单栏有 `VRChat SDK` 这一项。
-2. 左下角 Project 面板的 Packages 目录下，能看到 SDK 相关的包。
-3. 底部的 Console 面板里没有红色错误图标（黄色警告先忽略）。
-4. 按一下 `Ctrl+S`，场景能正常保存。
+向社区询问时，提供可复现步骤、Unity 与 SDK 版本、完整错误文本和相关设置截图。公开截图前去掉账号凭据等无关信息。
 
-四项都对，环境就齐了。
+## 本章参考
 
-## 第一次面对 Unity
-
-打开后是一个塞满按钮和面板的界面。第一天只用认四块区域：
-
-- **Scene**（屏幕中间最大那块）：搭世界的画布，可以三维视角摆物品、调灯光。
-- **Hierarchy**（通常在左边）：场景里所有物体的目录清单。
-- **Inspector**（通常在右边）：选中某个物体后，这里展示它身上挂的所有参数。
-- **Project**（通常在下方）：整个项目的文件夹，材质、模型、脚本、声音都在里头。
-
-剩下的 Console 面板（看报错）和 Game 视图（模拟玩家视角）以后会用到，今天不用管。
-
-## 别急着塞插件
-
-如果第一天就把 Shader 包、现成模型、后处理特效、社区脚本库全塞进工程，后面排查问题会很难。先把最小世界跑通，再按需加资源。
-
-先别塞。
-
-第一个世界跑起来之前，工具链就保留这几样：VCC、Unity Hub、官方指定版本的 Unity、Worlds SDK，加一个干净的项目。地基稳了再加东西。
-
-软件开发里有一条很实用的思维方式叫「隔离变量」：一次只加一个新东西，出问题立刻知道是谁引起的；一次塞十个插件，报错时就是一场灾难。
-
-## 启动卡点速查
-
-如果出问题了，按这几条顺序排查：
-
-- **VCC 提示找不到 Unity**：去 Unity Hub 确认对应的 Unity 版本装好了；回到 VCC 的 Settings，手动指定 Unity 编辑器路径。
-- **首次打开卡在右下角**：Unity 在生成初始缓存，耐心等。超过十分钟没动静，关掉 Unity，从 VCC 重新启动。
-- **Console 红字一片**：先看 Unity 版本和 VRChat 官方指定版本是不是字符对字符一致。绝大多数初次启动的脚本报错都来自微小版本号对不上。
-
-报错读不懂的话，把那一行复制下来，连同 Unity 版本号、SDK 版本号一起发给 AI 或贴到社区论坛，先判断是环境问题还是项目设置问题，再对应排查。
-
----
-
-工具链装好了。下一章正式建场景，把第一个能站进去的世界搭出来。
+- [VCC 官方入门与安装](https://vcc.docs.vrchat.com/guides/getting-started/)
+- [VRChat 当前支持的 Unity 版本](https://creators.vrchat.com/sdk/upgrade/current-unity-version/)
+- [VRChat 本地构建测试](https://creators.vrchat.com/worlds/udon/using-build-test/)

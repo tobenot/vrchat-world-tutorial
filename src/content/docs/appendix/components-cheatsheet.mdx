@@ -1,6 +1,6 @@
 ---
 title: 附录 C · SDK 与 Unity 组件速查
-description: VRChat SDK 与 Unity 内置组件的字段、典型用法、章节锚点。覆盖范围跟着正文成长。
+description: VRChat SDK 与 Unity 内置组件的字段、典型用法、章节锚点。包含场景、交互、音频、灯光与 UI。
 sidebar:
   order: 3
 pagefind: true
@@ -16,31 +16,30 @@ pagefind: true
 
 ### `VRC Scene Descriptor`
 
-世界的"身份证"，告诉 SDK 这个 Unity 场景是 VRChat 世界。世界必装一个。
+描述世界出生点、相机设置和重生高度的 SDK 组件。每个作为 VRChat 世界构建的场景都需要它。
 
 | 关键字段 | 作用 |
 |---|---|
 | `Spawns` | 出生点数组。把空物体拖进 Element 0、1、2... |
 | `Spawn Order` | 出生点选择策略：`First` / `Sequential` / `Random` / `Demo` |
 | `Spawn Orientation` | 出生朝向：`Default` / `AlignPlayerWithSpawnPoint` / `AlignRoomWithSpawnPoint` |
-| `Reference Camera` | 渲染参考相机，决定后处理基准 |
+| `Reference Camera` | 把该相机的相关设置应用到实例中的玩家视图 |
 | `Respawn Height Y` | 玩家掉到这个 Y 值以下时自动重生 |
-| `Object Behaviour at Respawn` | 玩家重生时世界里 Pickup 物体的处理：`Respawn` / `Reset` / `Nothing` |
-| `Player Object Behaviour at Respawn` | 玩家自身 Pickup 物体（手里握着的）的处理 |
+| `Object Behaviour at Respawn` | Pickup 掉到重生高度以下时的处理：`Respawn` 返回初始位置，`Destroy` 删除 |
 
-首次出现：[第 5 章 · 第四步：给场景一张身份证](/getting-started/first-world/#第四步给场景一张身份证)；玩家落地相关字段在 [第 31 章](/placeness/first-thirty-seconds/) 展开。  
+首次出现：[第 5 章 · 第四步：添加场景描述组件](/getting-started/first-world/#第四步添加场景描述组件)；出生配置另见[第 31 章](/placeness/first-thirty-seconds/)。\
 官方文档：[VRC Scene Descriptor](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)。
 
 ---
 
 ### `Udon Behaviour`（与 `UdonSharpBehaviour` 脚本）
 
-挂自定义 Udon 逻辑（最终来源是 UdonSharp 脚本）的组件。所有交互的入口。
+承载 Udon 程序的组件，程序可由 UdonSharp 或 Udon Graph 生成。Pickup、Station 等 SDK 组件也有独立功能，并非所有交互都依赖自定义 Udon 脚本。
 
 | 关键字段 | 作用 |
 |---|---|
-| `Interaction Text` | 玩家瞄准物体时浮现的提示文字（默认 `Use`），空字符串 = 不显示提示 |
-| `Proximity` | 可交互的最大距离，单位米，默认 `2` |
+| `Interaction Text` | 客户端显示的交互提示文字；例如 `开灯 / Light`，自定义文字不会自动翻译 |
+| `Proximity` | 交互距离参数；VR 按手柄射线到碰撞点计算，桌面端还包含额外伸手距离补偿 |
 | `Sync Method` | `Continuous` / `Manual` / `None`，详见 [第 28 章](/with-others/tell-everyone/) |
 
 典型用法（脚本里）：
@@ -52,9 +51,9 @@ public override void Interact()
 }
 ```
 
-`Interact` 必须写 `public override`，漏 `override` 是 silent failure（不报错也不响应）。需要同 GameObject 有一个**非 Trigger** 的 Collider 作为瞄准目标。
+UdonSharp 的签名写成 `public override void Interact()`。组件、物体与 Collider 必须启用，并满足距离及交互检测条件。本书按钮使用同一 GameObject 上的非 Trigger Collider。提示可直接写双语；动态语言选择需要作者提供对应文本和切换逻辑。
 
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)、详细字段在 [第 13 章](/come-alive/press-and-light/)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-组件的职责)、详细字段在 [第 13 章](/come-alive/press-and-light/)。\
 官方文档：[Udon](https://creators.vrchat.com/worlds/udon/)。
 
 ---
@@ -65,18 +64,18 @@ public override void Interact()
 
 | 关键字段 | 作用 / 默认值 |
 |---|---|
-| `Interaction Text` | 瞄准时提示文字，例如 `Hold` |
-| `Use Text` | 拿起后再次按使用键时的提示文字，例如 `Use` |
+| `Interaction Text` | 指向时的提示文字；留空显示默认标签，自定义文本不自动翻译 |
+| `Use Text` | Auto Hold 启用后，持握时显示的使用提示文字 |
 | `Pickupable` | 是否允许拿起（默认 `True`，临时锁定时改 `False`） |
 | `Proximity` | 可拿取距离，米，默认 `2` |
 | `Orientation` | 握持姿势：`Any` / `Grip` / `Gun` |
 | `Exact Gun` / `Exact Grip` | Orientation = Gun / Grip 时的对齐 Transform |
-| `Auto Hold` | `Auto Detect` / `Yes` / `No`，影响桌面端是否长按 |
-| `Allow Manipulation When Equipped` | 是否允许 VR 玩家在手里旋转物体（默认 `False`） |
+| `Auto Hold` | 组件版本 1.1 为复选框；1.0 为 `Yes` / `No` / `Sometimes` / `Auto Detect`。控制松开 Grab 后是否继续持握 |
+| `Allow Manipulation When Equipped` | 是否允许键鼠或手柄玩家调整已持握物体 |
 | `Disallow Theft` | 是否禁止他人从你手里抢走（默认 `False`） |
-| `Throw Velocity Boost Min/Max` | 投掷速度增益区间 |
+| `Throw Velocity Boost Min Speed` / `Scale` | 启用投掷加速所需的最低速度与倍率 |
 
-挂载条件：同 GameObject 必须有**非 Trigger** Collider + Rigidbody。**Collider 勾了 `Is Trigger` 时 Pickup 会无法拿起**，是 #2 沉默错误。
+挂载条件：同一 GameObject 上具有 Collider 和 Rigidbody。本书投掷物使用非 Trigger Collider，使物体参与碰撞。若需要区域检测，另设 Trigger Collider。
 
 事件（在 UdonSharpBehaviour 里写 `public override`）：
 
@@ -87,62 +86,64 @@ public override void OnPickupUseDown(){ /* 持握时按使用键 */ }
 public override void OnPickupUseUp() { /* 持握时松使用键 */ }
 ```
 
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)、详细字段 [第 15 章](/come-alive/pickup-and-throw/)。  
+Any 保留自由握持；Gun 按 Exact Gun 固定方向；Grip 的对齐在 VR 与非 VR 中不同。Exact 锚点使用 Pickup 的子 Transform，位置放在预期握点，朝向按官方轴向规则和客户端实际握持结果调整。分别测试桌面、VR 左右手的拿取、使用、释放与重新拿取。
+
+首次出现：[第 7 章](/workbench/components/#vrchat-组件的职责)、详细字段 [第 15 章](/come-alive/pickup-and-throw/)。\
 官方文档：[VRC Pickup](https://creators.vrchat.com/worlds/components/vrc_pickup/)。
 
 ---
 
 ### `VRC Object Sync`
 
-多人之间同步物体的位置 / 旋转 / 速度。Pickup 物体的同步标配。
+在客户端间同步位置、旋转，以及 Rigidbody 的重力与运动学状态。可与 Pickup 配合使用。
 
 | 关键字段 | 作用 |
 |---|---|
-| `Allow Collision Ownership Transfer` | 物体撞上别人是否自动转 Owner（默认 `True`） |
-| `Use Gravity` | 是否启用 Rigidbody 重力同步（默认 `True`） |
-| `Is Kinematic` | Kinematic 模式（不参与物理但同步位姿） |
+| `Allow Collision Ownership Transfer` | 与其他玩家拥有的物体碰撞时，是否允许转移所有权 |
+| `Force Kinematic On Remote` | 非 Owner 客户端的 Rigidbody 是否强制为 Kinematic |
+| `SetGravity(bool)` / `SetKinematic(bool)` | 脚本方法：修改并同步对应物理状态 |
 
-挂载条件：同 GameObject 需要 Rigidbody。装上之后 `Owner` 在物理 / Pickup 触发时会按规则切换；细节 [第 27 章 · Ownership](/with-others/ownership/)。
+需要物理模拟时配置 Rigidbody；拾取和启用的碰撞转移规则影响 Owner。细节 [第 27 章 · Ownership](/with-others/ownership/)。
 
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)、详细 [第 15 章](/come-alive/pickup-and-throw/)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-组件的职责)、详细 [第 15 章](/come-alive/pickup-and-throw/)。\
 官方文档：[VRC Object Sync](https://creators.vrchat.com/worlds/components/vrc_objectsync/)。
 
 ---
 
 ### `VRC Spatial Audio Source`
 
-3D 空间音效。与 Unity `Audio Source` 同 GameObject 共存（VRC SAS 实际上是给 AudioSource 套一层 VRChat 限制）。
+为同一物体上的 Unity `Audio Source` 配置 VRChat 空间化与距离衰减；它不替代音频播放组件，也不负责区域进出检测。
 
 | 关键字段 | 默认值 / 范围 | 作用 |
 |---|---|---|
-| `Gain` | 10 dB（世界音源上限） | 增益。头像音源最高 10 dB，世界音源也常设到 10 |
-| `Far` | 40 m | 听不到的距离。小物件 5–8 m，氛围 15–30 m，广场音乐 40 m |
+| `Gain` | 世界默认 10 dB，范围 0–24 dB | 额外增益；10 dB 的上限限制针对头像音源 |
+| `Far` | 40 m | 启用空间化衰减时衰减至静音的远距离；按场景范围测试 |
 | `Near` | 0 m | 满音量距离，通常保持 0 |
-| `Volumetric Radius` | 0 m | 球形等响范围。**必须 < Far**，水声 / 火堆用 1–3 m |
-| `Use AudioSource Volume Curve` | `False` | 关掉用 VRChat 默认衰减，开了用 AudioSource 的 Curve |
-| `Enable Spatialization` | `True` | 关掉变 2D（背景音乐用） |
+| `Volumetric Radius` | 0 m | 扩大声源的表观体积；必须小于 Far，近距离聆听保留 0 并测试 |
+| `Use AudioSource Volume Curve` | `False` | 空间化启用时，关闭本项用默认衰减；启用本项用 AudioSource 曲线 |
+| `Enable Spatialization` | `True` | 关闭空间化还不够：2D 音频同时要求 Audio Source 的 Spatial Blend 为 0 |
 
-底层 `Audio Source` 同时要配：`AudioClip`、`Loop`、`Play On Awake`、`Volume`（推荐 BGM 0.2–0.4）、`Spatial Blend`（0=2D / 1=3D）、`Doppler Level`（静止音源设 0）。
+`Audio Source` 配置音频、音量、循环和播放时机。全局 2D BGM 可用 Play On Awake；本书区域 2D BGM 关闭 Play On Awake，由本地玩家的 Trigger 进出调用 Play/Stop，Spatial Blend 为 0 并关闭空间化。独立的固定 3D 声源采用 Spatial Blend 为 1 与空间化衰减；玩家移动改变相对方向和距离，墙体不会因此自动隔音。
 
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)、详细 [第 33 章](/placeness/sound-and-mood/)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-组件的职责)、详细 [第 33 章](/placeness/sound-and-mood/)。\
 官方文档：[VRC Spatial Audio Source](https://creators.vrchat.com/worlds/components/vrc_spatialaudiosource/)。
 
 ---
 
 ### `VRC Mirror Reflection`
 
-生成镜子。**性能很贵**，每多一面镜子相当于场景多渲染一遍。
+渲染镜面反射，增加相应视角的绘制开销；具体成本取决于反射内容和分辨率。
 
 | 关键字段 | 默认值 | 作用 |
 |---|---|---|
-| `m_DisablePixelLights` | `False` | 关掉镜中像素光，省一半左右 |
-| `m_ReflectLayers` | `Everything` | 反射的图层。**推荐只勾 `Player`/`PlayerLocal`**，否则 Batches 翻倍 |
-| `m_TextureSize` | `1024` | 反射贴图分辨率，设 `Unlimited` 会让 Quest 卡死 |
+| `m_DisablePixelLights` | `False` | 启用时将实时逐像素点光和聚光降为顶点光照 |
+| `m_ReflectLayers` | `Everything` | 反射图层；只需头像时包含 Player 与 MirrorReflection，后者是镜中的本地玩家层 |
+| `m_TextureSize` | `1024` | 每眼反射分辨率；提高会增加渲染成本，应在目标设备上测试 |
 | `Custom Skybox` | `None` | 反射用的天空盒覆盖 |
 
-约定：**默认 GameObject 关闭**，在世界里给玩家一个开关。底面用 Unity 自带 `Quad`（不要用 `Plane`，Plane 法线方向反过来需要 -90° X 旋转）。
+本书示例默认关闭镜子并提供开关。组件需要同物体上的 Mesh Renderer；可从 SDK 的 VRCMirror Prefab 开始配置，确认镜面朝向和反射图层。
 
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)、详细 [第 16 章](/come-alive/sit-mirror-teleport/)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-组件的职责)、详细 [第 16 章](/come-alive/sit-mirror-teleport/)。\
 官方文档：[VRC Mirror Reflection](https://creators.vrchat.com/worlds/components/vrc_mirrorreflection/)。
 
 ---
@@ -155,7 +156,7 @@ public override void OnPickupUseUp() { /* 持握时松使用键 */ }
 |---|---|---|
 | `Player Mobility` | `Immobilize` | `Mobile` / `Immobilize` / `Immobilize For Vehicle` |
 | `Can Use Station From Station` | `False` | 是否允许从一把椅子直接换到另一把 |
-| `Disable Station Exit` | `False` | 锁死座位（VR 用 Use 也下不来）。慎用 |
+| `Disable Station Exit` | `False` | 禁用常规离开操作；启用时需提供明确的离开方式 |
 | `Animation Controller` | `None` | Override Controller，用来给坐姿动画 |
 | `Station Enter Player Location` | （需手动拖） | 坐下时玩家落点 Transform。Y 抬到坐姿高度，否则脚穿地 |
 | `Station Exit Player Location` | `None` | 起身时玩家落点；空 = 在 Enter 附近起身 |
@@ -163,7 +164,7 @@ public override void OnPickupUseUp() { /* 持握时松使用键 */ }
 
 挂载条件：Collider 必须在**同 GameObject** 上（子物体上的 Collider 不算）。事件：`OnStationEntered(VRCPlayerApi)` / `OnStationExited(VRCPlayerApi)`，**所有客户端都会收到**，按需 `if (!player.isLocal) return;`。
 
-首次出现：[第 7 章](/workbench/components/#vrchat-sdk-自带的那批组件)、详细 [第 16 章](/come-alive/sit-mirror-teleport/)。  
+首次出现：[第 7 章](/workbench/components/#vrchat-组件的职责)、详细 [第 16 章](/come-alive/sit-mirror-teleport/)。\
 官方文档：[VRC Station](https://creators.vrchat.com/worlds/components/vrc_station/)。
 
 ---
@@ -178,7 +179,7 @@ public override void OnPickupUseUp() { /* 持握时松使用键 */ }
 | `Custom Portal Name` | 覆盖传送门顶部显示的名称（留空 = 显示目标世界真实名） |
 | `World` | 直连内置位置：`None` / `Home` / `Hub`。选了内置位置就不用填 World ID |
 
-朝向规则：Portal 的 **Z 轴正方向**（蓝色箭头）= 玩家走过来进入的方向。反了玩家会看到背面、过不去。
+放置后在客户端检查传送门朝向、入口空间和目标世界；以实际可见与可进入的一面为准。
 
 SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建议直接用。
 
@@ -193,7 +194,7 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 
 每个 GameObject 自带、删不掉。三个字段：`Position`、`Rotation`、`Scale`。
 
-首次出现：[第 6 章 · Transform：每个物体的标配](/workbench/gameobjects/#transform每个物体的标配)。
+首次出现：[第 6 章 · Transform 与坐标](/workbench/gameobjects/#transform-与坐标)。
 
 ---
 
@@ -203,7 +204,7 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 
 关键字段：Mesh Renderer 的 `Materials`（决定外观）、`Cast Shadows`（投不投影）、`Receive Shadows`、`Light Probes`（动态物体取光来源）。
 
-首次出现：[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+首次出现：[第 6 章](/workbench/gameobjects/#gameobject-与组件)。
 
 ---
 
@@ -211,14 +212,14 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 
 | 类型 | 形状 | 性能 | 默认挂载 |
 |---|---|---|---|
-| `Box Collider` | 长方体 | 最便宜 | Cube |
-| `Sphere Collider` | 球 | 便宜 | Sphere |
-| `Capsule Collider` | 胶囊 | 便宜 | Capsule |
-| `Mesh Collider` | 任意 Mesh | 贵，可能漏检 | Plane |
+| `Box Collider` | 长方体 | 简单碰撞体 | Cube |
+| `Sphere Collider` | 球 | 简单碰撞体 | Sphere |
+| `Capsule Collider` | 胶囊 | 简单碰撞体 | Capsule |
+| `Mesh Collider` | 网格表面 | 成本受面数与凸性影响 | Plane |
 
 通用字段 `Is Trigger`：勾上 = 不阻挡只检测；不勾 = 物理阻挡 + 碰撞事件。要用 `OnPlayerTriggerEnter` 时，`Is Trigger` 必须勾上（[第 14 章](/come-alive/trigger-zones/)）。
 
-能用 Box/Sphere 就别用 Mesh。首次出现：[第 5 章](/getting-started/first-world/#第二步解决踩地创建地板)、[第 6 章](/workbench/gameobjects/#gameobject-只是一个空壳)。
+形状允许时可用 Box/Sphere 简化碰撞计算。首次出现：[第 5 章](/getting-started/first-world/#第二步创建地板)、[第 6 章](/workbench/gameobjects/#gameobject-与组件)。
 
 ---
 
@@ -235,21 +236,21 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 
 `Directional Light` 位置无关，只看 Rotation。三种 Mode 的取舍详见 [第 36 章 · 三种 Light Mode](/placeness/light/#三种-light-mode)。
 
-首次出现：[第 7 章](/workbench/components/#在-inspector-里调参数)、[第 9 章 · Light：空间情绪的开关](/workbench/materials-light/#light空间情绪的开关)。
+首次出现：[第 7 章](/workbench/components/#在-inspector-调整字段)、[第 9 章 · 光源类型](/workbench/materials-light/#光源类型)。
 
 ---
 
 ### `Light Probe Group`
 
-给动态物体（玩家头像、可移动 Pickup）取环境光的探针网络。不撒会让头像在烘焙过的房间里发灰。
+保存烘焙光照采样，供支持 Light Probe 的动态 Renderer 使用，例如头像与可移动 Pickup。
 
 操作流程：`Hierarchy` 右键 `Light` → `Light Probe Group`（默认 8 个 Probe 排立方体）→ `Edit Light Probes` 进入编辑模式 → 选中 Probe 用 `Ctrl+D` 复制并拖到位 → 撒满玩家会走的区域。
 
-密度参考：休闲 / 展览世界约 **每 2 米一个 Probe**；楼梯口 / 灯光突变处加密。靠 `Light Probe Visualization → Tetrahedrons` 可视化网络。
+探针覆盖可移动物体活动的三维范围，在明暗边界和楼梯处增加采样；用可视化和动态测试物体检查插值结果。
 
 烘焙时跟 Lightmap 一起跑（`Generate Lighting`）。
 
-首次出现：[第 36 章 · Light Probe](/placeness/light/#light-probe让动态物体不发灰)。  
+首次出现：[第 36 章 · Light Probe：动态对象的环境光](/placeness/light/#light-probe动态对象的环境光)。\
 官方文档：[Unity Manual: Light Probe Group](https://docs.unity3d.com/Manual/class-LightProbeGroup.html)。
 
 ---
@@ -260,15 +261,15 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 
 | 关键字段 | 默认值 | 作用 |
 |---|---|---|
-| `Type` | `Baked` | `Realtime` 性能贵；世界里几乎都用 Baked |
+| `Type` | `Baked` | 静态环境用 Baked；实时更新需要另计性能成本 |
 | `Importance` | `1` | 多个 Probe 重叠时的优先级 |
-| `Box Projection` | `False` | 勾上 + 设合理 `Box Size` 让反射跟着房间形状（**强烈推荐勾**） |
+| `Box Projection` | `False` | 室内盒状空间可启用，并按空间设置 Box Size；效果取决于材质支持 |
 | `Box Size` | — | 房间边界 |
 | `Resolution` | `128` | 反射贴图分辨率，调高耗显存 |
 
 烘焙：Lighting 面板 `Generate Lighting` 旁边的下拉 → `Bake Reflection Probes`（也可以跟 Lightmap 一起 Generate Lighting）。每个独立空间放一个，Box Size 各自包房间，过渡区让 Probe 略重叠。
 
-首次出现：[第 36 章 · Reflection Probe](/placeness/light/#reflection-probe让金属表面真的反光)。  
+首次出现：[第 36 章 · Reflection Probe：环境反射](/placeness/light/#reflection-probe环境反射)。\
 官方文档：[Unity Manual: Reflection Probe](https://docs.unity3d.com/Manual/class-ReflectionProbe.html)。
 
 ---
@@ -281,11 +282,11 @@ SDK 自带现成 Prefab `VRCWorld_PortalMarker`，Project 面板搜得到，建�
 | `Play On Awake` | 场景加载时是否自动播 |
 | `Loop` | 是否循环 |
 | `Volume` | 总音量（0–1） |
-| `Spatial Blend` | `0` = 2D 全场等响，`1` = 3D |
+| `Spatial Blend` | `0` 不按声源位置做 3D 处理，`1` 完全使用 3D 设置；不决定何时播放 |
 | `Doppler Level` | 多普勒效应强度，静止音源设 `0` |
 
-VRChat 世界中通常优先用 `VRC Spatial Audio Source`（同 GameObject 同时挂上即可，VRC SAS 控制 VRChat 端的限制）。  
-首次出现：[第 7 章](/workbench/components/#在-inspector-里调参数)、[第 33 章](/placeness/sound-and-mood/)。
+`Audio Source` 负责播放；`VRC Spatial Audio Source` 额外配置空间化。播放时机与空间化分别设置，区域触发 2D 音乐不需要随距离衰减。\
+首次出现：[第 7 章](/workbench/components/#在-inspector-调整字段)、[第 33 章](/placeness/sound-and-mood/)。
 
 ---
 
@@ -303,7 +304,7 @@ VRChat 世界中通常优先用 `VRC Spatial Audio Source`（同 GameObject 同�
 
 关键字段：`Mass`、`Use Gravity`、`Is Kinematic`、`Drag`、`Angular Drag`、`Constraints`（冻结某个轴的位移 / 旋转）。
 
-首次出现：[第 7 章](/workbench/components/#add-component按需加能力)。
+首次出现：[第 7 章](/workbench/components/#添加组件)。
 
 ---
 
@@ -323,12 +324,12 @@ VRChat 世界中通常优先用 `VRC Spatial Audio Source`（同 GameObject 同�
 
 Transition 关键字段：
 
-- `Has Exit Time`：**对响应式开关一定要取消勾选**。勾着会等动画播完才能切，按按钮感觉像"延迟生效"。**第 17 章踩坑率最高的字段**。
+- `Has Exit Time`：启用时，过渡还需满足动画时间条件；需要立即响应参数变化时关闭。
 - `Conditions`：触发条件，例如 `IsOpen == true`。
 
-脚本接口：`SetBool(name, value)` / `SetInt` / `SetFloat` / `SetTrigger`，参数名建议用 `nameof()` 防字符串错。
+脚本接口：`SetBool(name, value)` / `SetInt` / `SetFloat` / `SetTrigger`，参数字符串必须与 Controller 中的名称一致；`nameof()` 只检查 C# 标识符，不能验证 Animator 资产中的参数。
 
-首次出现：[第 7 章](/workbench/components/#add-component按需加能力)、详细 [第 17 章 · 门、机关和状态](/come-alive/doors-and-states/)。
+首次出现：[第 7 章](/workbench/components/#添加组件)、详细 [第 17 章 · 门、机关和状态](/come-alive/doors-and-states/)。
 
 ---
 
@@ -342,18 +343,18 @@ Unity UI 的根。VRChat 世界里**可被 VR 指针交互的 Canvas 必须用 W
 | `Event Camera` | World Space 时填 Reference Camera |
 | `Sort Order` | 多个 Canvas 叠加顺序 |
 
-World Space Canvas 的 1 单位 = 1 米。常见做法：`Width = 400` + `Scale = 0.005`，实际呈现宽度 2 米；UI 元素按大像素布局再整体缩放，比直接小 Width 抗锯齿稳定。
+World Space Canvas 的 1 单位 = 1 米。常见做法：`Width = 400` + `Scale = 0.005`，实际呈现宽度 2 米；UI 元素按大像素布局再整体缩放，实际清晰度还取决于字体、Shader、分辨率与观看距离。
 
 可被指针点击的 UI 还需要 **`VRC_UIShape`** 组件挂在同一个 Canvas 上，VRChat 才会派发指针事件。
 
-首次出现：[第 34 章 · World Space Canvas 的搭法](/placeness/ui-and-feedback/#第一节world-space-canvas-的搭法)。  
+首次出现：[第 34 章 · World Space Canvas 的搭法](/placeness/ui-and-feedback/#world-space-canvas-的搭法)。\
 官方文档：[Unity Manual: Canvas Render Mode](https://docs.unity3d.com/Manual/UICanvas.html)。
 
 ---
 
 ### `TextMeshPro - Text` (TMP)
 
-VR 里能保持锐利的文字组件。Legacy `Text` 在 VR 里抗锯齿很糙，**世界里默认用 TMP**。
+支持 SDF 字体的文字组件，本书 UI 示例使用 TMP。清晰度受字体图集、字号、材质和观看距离影响。
 
 第一次创建会要求 `Import TMP Essentials`（点一下即可）。
 
@@ -366,19 +367,15 @@ VR 里能保持锐利的文字组件。Legacy `Text` 在 VR 里抗锯齿很糙�
 | `Alignment` | 对齐 |
 | `Wrapping` / `Overflow` | 折行 / 溢出策略 |
 
-中文字体要自己生成：`Window → TextMeshPro → Font Asset Creator`，配 `Source Font File`（如 Source Han Sans / 思源黑体）+ `Character Set: Custom Characters` 把全部要显示的中文字符贴进去 → `Generate Font Atlas` → `Save TextMeshPro Font Asset`。**漏掉的字符运行时显示 □ 方框，不会自动 fallback**。
+需要生成中文静态字体图集时：`Window → TextMeshPro → Font Asset Creator`，配 `Source Font File`（如 Source Han Sans / 思源黑体）+ `Character Set: Custom Characters` 把全部要显示的中文字符贴进去 → `Generate Font Atlas` → `Save TextMeshPro Font Asset`。缺字时检查字体资产、动态字形设置与已配置的 fallback 字体；都不含该字符时会显示替代字形。
 
-首次出现：[第 34 章 · TextMeshPro 和中文字体](/placeness/ui-and-feedback/#第二节textmeshpro-和中文字体)。  
+首次出现：[第 34 章 · TextMeshPro 与中文字体](/placeness/ui-and-feedback/#textmeshpro-与中文字体)。\
 官方文档：[TMP Font Asset Creator](https://docs.unity3d.com/Packages/com.unity.textmeshpro@3.0/manual/FontAssetsCreator.html)。
 
 ---
 
-## 还没铺开的组件
+## 其他组件参考
 
-下面这几个本书正文还没单独详写，等到的时候再补到这里：
-
-- Avatar Pedestal（第 35 章顺带涉及，暂未单独详写）
-- Light Probe Proxy Volume（大型动态物体取光，进阶）
-- Cloth（第 38 章 / 第 39 章 Quest 性能强相关，可单列）
-
-碰到这几个组件需要查字段时，先去官方 [SDK Components 文档](https://creators.vrchat.com/worlds/components/) 或 Unity Manual 对应页查。
+- Avatar Pedestal：[SDK Components](https://creators.vrchat.com/worlds/components/) 中的头像展示组件
+- Light Probe Proxy Volume：大型动态 Renderer 的光照采样功能，使用前核对目标平台支持
+- Cloth：布料模拟组件；Android / Quest 不支持，见[官方平台限制](https://creators.vrchat.com/platforms/android/quest-content-limitations/)

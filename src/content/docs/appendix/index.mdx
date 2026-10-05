@@ -1,9 +1,9 @@
 ---
 title: 附录 · 速查与参考
-description: 全书涉及的术语、组件、快捷键、报错、检查清单和资料导航。读到一半想查的时候来这里。
+description: 全书涉及的术语、组件、快捷键、报错、检查清单和资料导航。按主题查询字段、定义与测试项。
 template: splash
 hero:
-  tagline: 读到一半想查什么，就来这里翻。
+  tagline: 术语、组件、排错与发布检查。
   actions:
     - text: 术语表
       link: ./glossary/
@@ -23,9 +23,7 @@ editUrl: false
 
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-附录不是教程。它服务的场景是「读到第 28 章时想起 `RequestSerialization` 是什么，想直接查」。每条都尽量短，配回链跳到首次解释那一节的位置。
-
-附录跟着正文一起增长。当前的状态：
+附录按主题提供定义、字段、排查步骤与检查清单。条目附正文回链和官方资料入口。
 
 <CardGrid>
   <LinkCard
@@ -36,22 +34,22 @@ import { CardGrid, LinkCard } from '@astrojs/starlight/components';
   <LinkCard
     title="B · Unity 编辑器速查"
     href="./unity-shortcuts/"
-    description="UI 区域、菜单路径、高频快捷键。第 1–8 章涉及的部分已收录。"
+    description="UI 区域、菜单路径、高频快捷键。包含面板、构建和资源管理入口。"
   />
   <LinkCard
     title="C · SDK 与 Unity 组件速查"
     href="./components-cheatsheet/"
-    description="组件 → 字段 → 典型用法 → 章节锚点。第 1–8 章涉及的组件已入库。"
+    description="组件 → 字段 → 典型用法 → 章节锚点。包含交互、音频、灯光和 UI 组件。"
   />
   <LinkCard
     title="D · UdonSharp 限制"
     href="./udonsharp-limits/"
-    description="按白名单层 / 编译器层 / 工程化层 / 性能层 / 替代写法对照 / 排查顺序六节铺。撞墙的时候来这里。"
+    description="按白名单层 / 编译器层 / 工程化层 / 性能层 / 替代写法对照 / 排查顺序六节铺。按报错类别查替代方案。"
   />
   <LinkCard
     title="E · 网络同步决策表"
     href="./networking-decision/"
-    description="按「同步什么 / 谁来改 / 什么时候打包」三轴铺。配主决策树、Continuous vs Manual 实操判断、常见错配对照、三句口诀。"
+    description="按「同步什么 / 谁来改 / 什么时候打包」三轴铺。配主决策树、Continuous vs Manual 实操判断、配置差异与机制对照。"
   />
   <LinkCard
     title="F · 报错排查"
@@ -66,7 +64,7 @@ import { CardGrid, LinkCard } from '@astrojs/starlight/components';
   <LinkCard
     title="H · 发布检查清单"
     href="./release-checklist/"
-    description="按发布流程顺序铺：Builder 之前 → Scene Descriptor → 三层测试 → 元数据 → Quest 平台 → 不能踩的硬线 → 上传后验证 → 公开前最后扫一眼。"
+    description="按发布流程顺序铺：Builder 之前 → Scene Descriptor → 三层测试 → 元数据 → Quest 平台 → 内容合规 → 上传后验证 → 公开前最后扫一眼。"
   />
   <LinkCard
     title="I · 资料导航"
@@ -75,4 +73,4 @@ import { CardGrid, LinkCard } from '@astrojs/starlight/components';
   />
 </CardGrid>
 
-附录跟着正文一起增长，每写完一章会回头补对应附录里的小节。读到时如果发现某个组件 / 术语还没铺，回[第 47 章 · 继续学习](/publishing/keep-learning/)看一遍官方文档导航。
+未收录的接口或组件可查[资料导航](/appendix/resources/)中的官方文档。

@@ -1,301 +1,175 @@
 ---
 title: 36. 光
-description: 实时光的成本、Baked / Mixed / Realtime 三种 Light Mode 的区别、Lightmap 怎么烘焙、Light Probe 让动态对象不发灰、Reflection Probe 让金属表面真的反光。把第 9 章那点光的基础推到能上线的程度。
+description: 区分实时光、烘焙光与 Mixed 光；配置 Lightmap、Light Probe 和 Reflection Probe，并检查 Emission 的发光贡献。
 difficulty: 进阶
 estimatedMinutes: 55
 chapterType: hands-on
 requiresSDK: true
-summary: 第 9 章只用了实时光。一个上线世界要靠烘焙。这一章拆开 Baked / Mixed / Realtime 三种模式，把场景里大部分静止物体的 Static 标记打开、烘焙一次 Lightmap、撒一组 Light Probe、放几个 Reflection Probe。烘完一次之后，房间像真的有重量。
+summary: Lightmap 保存静态表面的预计算光照，Light Probe 为支持探针的动态对象提供环境光，Reflection Probe 提供环境反射。Emission 可改变材质自亮；照亮周围表面还取决于实时灯或满足条件的烘焙发光贡献。
 sidebar:
   order: 6
 ---
 
-第 9 章的 Directional Light 加 Point Light 看着也挺好。但那是「编辑器里看着挺好」。`Build & Test` 上线后，对照真正做得用心的 VRChat 房间，差距很明显：影子边缘抖、墙根发黑、玩家头像在房间里走一圈一直显得发灰，关上一盏灯整个空间立刻塌掉。
-
-差的不是参数。差的是**烘焙**。一个上线 VRChat 世界里，墙、地板、家具大部分的光照都是预先算好然后存成贴图，运行时直接读。这就叫 Lightmap 烘焙。烘焙之后画面会立刻提一档，运行时性能也轻得多。
-
-这一章把第 9 章那个房间烘焙一遍。
-
-::::tip[本章新名词]
-- **Lightmap**：把静态物体的光照预先算成贴图，运行时直接读。
-- **Light Probe**：给动态物体取环境光的小探针，避免玩家头像发灰。
-- **Reflection Probe**：某个位置的环境快照，主要给金属和玻璃反射用。
-- **GI / 直接光 / 间接光**：GI 是总光照计算；直接光从灯直射来，间接光是反弹来的。
-- **Lightmap UV**：专门给烘焙光贴图用的模型展开坐标。
-- **Shadowmask / Subtractive**：两种 Mixed Lighting 模式；前者画质平衡，后者更省性能。
-::::
+灯光的计算方式影响画面、运行时开销，以及开关灯后哪些部分会变化。第 9 章使用 Light 和材质调节外观；这里把静态房间的预计算光照与动态对象的受光分开配置。
 
 ## 三种 Light Mode
 
-打开任何一个 Light 组件，Inspector 里都有一个 `Mode` 下拉菜单：
+| 模式 | 计算方式 | 使用条件 |
+| :--- | :--- | :--- |
+| `Realtime` | 运行时计算直接光和所启用的阴影 | 需要移动或改变直接照明的灯；开销与灯型、范围、阴影及受光物体有关 |
+| `Baked` | 将光照预计算到 Lightmap 和探针 | 固定照明；运行时关闭 Light 组件不会移除已烘焙的贡献 |
+| `Mixed` | 组合预计算与实时部分 | 结果取决于 Lighting Mode；不能把它当成完全实时的开关灯 |
+
+本例将固定装饰灯设为 Baked，需要由按钮控制的局部灯设为 Realtime。若主光源使用 Mixed，需明确哪些光照和阴影已经烘焙。
+
+直接光从光源到达表面；间接光经过其他表面反射后到达。全局光照（GI）处理场景中的光照传播，烘焙可以预先计算这些结果。
+
+## Emission 何时照亮周围
+
+如果制作霓虹灯时字牌亮了、墙没有被照亮，可能只是材质的 Emission 自亮，没有实际灯光，也没有有效的烘焙发光贡献。
+
+- 需要运行时开关、改变颜色并照亮附近表面时，可使用 Realtime Light；Emission 用于字牌自身的外观。
+- 需要固定的发光贡献时，可在支持的 Shader 中启用 Emission，设置适当的 GI 模式，使物体参与烘焙，并重新生成光照。
+- 烘焙完成后，运行时修改 Emission 不会自动重算已经存入 Lightmap 的照明。
+- Bloom 是画面上的泛光效果，不能据此判断墙面是否实际接收了光。
+
+使用 Unity Standard Shader 时，检查 Emission 的 Global Illumination 设置、发光物体的 `Contribute GI`、场景的 Baked GI，以及接收表面的配置。具体条件见 [Unity Emission 文档](https://docs.unity3d.com/2022.3/Documentation/Manual/StandardShaderMaterialParameterEmission.html)。
+
+## 标记参与烘焙的物体
+
+GameObject 顶部的 `Static` 下拉是一组独立标记，不是一个适合全部物体的总开关：
+
+- `Contribute GI`：参与全局光照预计算
+- `Reflection Probe Static`：参与 Baked Reflection Probe 的捕获
+- `Batching Static`：参与静态批处理
+- `Occluder Static` / `Occludee Static`：用于遮挡剔除
+
+1. 选中固定地板、墙、天花板和家具。
+2. 按用途勾选 `Contribute GI`，需要烘焙反射时勾选 `Reflection Probe Static`。
+3. 对需要接收 Lightmap 的 Mesh Renderer 检查 `Receive Global Illumination` 设置。
+4. 门板、Pickup 等运行时移动的物体不要按静态 Lightmap 物体配置；为它们检查 Light Probe 设置。
+
+会被启用或禁用的物体也需要判断：关闭物体不会自动删除它在其他表面上留下的烘焙阴影或间接光。是否参与烘焙取决于这种残留是否符合设计。
+
+## 生成 Lightmap
+
+打开 `Window → Rendering → Lighting`，创建或指定 Lighting Settings 资产。不同 Unity 版本的字段分组可能不同。
+
+小房间原型可从以下数值开始：
 
 ```text
-Mode
-├─ Realtime    （实时计算，每帧重算）
-├─ Mixed       （部分烘焙、部分实时）
-└─ Baked       （完全烘焙到贴图，运行时不算）
+Baked Global Illumination   开启
+Lightmapper                 Progressive CPU 或可用的 Progressive GPU
+Direct Samples              32
+Indirect Samples            256
+Bounces                     2
+Lightmap Resolution         20 texels per unit
+Lightmap Padding            2
+Lightmap Size               1024
+Compress Lightmaps          开启
 ```
 
-直觉上的差别：
+这是比较烘焙结果的起点。更高分辨率增加内存与包体，更多采样增加烘焙时间；需要按具体瑕疵调整。
 
-| Mode | 性能 | 灵活性 | 适合 |
-| :--- | :--- | :--- | :--- |
-| `Realtime` | 最贵 | 灯位置 / 颜色 / 强度可任意改，影子跟着改 | 玩家可控的灯（按钮开关）、移动的光源（载具大灯） |
-| `Mixed` | 中等 | 静态物体接受烘焙的间接光，动态物体接受实时光 | 主太阳光、固定位置的环境光 |
-| `Baked` | 最便宜 | 灯一旦烘焙完不能再动，影子也固定 | 装饰性氛围灯、固定位置的灯泡 |
+### Mixed Lighting 的模式
 
-VRChat 世界里的实务搭法：
+- `Baked Indirect`：烘焙间接光，直接光和阴影仍有实时开销
+- `Shadowmask`：结合实时直接光、烘焙间接光与阴影遮蔽数据；具体实时阴影范围还受质量设置影响
+- `Subtractive`：静态直接光和间接光均可烘焙，动态对象的受光与阴影表现有额外限制
 
-- 主太阳光（Directional Light）：`Mixed`。
-- 屋里的固定灯泡：`Baked`。
-- 玩家能切的开关灯（一两盏）：`Realtime`，且关阴影。
-- 装饰性发光物体（霓虹字、屏幕）：用 `Emission` 材质 + `Baked` 间接光，不挂 Light 组件。
+模式必须与渲染管线、目标平台和 Shader 兼容。不能只凭 PC / Android 名称就认定某种模式适用于全部场景。
 
-## 把场景标 Static
+点击 `Generate Lighting`，等待烘焙完成并保存场景和生成的数据。烘焙耗时取决于场景规模、分辨率、采样和硬件。
 
-烘焙的前提：Unity 要知道哪些物体「不会动」，那些物体的光照才能被烘焙到贴图里。这通过 GameObject 的 `Static` 标记来标识。
+### 按现象排查
 
-打开自己的房间。Hierarchy 选中地板 `Floor`，Inspector 顶部右上角有一个 `Static ▾` 下拉勾选框。点开它会看到：
+| 现象 | 检查项 |
+| :--- | :--- |
+| 全部过暗 | 环境光来源、灯光模式、曝光、材质是否接收光照 |
+| UV 接缝出现亮线或黑线 | Lightmap UV 是否重叠、边距与分辨率是否足够 |
+| 表面斑点或噪声 | 间接光采样、降噪与小面积高亮发光源 |
+| 个别物体未接收烘焙结果 | Contribute GI、Receive GI、Shader 与 UV 配置 |
+| 结果与刚修改的场景不符 | 是否完成新烘焙、是否保存了正确场景与 Lighting Data |
 
-```text
-Static
-├─ ✓ Contribute GI         （是否参与全局光照烘焙）
-├─ ✓ Occluder Static
-├─ ✓ Occludee Static
-├─ ✓ Batching Static
-├─ ✓ Navigation Static
-├─ ✓ Off Mesh Link Generation
-└─ ✓ Reflection Probe Static
-```
+导入模型时，可在 Model Importer 的 `Generate Lightmap UVs` 生成用于光照的 UV，但生成后仍要检查接缝和重叠。只有确认旧数据需要重建时才清除 Baked Data。
 
-点 `Static ▾` 旁边的小勾，会全部打勾（默认行为）。或者展开下拉只勾选 `Contribute GI` 和 `Reflection Probe Static` 这两个跟光照相关的。
+## Light Probe：动态对象的环境光
 
-把房间里所有**不会动**的物体都打上 Static：地板、墙、天花板、固定家具、门框（门板要动所以不标）、装饰摆件。
+动态对象不能直接使用固定在静态表面上的 Lightmap。Light Probe Group 在空间中记录预计算光照，支持探针的 Renderer 根据附近探针插值取样。
 
-不要标 Static 的物体：
+1. 创建 `Light → Light Probe Group`。
+2. 在 Inspector 点击 `Edit Light Probes`，用 `Add Probe` 添加，`Duplicate Selected` 复制，`Delete Selected` 删除选中的探针；在 Scene 视图移动它们，完成后退出编辑模式。
+3. 覆盖玩家和 Pickup 活动的体积，包括不同高度；不要只摆成一个平面。
+4. 在明暗变化处加密，避免探针位于墙内。
+5. 重新烘焙，并让动态物体经过窗口、走廊和阴影区域。
 
-- 任何会被脚本启用 / 禁用的物体
-- 门板、抽屉、可动机关
-- VRC Pickup 物体（玩家会拿起）
-- 镜子（VRCMirrorReflection 物体本身别标 Static）
-- VRC Station 上玩家会坐进去的部分
+探针的间距应由光照变化决定。可以从几米间隔开始；均匀受光区域减少冗余，变化剧烈的位置增加采样。头像的最终外观还受它自己的 Shader 和 Renderer 配置影响，不能保证所有头像以相同方式使用探针。
 
-::::tip[Static 标记的核心逻辑]
-Unity 的 Static 标记本质是「向引擎承诺这个物体不会动」。承诺之后引擎能做几件优化：
+### 查看探针之间的连线
 
-1. 把物体的光照预计算成 Lightmap（Contribute GI）。
-2. 在 Occlusion Culling 里把物体当遮挡体（Occluder Static）。
-3. 在静态批处理里把物体合到大 Mesh 里减少 Draw Call（Batching Static）。
+Unity 2022.3 的 Light Probe Group Inspector 提供 `Show Wireframe`：开启后，在 Scene 视图检查探针之间的连线与覆盖体积。至少分上下两层布点，检查连线是否跨过厚墙、是否在门口把明暗两区过早混合。不要把旧资料中的 `Light Probe Visualization → Tetrahedrons` 当作当前版本必有的同名菜单。
 
-承诺一旦给出，运行时**真的去动它**（修改 transform）会出现各种奇怪现象：影子不更新、Occlusion 算错、批处理失效。做错不会立刻报错，但视觉会出问题。
+选择一段受光均匀的区域，先保存探针布局，再减少其中一组冗余点并重烘。让同一动态测试物沿同一路线移动，比较颜色是否连续；出现不符合预期的跳变时，恢复点位或在过渡处补点。连线显示的是插值结构，不能仅凭探针看起来颜色相近就认定删点无影响。[Unity 2022.3：Light Probe Group](https://docs.unity3d.com/2022.3/Documentation/Manual/class-LightProbeGroup.html)
 
-所以「凡是会动的物体不要标 Static」是硬规矩。
-::::
+## Reflection Probe：环境反射
 
-## 烘焙一次 Lightmap
+`Metallic` 描述金属属性，`Smoothness` 描述表面光滑度，两者不是同一个参数。高 Smoothness 的非金属也能产生清晰反射。
 
-把所有静态物体标好 Static，主光源设成 `Mixed`。
+Reflection Probe 从某个位置捕获环境并保存为 Cubemap。使用兼容 Shader 的物体可以显示这份环境反射。
 
-打开 Lighting 设置面板：菜单 `Window` → `Rendering` → `Lighting`。最上方有一个 `Scene` 选项卡，下面是一堆参数：
+1. 创建 `Light → Reflection Probe`，将 Type 设为 `Baked`。
+2. 将探针放在需要代表的房间内，调整 `Box Size` 覆盖受影响区域。
+3. 从 `Resolution = 128` 开始检查反射细节与内存。
+4. 在封闭房间中可试用 `Box Projection`，以盒子近似修正反射视差。
+5. 点击探针的 Bake，或使用 Lighting 面板中的反射探针烘焙命令。
 
-### 关键字段速查
+Box Projection 不是精确的实时几何反射。两个空间的环境差别较大时，可分别放置 Probe；过渡混合是否生效还取决于 Renderer 和 Shader 的设置。
 
-```text
-Lighting Settings
-├─ Skybox Material         默认 Skybox（决定环境光底色）
-├─ Sun Source              一般留空，让 Unity 自动找最亮的 Directional Light
-├─ Environment Lighting
-│  ├─ Source              Skybox / Gradient / Color
-│  ├─ Intensity Multiplier 1.0
-│  └─ Ambient Mode        Baked
-├─ Realtime Lighting
-│  └─ Realtime Global Illumination   关掉（VRChat 不推荐）
-├─ Mixed Lighting
-│  ├─ Baked Global Illumination       开
-│  └─ Lighting Mode       Shadowmask  （推荐起点）
-├─ Lightmapping Settings
-│  ├─ Lightmapper          Progressive GPU（更快，编辑器要求显存够）/ CPU
-│  ├─ Direct Samples      32
-│  ├─ Indirect Samples    256
-│  ├─ Bounces             2
-│  ├─ Lightmap Resolution 20–40 texels per unit
-│  ├─ Lightmap Padding    2
-│  ├─ Lightmap Size       1024
-│  └─ Compress Lightmaps   开
-└─ Other Settings...
-```
+## 实时灯与烘焙灯共同使用
 
-字段很多，第一次烘焙先按这一组设置走，烘出来效果再调。
+需要按按钮改变照明时，可以保留一盏 Realtime Light：
 
-### Lighting Mode 的取舍
+- 调整 Range，限制实际需要照亮的范围
+- 关闭不需要的实时阴影
+- 在多个灯同时影响同一片物体时测量开销
+- 检查关闭实时灯后，是否仍留有不应存在的烘焙亮斑
 
-`Mixed Lighting` 下的 `Lighting Mode` 有几个选项，影响 Mixed 灯怎么混合烘焙和实时。先铺三个名词：**直接光**指从光源直射到表面的光；**间接光**指被其他表面反射后才到来的光；**全局光照（Global Illumination / GI）**就是把直接光 + 间接光一起算的总光照系统。
+没有适用于全部世界的「实时灯最多四盏」硬限制。性能取决于实际渲染路径、像素覆盖、阴影、材质和目标设备。
 
-- `Baked Indirect`：直接光实时算，间接光烘焙。运行时仍要算每帧的直接光，性能不省太多。
-- `Shadowmask`：直接光实时（只有动态物体的影子是实时算的，静态物体的影子被烘焙到一张 Shadowmask 贴图里），间接光烘焙。性能与画质平衡好。**VRChat 世界推荐起点**。
-- `Subtractive`：所有都烘焙，动态物体只有一道粗糙影子。性能最好但画质明显塌。Quest 偏好用这个。
+## 何时重新烘焙
 
-PC 世界：用 `Shadowmask`。Quest 世界：用 `Subtractive`。第 39 章会展开 Quest 的烘焙差异。
+改变参与烘焙的几何、灯光或材质，可能使旧数据失效：
 
-### 烘焙
+- 移墙、加家具：检查 Lightmap、探针和遮挡关系
+- 改 Albedo 或 Emission：间接反射和发光贡献可能变化
+- 改 Smoothness 或 Metallic：检查 Reflection Probe 捕获与最终反射
+- 改 Probe 位置或范围：重新检查并烘焙对应数据
 
-按下 Lighting 面板右下角的 `Generate Lighting` 按钮。Unity 开始算光，进度条出现。
+保存一组修改前后的截图，以同一相机位置比较。烘焙是否有价值应由所需画面和运行时开销决定，不能据此给世界类型或作者水平分等级。
 
-第一次烘焙时间可能从几十秒到十几分钟。取决于：场景物体数、Lightmap 分辨率、`Indirect Samples` 数、显卡或 CPU 性能。
+## 对照练习与检查清单
 
-烘焙完成的标志：进度条消失，Project 面板里 `Assets/Scenes/{当前场景名}/` 下出现一组以 `Lightmap-` 开头的贴图文件。
+在场景副本做三组独立实验，固定模型、材质、相机位置、曝光、目标设备和画质设置。每组记录改动的字段、截图与可取得的帧时间；没有运行时测量工具时，不用编辑器数字代替客户端数字。
 
-进入 `Build & Test` 看一眼。地板和墙现在会有真实的间接反射、墙角阴影、家具底下的接触阴影。一面被太阳照的墙会**反射**一点光到旁边的墙根。这些都是烘焙带来的间接光。
+1. **实时光与烘焙光**：A 版把待比较的固定灯设为 Realtime，在副本中清除旧 Baked Data，并关闭 Realtime GI，记录墙根和遮挡处。B 版保持灯的位置、颜色和强度，把这些固定灯设为 Baked，按本章为接收表面设置 Contribute GI、Receive GI，并生成光照。只比较这一组照明方案，不同时换材质、加镜子或改变曝光。烘焙后的间接光差异和实时成本分别记录，不能保证两版像素一致。
+2. **动态物体取探针光**：新建一个未标静态的球，赋予支持探针的受光材质。先把它的 Mesh Renderer 的 Light Probes 设为 Off，再设为 Blend Probes，使用同一份已烘焙探针数据，在窗口、房间中心、阴影区三个坐标分别截取画面。要在客户端移动它，可按[拾取物配置](/come-alive/pickup-and-throw/#第二步添加刚体和-pickup)添加 Pickup。这个实验只改变该 Renderer 是否采样探针，不需要用未核对的「固定 50 个探针」配额。
+3. **反射来源**：新建球并赋予 Standard 材质，设 Metallic `1`、Smoothness `0.95`，放在本章已烘焙的 Reflection Probe 范围内。保持 Lighting 的 Environment Reflections 使用同一 Skybox，只将球的 Mesh Renderer 的 Reflection Probes 从 Off 改为 Blend Probes，观察由环境反射改为局部探针后的图案。再单独比较 Probe 的 Box Projection 开关；不移动球或相机来掩盖差异。
 
-::::caution[烘焙完看着比之前更糟的几种情况]
-1. **整个场景变得很黑**。检查 `Environment Lighting → Source`：如果是 `Skybox` 但场景里没有合适的 Skybox Material，环境光会变黑。换成 `Color` 模式手动指定一个浅灰底色。
-2. **Lightmap 上有缝（UV 接缝处出现亮线 / 黑线）**。物体的 Lightmap UV 没展开（UV 是把 3D 模型表面摊平成 2D 贴图坐标的方式，接缝就是展开时被切开的边）。Project 面板选中模型 fbx，Inspector → `Model` 选项卡 → 勾上 `Generate Lightmap UVs`，重新烘。
-3. **物体表面出现块状亮斑**。`Indirect Samples` 太低。从 `256` 调到 `512` 重烘，亮斑变细。
-4. **某些物体没接受光（依旧用 Realtime 风格的渲染）**。它们没被标 Static。
-5. **第二次烘焙时旧的 Lightmap 还在显示**。Unity 偶尔不会清旧贴图。Lighting 面板下拉 `Generate Lighting` 旁边的小箭头，选 `Clear Baked Data`，再 Generate。
-::::
+Mesh Renderer 的探针选项与 Shader 支持条件见[Unity 2022.3：Mesh Renderer](https://docs.unity3d.com/2022.3/Documentation/Manual/class-MeshRenderer.html)。
 
-## Light Probe：让动态物体不发灰
+发布前检查：
 
-烘焙到 Lightmap 的光只能影响 Static 物体。玩家头像、Pickup 物品、门板这些动态对象，运行时不知道周围光是什么样，默认会显得灰扑扑的。
-
-`Light Probe Group` 解决这件事：在场景里撒一堆「探针小球」，每个小球预计算它所在位置四周来的光。动态物体进入这片区域时按周围 4 个 Probe 的值插值取光，立刻有了「我在这个房间里」的颜色。
-
-### 在场景里撒 Light Probe
-
-`Hierarchy` 空白处右键 `Light` → `Light Probe Group`。新建出来的物体身上有个 `Light Probe Group` 组件，默认有 8 个 Probe 排成一个立方体。
-
-Inspector 里 `Light Probe Group` 有 `Edit Light Probes` 按钮。点它进入编辑模式。在 Scene 视图：
-
-- `Ctrl + Shift + 左键` 在某个位置加一个 Probe。
-- 选中 Probe 按 `Ctrl + D` 复制。
-- 选中多个 Probe 按 `Delete` 删除。
-
-Probe 的撒法有几条经验：
-
-1. **空间换 Probe**：每隔 `2`–`3` 米放一个 Probe，密度跟玩家走动空间一致。
-2. **关键过渡处加密**：从亮处到暗处的过渡（窗口附近、走廊出口、楼梯口）多加 Probe，避免动态物体在过渡时跳变。
-3. **顶部和底部都要有**：玩家头像 1.6 米高，桌子 0.8 米高，Probe 要在 `0.3`、`1.0`、`1.7`、`2.5` 米几个高度都铺一层。
-4. **不要在墙里**：Probe 算的是它所在位置的光。放进墙里的 Probe 会读到墙内部的全黑值，玩家路过那块时头像突然黑掉。
-
-撒完 Probe 之后再烘焙一次 Lightmap（Probe 数据是跟 Lightmap 同时烘出来的）。
-
-进世界看动态物体（玩家头像、可拿起的杯子）。它们现在在房间里走一圈颜色会变：靠近暖色 Point Light 偏暖，走到阴影里偏冷。这就是 Probe 在工作。
-
-::::tip[Probe 数量该多少]
-一个 8m × 8m × 3m 的小屋大约需要 30–50 个 Probe。一个 20m × 20m × 5m 的大厅大约需要 80–150 个。
-
-太少，动态物体颜色不够准；太多，烘焙时间显著变长，运行时也消耗内存。社区里通用建议是「先撒得密一点烘一遍，看效果之后再删掉冗余的」。
-
-判断哪些 Probe 多余的方法：勾选 `Light Probe Visualization → Tetrahedrons`，会显示 Probe 之间的连线网络。如果一片区域里所有 Probe 颜色都几乎一样，那片可以删一半。
-::::
-
-## Reflection Probe：让金属表面真的反光
-
-第 9 章里 Material 的 `Smoothness` 越高物体越像金属。但实际上仅靠 Smoothness，金属表面反射的是 Skybox（默认天空盒），看上去像悬空在天上。
-
-`Reflection Probe` 解决：在场景某个位置放一个探针，预先把那个位置周围的环境捕捉成一张 Cube Map（六面贴图）。附近的金属物体反射这张贴图，反射到的就是「这个房间的内饰」而不是天空。
-
-### 放一个 Reflection Probe
-
-`Hierarchy` 空白处右键 `Light` → `Reflection Probe`。新建的物体身上有 `Reflection Probe` 组件，默认 Type 是 `Baked`：
-
-```text
-Reflection Probe
-├─ Type            Baked          # 与 Realtime / Custom 选项
-├─ Importance      1
-├─ Intensity       1
-├─ Box Projection  False
-├─ Box Size        10, 10, 10     # 影响范围
-├─ Box Offset      0, 0, 0
-└─ Resolution      128            # 贴图分辨率
-```
-
-把这个 Probe 摆到房间中心稍微高一点的位置（比如 `Y = 1.8`，跟玩家眼高接近）。`Box Size` 调大到包住整个房间。
-
-接着烘焙：Lighting 面板里 `Generate Lighting` 旁边的下拉 → `Bake Reflection Probes`。Unity 把 Probe 摄像机放到 Probe 位置，向六个方向各拍一张图，存成 Cube Map。
-
-进 Scene 视图，选中场景里某个金属感强的物体（比如一个 `Smoothness = 0.9` 的球），表面现在反射的是这个房间的内饰，而不是默认天空。
-
-### Box Projection 让反射跟着房间形状
-
-默认 Reflection Probe 假设反射是从「无限远」来的。但房间是有边界的：墙离玩家几米，反射应该贴墙。勾上 `Box Projection`，设置合理的 `Box Size`（盖住房间），反射就会按盒子边界投影。
-
-不开 Box Projection 的金属球：反射在球面上看起来像悬空的全景图。
-开了之后：反射跟着房间几何走，球贴近墙时墙的反射变大。
-
-### 多个房间放多个 Probe
-
-一个 Probe 只能精确反射它附近的环境。两个房间共用一个 Probe 时，第二个房间的金属物体仍然反射第一个房间的内饰，看起来不对。
-
-每个独立空间放一个 Reflection Probe，让 `Box Size` 各自包住自己房间。Probe 之间稍微重叠一点，过渡区会用两个 Probe 混合。
-
-## 实时光的开销，要克制
-
-第 9 章那盏 Point Light 是 Realtime 模式。烘焙完之后回头看，Realtime 灯还能用吗？
-
-可以，但要克制。每盏 Realtime 灯每帧的开销大致：
-
-- 直接光照计算：相对便宜。
-- 阴影投射：贵很多，每帧要重算 Shadow Map。
-
-实务规则：
-
-1. **Realtime 灯总数 ≤ 4**，包括场景里同时存在的所有 Point / Spot 灯。
-2. **不必要的阴影一律关掉**。只有「玩家能看到这个物体阴影变化」的灯才开阴影。
-3. **远处的小灯改用 Emission 材质**，不挂 Light 组件。
-4. **由按钮控制开关的灯**：用 Realtime（开关一定要 Realtime 才能切换）。但这盏灯的阴影也建议关掉，靠局部细节代替。
-
-第 9 章那个发光球如果做成桌面台灯：Light 设 Realtime + 阴影关闭，材质勾 Emission，剩下靠 Lightmap 把房间整体照亮。运行时只有这一盏灯在算，房间还是有「灯亮着」的暖意。
-
-## Reflection Probe 和 Lightmap 的烘焙节奏
-
-实务做法：
-
-1. 把所有静态物体标 Static。
-2. 撒好 Light Probe 网络。
-3. 摆好 Reflection Probe。
-4. 主光源设 Mixed，装饰小灯设 Baked。
-5. **Generate Lighting**（同时烘焙 Lightmap、Light Probe、Reflection Probe）。
-6. 检查效果，调参数（Resolution、Samples、Bounces），重新 Generate。
-7. 改场景结构（加家具、移墙）后，需要重新烘。
-8. 改材质参数（颜色、Smoothness）一般不需要重烘，除非这个材质参与反射。
-
-烘焙很慢，所以建议先把场景搭得差不多稳定再开始大规模烘焙。前期用 Realtime 灯快速搭样，定型之后切到烘焙流程。
-
-## 自己做三组对比
-
-挑一个或几个改：
-
-- 做一个完全没烘焙的版本（所有灯 Realtime、所有物体取消 Static）。截一张图。再做一个完整烘焙版本，对比两张图的墙根、家具底部、接触阴影。
-- 不撒 Light Probe，让玩家在房间里走一圈，看头像颜色。再撒 50 个 Probe 重烘，再走一圈对比。
-- 房间里加一个 `Smoothness = 0.95` 的金属球。烘焙前看球面反射的是 Skybox，烘焙后（带 Reflection Probe）看反射的是房间内饰。
-
-这三个对比一旦做过，就理解为什么 VRChat 里那些「氛围对得上」的世界都在做烘焙。
-
-::::note[不同世界不同活法]
-- **休闲世界**靠烘焙撑场。Lightmap 分辨率 30+ texels per unit，Light Probe 密度 2 米一个，Reflection Probe 每个房间一个。
-- **游戏世界**对烘焙的依赖低一点：场景常常需要动态变化（开门、拉电闸），实时光更多。但 Lightmap 仍要烘，至少把环境氛围烘出来。
-- **展览世界**对反射要求高（作品上的反光），Reflection Probe 必须密。Lightmap 分辨率可以非常高（50+），值得为视觉牺牲烘焙时间。
-- **舞台 / Event**几乎全 Realtime（聚光灯要跟着舞台动）。这种世界的优化逻辑跟普通房间完全不同，第 38 章性能会展开。
-::::
-
-## 一份烘焙发布前检查清单
-
-- [ ] 所有不动的物体标了 Static
-- [ ] 主光源是 Mixed，装饰光是 Baked，开关灯是 Realtime
-- [ ] Lightmap UVs 在所有静态 Mesh 上勾上 Generate（fbx 设置）
-- [ ] 撒了一组 Light Probe，覆盖玩家会走的所有空间
-- [ ] 每个独立空间至少一个 Reflection Probe（金属感不强的世界可省）
-- [ ] 烘焙完没有明显的 UV 缝、亮斑、漏光
-- [ ] 实时光总数 ≤ 4
-- [ ] Quest 版本（如果做）切换 Lighting Mode 到 Subtractive 或更激进的 Baked
+- [ ] 静态标记按实际用途选择，动态物体没有错误的烘焙假设
+- [ ] Lightmap UV、接缝、噪声和漏光已检查
+- [ ] Probe 覆盖动态对象的活动区域
+- [ ] Emission 自亮与对周围的照明分别验证
+- [ ] 运行时开关灯不会留下不符合需求的烘焙照明
+- [ ] 在目标平台测试了画面和性能
 
 ## 本章参考
 
-- [Unity Manual：Global Illumination](https://docs.unity3d.com/Manual/GIIntro.html)
-- [Unity Manual：Lighting Mode](https://docs.unity3d.com/Manual/LightMode-Mixed.html)
-- [Unity Manual：Light Probe Group](https://docs.unity3d.com/Manual/class-LightProbeGroup.html)
-- [Unity Manual：Reflection Probe](https://docs.unity3d.com/Manual/class-ReflectionProbe.html)
-- [VRChat Creator Docs：World Lighting](https://creators.vrchat.com/worlds/lighting/)
-- [VRCreators：World Optimization Checklist · Lighting & Visibility](https://vrcreators.net/docs/vrchat/world-optimization-checklist)
+- [Unity 2022.3 Manual：Light Modes](https://docs.unity3d.com/2022.3/Documentation/Manual/LightModes.html)
+- [Unity 2022.3 Manual：Emission](https://docs.unity3d.com/2022.3/Documentation/Manual/StandardShaderMaterialParameterEmission.html)
+- [Unity 2022.3 Manual：Light Probes](https://docs.unity3d.com/2022.3/Documentation/Manual/LightProbes.html)
+- [Unity 2022.3 Manual：Reflection Probes](https://docs.unity3d.com/2022.3/Documentation/Manual/class-ReflectionProbe.html)
+- [VRChat Creator Docs：Android Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)

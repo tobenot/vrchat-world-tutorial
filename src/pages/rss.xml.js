@@ -4,12 +4,12 @@ import { getCollection } from 'astro:content';
 export async function GET(context) {
   const docs = await getCollection('docs', ({ data }) => !data.draft);
 
-  // 排序：按文件 id（前缀 01-, 02- 已经天然有序）
+  // 排序：按当前章节 id 的字母顺序
   const sorted = docs.sort((a, b) => a.id.localeCompare(b.id));
 
   return rss({
     title: '你的第一个 VRChat 世界：从零到发布的完全手册',
-    description: '面向新手的 VRChat 场景搭建与 Udon 开发指南，每章发布同步推送。',
+    description: 'VRChat 场景搭建与 Udon 开发指南的章节摘要。',
     site: context.site,
     items: sorted.map((doc) => ({
       title: doc.data.title,

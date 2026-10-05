@@ -6,10 +6,10 @@ export const collections = {
   docs: defineCollection({
     loader: docsLoader(),
     schema: docsSchema({
-      // 教程书专属字段，方便后续做难度筛选、阅读进度、章节摘要
+      // 教程书元数据：内容层次、阅读时间和章节摘要
       extend: z.object({
-        // 难度档：让读者一眼判断这章要不要硬扛
-        difficulty: z.enum(['新手', '进阶', '硬核']).optional(),
+        // 内容层次描述章节范围，不用于评价读者能力
+        difficulty: z.enum(['基础', '进阶', '专题']).optional(),
         // 预估手把手跟做时间，单位分钟
         estimatedMinutes: z.number().int().positive().optional(),
         // 是否要求 VRChat SDK 已就绪

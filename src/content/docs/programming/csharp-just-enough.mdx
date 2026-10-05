@@ -1,20 +1,18 @@
 ---
 title: 11. 刚好够用的 C#
-description: 不学一整门 C#，只学 VRChat 世界写脚本时真正会用到的那一小块（变量、控制流、方法、类、字段引用），够开始动手就行。
-difficulty: 新手
+description: 使用 C# 表达变量、条件、循环、方法、类与对象引用，并用 UdonSharp 示例检查实际行为。
+difficulty: 基础
 chapterType: hands-on
 estimatedMinutes: 40
 sidebar:
   order: 2
 ---
 
-第 10 章把变量、判断、循环、函数、类用做菜的方式过了一遍。这一章把那些朴素思路落到 C# 的真实写法上。
+[程序流程](/programming/basics-no-code/)中的变量、条件和方法，可以用 C# 语法表达。本章展示 UdonSharp 使用的基础写法，并区分完整脚本与语法片段。
 
-C# 整套语言能写到非常深，但 VRChat 世界用得上的语法只是其中一小块。这一章只讲那一小块。学得太多反而绕路：第 12 章会指出哪些 C# 特性 UdonSharp 不支持，提前学了也用不上。
+C# 是语言，Unity 与 Udon 提供各自的 API 和运行条件。因此，一段语法正确的普通 C# 代码，也可能因为使用了未开放的 API 而无法编译为 Udon 程序。
 
-## 一段最小脚本长什么样
-
-VRChat 世界里的脚本几乎都是这个骨架：
+## 一段完整的灯光开关脚本
 
 ```cs title="LampToggle.cs"
 using UdonSharp;
@@ -26,123 +24,139 @@ public class LampToggle : UdonSharpBehaviour
 
     public override void Interact()
     {
+        if (targetLight == null)
+        {
+            Debug.LogWarning("LampToggle：Target Light 未配置");
+            return;
+        }
+
         targetLight.enabled = !targetLight.enabled;
     }
 }
 ```
 
-这段不到十行的脚本就能让按钮控制一盏灯。先不深究每一行，整体认识一下：
+- `using` 导入命名空间，允许使用其中类型的简写名称；它不会自行安装库。
+- `class LampToggle` 声明类。`: UdonSharpBehaviour` 表示继承 UdonSharp 的行为基类。
+- `public Light targetLight` 是字段，类型为 Light，保存对具体灯组件的引用。
+- `Interact()` 是对这个对象发生本地交互时调用的事件方法。
+- `if` 检查引用是否为空；为空时记录日志，并用 `return` 结束本次调用。
+- `!targetLight.enabled` 对布尔值取反，赋值后灯的启用状态翻转。
 
-- `using ...` 在文件顶上引一些工具，类似菜谱开头写「需要烤箱、电饭锅」。
-- `public class LampToggle : UdonSharpBehaviour` 定义了一个类，名字叫 `LampToggle`。冒号后面的 `UdonSharpBehaviour` 表示这个类要装到 GameObject 上当行为脚本。
-- `public Light targetLight;` 声明了一个变量。`Light` 是类型，`targetLight` 是名字。`public` 让这个变量在 Unity Inspector 里可见，可以用拖拽的方式指过去。
-- `Interact()` 是一个方法，名字是 VRChat 规定好的。玩家走过来按 Use 键时，VRChat 会替作者调用这个方法。
-- 方法体里那行 `targetLight.enabled = !targetLight.enabled;` 把灯的开关状态翻转。
+### 创建、挂载与测试
 
-短短一段 C#，已经把第 10 章谈到的东西全用上了：类、变量、方法、判断（`!` 是「取反」）。下面把每一块拆开。
+1. 在 Project 的 `Assets/Scripts` 中右键 `Create → U# script`，创建 `LampToggle.cs` 及配套程序资产。
+2. 用代码编辑器打开 `.cs`，填入完整脚本。文件名与类名保持一致，保存并等待编译结束。
+3. 创建可见 Cube 作为 `Button_LightSwitch`，保留 Collider，把脚本挂在这个物体上。
+4. 把带有 Light 的 `GlowBall` 拖进 `Target Light` 字段。
+5. 确认被控制的灯是本例的 Realtime Light；设置可辨认的交互提示，例如 `灯光 / Light`。
+6. 在 ClientSim 或 `Build & Test` 中对准按钮并执行客户端提示的交互操作。
+7. 第一次交互应翻转 Light 状态，第二次应恢复；清空引用的测试副本则应输出警告而不修改灯光。
 
-## 三件 C# 的语法基本功
+`Interact` 需要目标物体满足 Collider、Udon Behaviour 和交互距离等条件。它不是某个固定键盘键的别名，也不是 Pickup 或手持物品 Use 事件。这个脚本没有配置网络同步，只改变本地场景的灯光状态。
 
-在拆变量、控制流之前，先把三件最朴素的语法物理过一遍。如果这三件没扫过，一些莫名其妙的红字会把人卡住。
+## 语句、代码块和注释
 
-**分号 `;` 结束一条语句**。`int score = 0;` 末尾那个分号是必须的，少一个就报错。同一段代码里换行不重要，分号才决定一条语句到哪里结束。
-
-**大括号 `{ ... }` 圈出一组语句**。类的内容、方法的内容、`if` 块的内容、`for` 块的内容，都用一对大括号括起来。括号必须成对，少一个右括号编译器会一路报错到文件末尾。Unity 里写代码时编辑器会自动配对，大概率不会漏。
-
-**注释 `//` 和 `/* ... */`**。`//` 后面到行尾的内容是给人看的、编译器忽略：
-
-```cs
-int score = 0;  // 玩家分数，每分一格
-// 整行只是说明文字，不会被执行
-```
-
-`/* ... */` 用来注释多行：
+**分号 `;`** 结束变量声明、赋值和方法调用等语句：
 
 ```cs
-/*
-   这一段先放着不跑，调试时再开
-   targetLight.enabled = false;
-*/
+int score = 0;
+score = score + 1;
+Debug.Log(score);
 ```
 
-调试时常用注释临时屏蔽一两行代码，比删掉再写回去稳。
+不是所有行都以分号结束，类、方法和 `if` 的代码块使用大括号。
+
+**大括号**限定类、方法或控制流块的范围，缩进帮助阅读，但不能替代括号。
+
+**注释**供读者阅读，不作为程序指令执行：
+
+```cs
+int score = 0;  // 当前分数
+/* 这一段文字说明字段用途，编译器不会执行它。 */
+```
+
+临时注释代码可以缩小问题范围，但测试时需记录停用了哪一段，避免把删减后的行为误认作完整结果。
 
 ## 变量和类型
 
-C# 每个变量都得有个**类型**。这跟 Python、JavaScript 这种「动态类型」不一样，在 C# 里写变量时必须告诉编译器它是什么。
+C# 使用静态类型。显式声明写成 `类型 名字 = 初始值;`；也支持 `var` 根据初始表达式推断类型，推断后并不是任意类型都能赋进去。
 
-VRChat 世界里高频出现的几种类型：
-
-| 类型 | 装什么 | 例子 |
+| 类型 | 含义 | 示例 |
 | :--- | :--- | :--- |
 | `int` | 整数 | `int score = 0;` |
-| `float` | 小数（带小数点） | `float speed = 1.5f;` |
+| `float` | 单精度浮点数 | `float speed = 1.5f;` |
 | `bool` | 真或假 | `bool isOpen = false;` |
-| `string` | 一段文字 | `string playerName = "alice";` |
-| `Vector3` | 三维坐标 | `Vector3 spawnPoint = new Vector3(0, 0.2f, 0);` |
-| `GameObject` | 一个 Unity 物体 | `public GameObject door;` |
-| `Light` | 一盏灯组件 | `public Light mainLight;` |
-| `Transform` | 物体的位置朝向 | `public Transform target;` |
-| `Material` | 一份材质 | `public Material redMat;` |
+| `string` | 文本 | `string label = "Light";` |
+| `Vector3` | 三个浮点分量，可表示位置、方向等 | `Vector3 point = new Vector3(0, 0.2f, 0);` |
+| `GameObject` | Unity 对象引用 | `public GameObject door;` |
+| `Light` | Light 组件引用 | `public Light mainLight;` |
+| `Transform` | Transform 组件引用 | `public Transform target;` |
+| `Material` | 材质资源引用 | `public Material wallMaterial;` |
 
-写 `float` 数值时末尾要加 `f`，比如 `1.5f`。不加的话编译器会按 `double`（更精确的小数类型）解读，赋值给 `float` 变量时会报错。
+带小数点的数值字面量默认是 `double`。写 `1.5f` 明确表示 `float`，避免把 `double` 隐式赋给 `float` 的类型错误。`int x = 1.5f;` 不成立；显式转换 `(int)1.5f` 得到 `1`，是向零截断，不是四舍五入。
 
-声明变量的语法非常稳定：
+字段和数组元素有默认值，例如数字 `0`、布尔 `false`、引用 `null`。**方法内的局部变量必须在读取前被明确赋值**，不能把字段的默认初始化规则直接套给所有变量。
 
 ```cs
-类型 名字 = 初始值;
+private int score; // 字段默认值为 0
+
+private void Start()
+{
+    int delta = 1; // 局部变量在使用前赋值
+    score = score + delta;
+}
 ```
 
-初始值可以省略，省略后基本类型会拿到默认值（数字是 0，bool 是 false，引用类型是 `null`）。`null` 这个值后面会反复碰到，它表示「这个引用还没指向任何东西」。
+变量名区分大小写，`health` 与 `Health` 是不同名称。本书示例中类和方法采用大驼峰，字段与局部变量采用小驼峰。命名约定用于保持一致，不是语法强制要求。
 
-:::caution[踩坑预警]
-`int` 不能装小数。`int x = 1.5f;` 会编译失败。如果业务上确实需要小数，用 `float`；如果想从 float 强行转成 int，写 `int x = (int)1.5f;`，会丢掉小数部分变成 `1`。
+## 字段、访问范围与序列化
 
-变量名必须以字母或下划线开头，区分大小写。`Health` 和 `health` 是两个不同的变量。
-:::
+字段属于类，局部变量属于方法或代码块。以下是完整的计数器示例：
 
-C# 项目通行的命名约定：类名、方法名、`public` 字段用大驼峰（`PlayerHealth`、`OpenDoor`），`private` 字段和局部变量用小驼峰（`isOpen`、`currentScore`）。本书里的代码统一这套写法。约定不是硬性规则，但跟主流不一致的命名会让其他读者迷惑，也容易跟 Unity API 的命名风格打架。
+```cs title="Counter.cs"
+using UdonSharp;
+using UnityEngine;
 
-## 字段、属性和局部变量
-
-类里写在大括号最外层的变量叫**字段**（field），方法里写在大括号内层的变量叫**局部变量**（local variable）。
-
-```cs
 public class Counter : UdonSharpBehaviour
 {
-    public int score;       // 字段：整个类都能访问
-    private int internalState;  // 字段：但外部访问不到
+    [SerializeField] private int score;
+    [SerializeField] private int increment = 1;
 
     public override void Interact()
     {
-        int delta = 1;      // 局部变量：只在这个方法里有效
+        int delta = increment;
         score = score + delta;
+        Debug.Log("score = " + score);
     }
 }
 ```
 
-字段的访问修饰符常见三种：
+将 Counter 保存为对应 U# Script，挂到带 Collider 的测试 Cube，提示填 `计数 / Count`。Inspector 中 Score 设为 0、Increment 设为 2，进入 ClientSim 连续交互两次，Console 应依次输出 2、4。退出 Play Mode 后改 Increment，再启动比较；外部 Build & Test 则查对应客户端日志。
 
-- `public`：外部类可以访问，Unity Inspector 也会显示。
-- `private`：只有自己类内部能访问，Inspector 默认看不到。
-- `[SerializeField] private`：外部类访问不到，但 Inspector 能看见。VRChat 项目里推荐这种写法，既不污染外部接口，又能在 Inspector 里调参数。
+- `public` 决定其他代码的访问权限；符合序列化要求的 public 字段通常也在 Inspector 中显示。
+- `private` 限制类外直接访问，默认不显示在 Inspector。
+- `[SerializeField] private` 在保留私有访问范围的同时，让支持的字段被序列化并显示在 Inspector。
+
+访问范围与序列化是两件事。并非任意类型或任意 public 成员都能保存；属性也不等同于序列化字段。
+
+`transform.position`、`Light.enabled` 是 Unity API 的属性。可以通过赋值调用它们的设置逻辑，但它们并不是脚本自己声明的普通字段。
+
+## if 与 else
+
+以下片段假定相关字段已经声明并赋好引用：
 
 ```cs
-[SerializeField] private float openSpeed = 2f;
-```
-
-C# 还有一种叫「属性」（property）的东西，长得像方法又像字段。VRChat 项目里很少自己写属性，用到的多是 Unity API 提供的，比如 `transform.position`。这一章先不展开。
-
-## 控制流：if / else / for / while
-
-```cs
-// if 单分支
 if (score >= 10)
 {
-    door.SetActive(false);  // 隐藏门
+    door.SetActive(false);
 }
+```
 
-// if / else
+`SetActive(false)` 禁用整个 GameObject，不只是隐藏 Renderer；门的 Collider、组件运行及子物体也会受影响。若只要隐藏外观，应操作相应 Renderer。
+
+两个分支的例子：
+
+```cs
 if (isDay)
 {
     sun.intensity = 1f;
@@ -151,159 +165,143 @@ else
 {
     sun.intensity = 0.1f;
 }
+```
 
-// if / else if / else
+多个条件按顺序判断，命中一条后不再执行其他分支：
+
+```cs
 if (score < 0)
 {
-    label.text = "异常";
+    Debug.Log("分数无效");
 }
 else if (score < 10)
 {
-    label.text = "继续努力";
+    Debug.Log("尚未达到 10 分");
 }
 else
 {
-    label.text = "通关";
+    Debug.Log("已达到 10 分");
 }
 ```
 
-条件表达式里常用的比较符号：
-
-| 写法 | 含义 |
+| 运算符 | 含义 |
 | :--- | :--- |
-| `==` | 相等 |
-| `!=` | 不相等 |
-| `<` `<=` `>` `>=` | 小于、小于等于、大于、大于等于 |
+| `==` / `!=` | 相等 / 不相等 |
+| `<` / `<=` / `>` / `>=` | 大小比较 |
 | `&&` | 且 |
 | <code>&#124;&#124;</code> | 或 |
-| `!` | 取反 |
+| `!` | 布尔取反 |
 
-注意「相等」是两个等号 `==`，单个等号 `=` 是赋值。这是最常踩的笔误之一。
+单个 `=` 表示赋值，`==` 表示比较。`!` 是运算符，本身并不是 `if` 分支。
 
-循环最常用的是 `for`：
+## for 与 while
+
+下面的 `for` 执行十次，输出从 0 到 9：
 
 ```cs
 for (int i = 0; i < 10; i++)
 {
-    Debug.Log("打印第 " + i + " 次");
+    Debug.Log("索引 = " + i);
 }
 ```
 
-`for` 三段分别是：起始（`int i = 0`）、继续条件（`i < 10`）、每轮结束做的事（`i++`，即 i 加 1）。
+三个部分分别是初始化、继续条件、每轮结束后的更新。`i++` 将计数器加一。
 
-`while` 用在「直到某个条件满足为止」：
+`while` 在每轮执行前检查条件：
 
 ```cs
-while (door.transform.position.y < 3f)
+int remaining = 3;
+while (remaining > 0)
 {
-    door.transform.Translate(Vector3.up * 0.01f);
+    Debug.Log("剩余次数 = " + remaining);
+    remaining--;
 }
 ```
 
-VRChat 世界写脚本时 `while` 用得比 `for` 少很多，多数情况下 `for` 配合数组就够。
+这里每轮减一，三轮后条件为假，循环结束。循环不会自动跨帧；用循环反复移动门，会在同一次调用中完成全部计算，而不是生成逐帧动画。
 
-:::caution[踩坑预警]
-`while` 必须保证循环条件最终会变成假，否则程序会卡死。`while (true) { ... }` 在 VRChat 脚本里会让客户端直接掉帧到无响应。
-
-VRChat 写脚本几乎不用 `while (true)`，需要「持续做某件事」时用 `Update()` 方法（每帧执行一次），后面会讲。
+:::caution[循环必须能结束]
+如果继续条件一直为真，并且没有跳出路径，当前事件就不能正常结束，可能卡住客户端或触发运行限制。需要持续更新时，让 `Update` 每帧完成有限工作；需要等待时使用运行环境支持的定时方式。
 :::
 
-## 方法
+## 方法、参数和返回值
 
-方法的完整写法是这样：
-
-```cs
-返回类型 方法名(参数列表)
-{
-    方法体;
-    return 返回值;
-}
-```
-
-具体例子：
+下面三个方法是类内片段，`door` 与 `score` 表示已配置字段：
 
 ```cs
-// 没有返回值，没有参数
-public void OpenDoor()
+// 无参数，无返回值
+private void HideDoor()
 {
-    door.SetActive(false);
+    if (door != null)
+    {
+        door.SetActive(false);
+    }
 }
 
-// 有参数，没有返回值
-public void SetScore(int newScore)
+// 一个参数，无返回值
+private void SetScore(int newScore)
 {
     score = newScore;
-    UpdateLabel();
+    Debug.Log("score = " + score);
 }
 
-// 有参数，有返回值
-public int Add(int a, int b)
+// 两个参数，返回整数
+private int Add(int a, int b)
 {
     return a + b;
 }
 ```
 
-`void` 表示「没有返回值」。`return` 用来把结果交还给调用方，调用方可以接着用：
+`void` 表示不返回值。返回类型为 `int` 的方法可以这样调用：
 
 ```cs
-int total = Add(3, 5);   // total 现在是 8
+int total = Add(3, 5); // total 得到 8
 ```
 
-VRChat 脚本里有几个特殊方法名是 Unity 和 VRChat 帮调的：
+参数属于这次调用，改变参数并不等于修改其他字段，具体取决于传递的是值还是对象引用及方法做了什么。
 
-| 方法名 | 调用时机 |
+## 事件方法的调用条件
+
+| 方法 | 调用条件 |
 | :--- | :--- |
-| `Start()` | 物体出现在场景里之后调用一次 |
-| `Update()` | 每一帧调用一次（桌面端约 60 次/秒，VR 模式约 90 次/秒） |
-| `Interact()` | 玩家按 Use 键交互时调用 |
-| `OnPlayerJoined(VRCPlayerApi player)` | 有玩家进入这个房间实例 |
-| `OnPlayerLeft(VRCPlayerApi player)` | 有玩家离开 |
+| `Start()` | 行为首次开始运行时的初始化入口 |
+| `Update()` | 行为激活并运行时，每帧调用 |
+| `Interact()` | 本地玩家与对应可交互对象交互 |
+| `OnPlayerJoined(VRCPlayerApi player)` | 玩家加入通知；本地加入时也通知已在实例中的玩家 |
+| `OnPlayerLeft(VRCPlayerApi player)` | 玩家离开实例通知 |
 
-第四部会反复用到这几个。这一章先认识到：**作者不主动调用它们，是 VRChat 在合适的时机替作者调用**。作者的工作是定义「被调用时该做什么」。
+`Update` 的次数取决于实际帧率，不是桌面固定 60 次或 VR 固定 90 次。
 
-写法上有一个细分要点先打个伏笔：上面这五个里，`Start` 和 `Update` 是 Unity 标准生命周期方法，写定义时**不写 `override`**；`Interact` / `OnPlayerJoined` / `OnPlayerLeft` 是 UdonSharpBehaviour 自己定义的虚方法，**必须写 `public override`**。第 12 章会专门讲这条规则的来历。
+UdonSharp 的 `Start`、`Update` 使用 Unity 生命周期写法，不写 `override`；`Interact`、`OnPlayerJoined`、`OnPlayerLeft` 使用基类定义的事件签名，写成 `public override`。带 `VRCPlayerApi` 参数时还需引用 `VRC.SDKBase` 命名空间。
 
-## 把脚本说出来：Debug.Log
+## Debug.Log 与日志位置
 
-写脚本时最常用的「工具方法」是 `Debug.Log`。它把一段文字打到 Unity 编辑器的 Console 面板里：
+`Debug.Log` 输出信息，`Debug.LogWarning` 输出警告。可以在事件入口和修改状态的位置分别记录：
 
 ```cs
 public override void Interact()
 {
-    Debug.Log("按钮被按了");
+    Debug.Log("Counter 收到 Interact");
     score = score + 1;
-    Debug.Log("现在分数是 " + score);
+    Debug.Log("score = " + score);
 }
 ```
 
-按下 Use 键之后，Unity 顶上的菜单 `Window → General → Console` 打开的那个面板里会看到刚才打出来的字。这是「程序到底跑没跑、跑到哪一步、变量是什么值」最有效的检查手段。
+在 Unity 的 ClientSim 中运行时，查看 `Window → General → Console`。通过 `Build & Test` 运行在 VRChat 客户端中时，主要查看客户端输出日志及 SDK 提供的调试信息，不能假定消息一定直接出现在 Unity Console。
 
-```text
-不知道脚本有没有挂上 → Start 里写一句 Debug.Log("我活了")
-不知道按钮按了没      → Interact 里写一句 Debug.Log("被按了")
-不知道变量是什么值    → 在那一行前后写 Debug.Log("score = " + score)
-```
+如果没有入口日志，检查事件触发条件；有入口日志却没有结果日志，检查中间语句和异常。保存 `.cs` 后，Unity 会在资源刷新时编译；项目设置可能影响自动刷新时机。
 
-这一招在做完第四部里几个练习之前不会显眼，撞上第一个「按钮按下去没反应」的问题时立刻有用。
+每帧大量打印会增加日志和运行开销。观察连续数据时，按时间或帧数限频，并在诊断完成后删除不需要的输出。
 
-Unity 在每次保存 `.cs` 文件时都会重新编译一次，编译错误第一时间出现在 Console 里。改几行保存一次和写完一大段再保存，错误暴露的时机会差很多。
+## 完整示例：逐帧移动门模型
 
-:::caution[踩坑预警]
-`Debug.Log` 不能放进 `Update()` 里随便打。Update 一秒会被调几十次，每次都打日志会瞬间塞满 Console，连带把 Unity 卡住。
-
-要在 Update 里观察值，要么加一个计数器（每 60 帧打一次），要么换成 `Interact()` 之类按需触发的方法里打。
-:::
-
-## 类
-
-类是 C# 组织代码的基本单位。VRChat 世界里每个 `.cs` 文件通常装一个类，类继承自 `UdonSharpBehaviour`：
-
-```cs
+```cs title="DoorController.cs"
 using UdonSharp;
 using UnityEngine;
 
 public class DoorController : UdonSharpBehaviour
 {
+    [SerializeField] private Transform doorPanel;
     [SerializeField] private float openHeight = 3f;
     [SerializeField] private float closeHeight = 0f;
     [SerializeField] private float speed = 2f;
@@ -317,73 +315,73 @@ public class DoorController : UdonSharpBehaviour
 
     private void Update()
     {
+        if (doorPanel == null) return;
+
         float targetY = isOpening ? openHeight : closeHeight;
-        Vector3 pos = transform.position;
+        Vector3 pos = doorPanel.localPosition;
         pos.y = Mathf.MoveTowards(pos.y, targetY, speed * Time.deltaTime);
-        transform.position = pos;
+        doorPanel.localPosition = pos;
     }
 }
 ```
 
-这段脚本能做出一扇按 Use 键开关、开合带动画的门。它把上面讲过的东西全用了一遍：
+这段代码把交互控制器与移动门板分开，避免门升起后连同唯一交互目标一起移出玩家可操作范围。
 
-- 字段（带 `SerializeField`）：让作者在 Inspector 里调参数。
-- `Interact()` 方法：响应玩家按 Use 键。
-- `Update()` 方法：每帧推动门朝目标高度移动。
-- 三元表达式 `isOpening ? openHeight : closeHeight`：等同于 `if (isOpening) ... else ...` 的简写。
-- 调用 Unity 提供的 API：`Mathf.MoveTowards`、`Time.deltaTime`、`transform.position`。
+- 将脚本挂在固定的按钮物体上，按钮保留 Collider。
+- 将独立门板的 Transform 拖进 `Door Panel`。
+- `openHeight` 与 `closeHeight` 使用门板父级坐标，不是世界坐标。按实际尺寸设置，不让关闭位置落入地板。
+- `speed` 使用正数；父级缩放为 `1` 时，数值可按 Unity 单位每秒理解。
+- `Time.deltaTime` 把每帧位移换算为随时间变化的量。
+- 三元表达式 `条件 ? 值A : 值B` 在两个目标高度间选择。
 
-读不懂每一行没关系，第四部第 17 章会专门做一扇能开的门。这里先看到「类长这样、字段长这样、方法长这样」就够了。
+测试连续交互、移动中反向，以及缺少门板引用的情况。这个例子说明本地状态与逐帧更新，不包含网络同步、夹人检测或完整门体设计。
 
 ## 引用其他物体
 
-VRChat 脚本里高频要做一件事：让脚本控制别的物体。比如「按这个按钮，开那个门」，按钮和门是两个不同的 GameObject。
+Inspector 引用让脚本明确控制哪个目标，不要求用名称在运行时搜索。以下是完整示例：
 
-最稳的做法是定义一个 `public` 字段或 `[SerializeField] private` 字段，然后在 Unity Inspector 里把目标物体拖进去：
+```cs title="ButtonOpensDoor.cs"
+using UdonSharp;
+using UnityEngine;
 
-```cs
 public class ButtonOpensDoor : UdonSharpBehaviour
 {
     [SerializeField] private GameObject targetDoor;
 
     public override void Interact()
     {
+        if (targetDoor == null)
+        {
+            Debug.LogWarning("ButtonOpensDoor：Target Door 未配置");
+            return;
+        }
+
         targetDoor.SetActive(false);
     }
 }
 ```
 
-挂上脚本后 Inspector 会出现一个 `Target Door` 槽位，把场景里的门拖进去就行。
+把脚本挂到独立按钮，门对象拖入 `Target Door`。交互后，门整体被禁用，按钮仍保留。这个操作没有定义再次启用门的逻辑。
+
+Inspector 引用不依赖目标显示名称，目标改名后通常仍有效；删除或替换目标则需要重新检查。`GameObject.Find` 属于运行时查找，有命名、活动状态和成本等约束，不能与已配置的直接引用当作完全相同的方式。
+
+## 本章内容索引
 
 ```text
-按钮（挂 ButtonOpensDoor 脚本）
-   └─ Target Door 槽 ────► 门 GameObject
+类型与变量      类型约束、默认值、局部变量赋值
+字段与序列化    public、private、SerializeField
+条件与循环      if、else、for、while、结束条件
+方法            参数、返回值、访问范围
+事件            Start、Update、Interact、玩家通知
+类              继承 UdonSharpBehaviour
+对象引用        Inspector 配置、有效性检查
+诊断            事件日志、状态日志、编译与运行错误
 ```
 
-这种「在 Inspector 里连线」的工作流是 Unity 风格脚本最舒服的部分。它免去在代码里写一长串 `GameObject.Find("...")`，也不会因为名字改了就找不到。
+## 本章参考
 
-:::tip[为什么是这样？]
-直接通过名字找物体（`GameObject.Find`）的代价是性能差、容易找错、改名字就失效。Inspector 拖拽建立的引用是一个稳定的对象 ID，名字怎么改都还指着同一个物体。VRChat 项目里推荐尽量用 Inspector 引用，少用 Find。
-:::
-
-## 这一章学到的东西
-
-只列学过的，方便回忆：
-
-```text
-语法物理      ; 结束语句， { } 圈块， // 注释
-变量声明      类型 名字 = 初始值;
-访问修饰符    public / private / [SerializeField] private
-基本类型      int / float / bool / string
-Unity 类型    Vector3 / GameObject / Transform / Light / Material
-控制流        if / else if / else / for / while
-方法          public void 方法名() { ... }
-特殊方法      Start / Update / Interact / OnPlayerJoined / OnPlayerLeft
-类            public class XXX : UdonSharpBehaviour { ... }
-引用别的物体  在字段里声明，Inspector 里拖
-调试          Debug.Log("...")，看 Unity Console
-```
-
-这些就是 VRChat 世界写脚本的工具盘。第四部用到的所有交互，几乎都是把这些拼一拼。
-
-C# 这门语言比这要大得多，还有泛型、异步、反射、属性、委托、事件、LINQ 这些。它们大多在 UdonSharp 里要么不能用、要么有奇怪的限制。这是写 VRChat 脚本和写普通 C# 项目最明显的分叉。理解到这里，C# 这套语法的最小可用集就齐了。
+- [Microsoft：C# 类型系统](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/types/)
+- [Unity 2022.3：脚本序列化](https://docs.unity3d.com/2022.3/Documentation/Manual/script-Serialization.html)
+- [VRChat：创建 UdonSharp 脚本](https://creators.vrchat.com/worlds/udon/udonsharp/)
+- [VRChat：事件节点](https://creators.vrchat.com/worlds/udon/graph/event-nodes/)
+- [VRChat：调试 Udon 项目](https://creators.vrchat.com/worlds/udon/debugging-udon-projects/)

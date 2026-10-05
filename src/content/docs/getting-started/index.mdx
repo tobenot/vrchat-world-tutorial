@@ -1,15 +1,15 @@
 ---
-title: 第一部 · 先站进去再说
-description: 不先动手，所有概念都是空中楼阁。这一部把第一个 VRChat 世界跑起来。
+title: 第一部 · 工具与第一个世界
+description: VRChat 世界的开发范围、工具安装、最小场景与构建加载流程。
 template: splash
 hero:
-  tagline: 从「这世界怎么做的」走到「能站进去走两步」。
+  tagline: 地板、出生点、场景描述与本地测试。
   actions:
     - text: 开始第 1 章
       link: ./curiosity/
       icon: right-arrow
       variant: primary
-    - text: 直接看第一个世界怎么搭
+    - text: 最小世界操作步骤
       link: ./first-world/
       variant: minimal
 sidebar:
@@ -23,33 +23,34 @@ editUrl: false
 
 import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-第一部不讲哲学。先让一个真的能站进去的世界出现在屏幕上，剩下的疑问留给后面慢慢解。
-
-按顺序读，照着做，最后一章结束时会有一个能上传的最小世界。第 2 章是一段平台背景，标了「可选」，跳过不影响后面动手。
+本部包含平台背景、工具配置、最小场景操作和构建管线说明。本地测试的验收条件是：玩家在指定位置出现，可以站立、移动和转向。
 
 <CardGrid>
   <LinkCard
     title="1. 一个玩家的好奇心"
     href="./curiosity/"
-    description="从「这世界怎么做的」开始，看清这件事的范围。"
+    description="区分空间、资源、交互与测试需求。"
   />
   <LinkCard
     title="2. VRChat 这家公司和这个引擎（可选）"
     href="./about-vrchat/"
-    description="用十分钟把 VRChat、Unity、SDK、Udon 之间的关系理清。后面碰到「为什么必须这样」时回来翻。"
+    description="VRChat、Unity、SDK、.NET 与 Udon 的职责。"
   />
   <LinkCard
-    title="3. 装好工具，准备出发"
+    title="4. 装好工具，准备出发"
     href="./tools/"
-    description="装齐工具链，并且知道每个工具在干什么。"
+    description="安装工具并核对项目与依赖状态。"
   />
   <LinkCard
-    title="4. 你的第一个世界"
+    title="5. 你的第一个世界"
     href="./first-world/"
-    description="地板、出生点、Scene Descriptor、Build & Test，做出最小可玩世界。"
+    description="地板、出生点、Scene Descriptor 与 Build & Test。"
+  />
+  <LinkCard
+    title="理解章 A · 世界的构建与加载"
+    href="./world-pipeline/"
+    description="场景、资源包、本地测试、上传与实例的关系。"
   />
 </CardGrid>
 
-读完这几章，会拿到的：能在 VRChat 里走两步的最小世界一个、对工具链的全貌认知一份。
-
-读完之后再进入 [第二部 · 认识你的工作台](../workbench/)，把刚刚跑起来的东西看清楚。
+[第二部 · 场景物体与组件](../workbench/)

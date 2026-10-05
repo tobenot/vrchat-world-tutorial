@@ -3,7 +3,7 @@ title: 你的第一个 VRChat 世界
 description: 从零讲起的 VRChat 世界开发教程，Unity 基础、VRChat SDK、UdonSharp 编程、多人同步、空间体验设计与性能优化，做出第一个能发布的 VRChat 世界。
 template: splash
 hero:
-  tagline: 从「这世界怎么做的」，走到「做出一个能上传、能让人走进去的 VRChat 世界」。
+  tagline: Unity 场景搭建、Udon 交互、多人同步与世界发布。
   # 注意：这里故意不放 image 字段。
   # social-card.png 是 OG 分享卡（由 scripts/build-og.mjs 生成），
   # 上面已经画了同款书名+副标题。如果再当 hero 图用，会和站点标题、
@@ -23,26 +23,26 @@ import WordCount from '../../components/WordCount.astro';
 
 <div class="home-intro">
 
-📘 **VRChat 场景搭建与 Udon 开发**公开笔记，从零讲起。从安装工具、创建第一个世界开始，一路走到交互、多人同步、空间体验、性能优化和发布维护。
+📘 **VRChat 场景搭建与 Udon 开发**公开笔记，涵盖工具安装、场景组件、交互、多人同步、空间设计、性能与发布维护。
 
-刚打开 Unity 时整面面板的密度容易劝退新人。这本书默认**零基础起步**。
+本书不要求已有 Unity、C# 或 Udon 开发经验。操作步骤注明对象、字段、参数和测试结果。
 
 </div>
 
-## 这条路会怎样走
+## 内容分类
 
 <div class="home-route-grid">
   <div class="home-route" data-step="1">
-    <strong>先站进去</strong>
-    <p>从玩家的好奇心出发，理解一个 VRChat 世界到底由哪些东西组成。</p>
+    <strong>平台与工具</strong>
+    <p>VRChat 世界的组成、工具安装与构建流程。</p>
   </div>
   <div class="home-route" data-step="2">
-    <strong>做出第一个可见成果</strong>
+    <strong>场景与组件</strong>
     <p>安装工具、创建 Unity 场景、配置 SDK，完成第一次 Build & Test。</p>
   </div>
   <div class="home-route" data-step="3">
-    <strong>让世界真正可玩</strong>
-    <p>逐步加入交互、同步、空间设计、性能优化和发布维护。</p>
+    <strong>交互与发布</strong>
+    <p>交互事件、多人同步、空间设计、性能测量与发布维护。</p>
   </div>
 </div>
 
@@ -59,17 +59,17 @@ import WordCount from '../../components/WordCount.astro';
   </div>
   <div class="home-card">
     <strong>需要路线图的自学者</strong>
-    <p>把散落的概念铺成一条能顺着走的学习路线。</p>
+    <p>按主题查询概念、操作步骤和相关官方文档。</p>
   </div>
 </div>
 
 ## 这本书是怎么写的
 
-这是一份由 AI 协作生成、再由作者反复打磨的学习笔记。素材来自 VRChat 官方文档、Unity 官方教程、UdonSharp 仓库，以及社区里反复出现的踩坑帖。整理成一条从装工具一路走到 Publish 的路径之后，再回头一章章读、改、补。
+这份学习笔记的初稿由 AI 协作生成，作者逐章阅读、修改和补充。资料包括 VRChat 官方文档、Unity 官方教程、UdonSharp 仓库与社区讨论。制作来源见[关于这本书](/about/)。
 
 涉及 VRChat SDK、Unity、UdonSharp 的具体行为，以官方文档和实际测试为准。发现哪一段过期、或者跟实际版本对不上，欢迎在每一页底部点「提个 Issue」反馈。
 
-写作时盯着这几条：先做出来再解释为什么；少甩术语，多给画面和手感；每章尽量留一个能运行、能看见、能改着玩的成果。
+正文解释机制、操作、结果及适用条件；术语首次出现时给出定义；示例包含可核对的测试结果。正文、摘要和代码注释不预告后续章节。
 
 ## 写了多少
 
@@ -81,7 +81,7 @@ import WordCount from '../../components/WordCount.astro';
     <span class="progress-panel__title">当前状态</span>
   </div>
 
-全书九部 + 附录的初稿已经全部铺完，正在按章回头打磨：补图、对版本、校文字。可以从 <a href="/preface/">前言：打开一扇门</a> 整体读起，也可以直接跳进 <a href="/getting-started/curiosity/">第一章：一个玩家的好奇心</a>。
+全书九部与附录已有初稿，当前处于版本核对、步骤验证和文字修订阶段。入口：<a href="/preface/">前言</a>、<a href="/getting-started/curiosity/">第一章</a>。
 
 读着发现哪一节对不上现在的 SDK、或者步骤跑不通，欢迎在每页底部点「提个 Issue」反馈。
 

@@ -1,280 +1,153 @@
 ---
 title: 37. 表面和材质
-description: PBR 工作流再深一层：Albedo、Metallic、Smoothness、Normal Map、Occlusion、Detail Map 各管什么。Standard Shader、URP、VRChat Mobile Shader、社区 Shader 的取舍。让墙看起来像石头、让木头看起来像木头。
+description: 解释 PBR 贴图通道、Metallic 与 Smoothness、法线和细节贴图，并配置颜色空间、导入与平台材质。
 difficulty: 进阶
 estimatedMinutes: 50
 chapterType: hands-on
 requiresSDK: true
-summary: 第 9 章只用 Albedo 调底色。要让一面墙真的像砖、像石头、像有粗糙感，得用 Normal Map 加表面凹凸、Detail Map 加近距离细节、Occlusion 加缝隙阴影。这一章把 PBR 的几个贴图通道一次串起来，再聊 Quest 用什么 Shader。
+summary: PBR 用基础色、金属度、粗糙度和法线等输入描述表面。Normal Map 改变光照计算而不改变几何；贴图通道打包和颜色空间必须符合 Shader。VRChat 世界使用的渲染管线与目标平台共同限制材质选择。
 sidebar:
   order: 7
 ---
 
-第 9 章用 Albedo 给地板换了个暖灰色。换完一看，是「灰色塑料」，不是「灰色石头」。差别在哪里？
+同一个几何表面可以通过颜色、反射和法线变化表现为木头、砖或金属。材质不必追求写实；使用哪些通道取决于画面目标、观看距离与性能预算。
 
-塑料表面光滑均匀，反射规整。石头有起伏、有划痕、有缝隙阴影。靠近看时这些细节让眼睛知道：这是真表面，有重量、有触感。
+## PBR 贴图通道
 
-PBR（Physically Based Rendering，基于物理的渲染）通过几张配合的贴图把这些细节表达出来。这一章把 PBR 的几个通道一次铺开。
+PBR（Physically Based Rendering，基于物理的渲染）用一组表面参数计算光照。贴图文件数量不固定，多个通道可以打包在同一文件中。
 
-::::tip[本章新名词]
-- **Normal Map**：用贴图假装表面有凹凸，几何本身不变。
-- **Occlusion / AO**：把缝隙和凹陷处压暗，让表面不发平。
-- **Detail Map**：近距离叠加的小细节贴图，防止贴脸看糊。
-- **sRGB / Linear**：颜色图用 sRGB，物理量贴图用 Linear。
-- **ORM**：把 Occlusion、Roughness、Metallic 三张图塞进 RGB 三个通道。
-- **Mip Maps**：同一贴图的多级缩小版，远处自动用小图减少闪烁。
-::::
-
-## PBR 的几张贴图
-
-一份完整的 PBR 材质通常包含 5–6 张贴图，每张管一件事：
-
-| 贴图 | 用途 | 颜色空间 |
+| 输入 | 作用 | 导入注意 |
 | :--- | :--- | :--- |
-| Albedo（基础色 / Base Color） | 表面的「干色」，无光照下的纯颜色 | sRGB |
-| Metallic | 金属度。`0` = 非金属，`1` = 纯金属 | Linear |
-| Smoothness（粗糙度反向） | 表面光滑度。Unity Standard Shader 用 Smoothness（高=滑），有些 Shader 用 Roughness（高=粗） | Linear |
-| Normal Map | 表面凹凸的「假浮雕」，让平面看起来有细节 | Linear（重要） |
-| Occlusion（AO） | 环境光遮蔽。模型缝隙、凹陷处自动变暗 | Linear |
-| Height（可选） | 真实位移或视差贴图 | Linear |
+| Albedo / Base Color | 基础色 | 通常按 sRGB 颜色纹理导入 |
+| Metallic | 金属度 | 数值数据，通常不勾 sRGB |
+| Smoothness / Roughness | 光滑度 / 粗糙度 | 两者方向相反，需匹配 Shader |
+| Normal Map | 改变着色使用的表面方向 | Texture Type 设为 Normal map |
+| Occlusion / AO | 局部环境光遮蔽 | 数值数据，不能替代全部实时阴影 |
+| Height | 高度数据 | 是否产生视差或几何位移由 Shader 决定 |
 
-> 表里「颜色空间」一栏：**sRGB** 是按人眼感知校正过的存储刻度，适合存「颜色」；**Linear（线性空间）** 是物理刻度，适合存金属度、粗糙度、法线方向这种物理量。导入贴图时 sRGB 勾错（颜色图不勾、物理量图勾上）会让烘焙后的画面整体偏色，是新人最常遇到的「不知道为什么颜色不对」的原因之一。
+颜色图与数值图的导入方式不同。若 sRGB 设置错误，采样值会变化，可能影响颜色、金属度或粗糙度；不能只把它归为「烘焙偏色」。
 
-不是每个 Material 都需要全套。最低配置 Albedo + Smoothness 就能用。要做出像「真的有材质」的效果，通常加 Normal Map 是性价比最高的一步。
+## 给地板添加木纹
 
-## 第一节：用 Normal Map 让平面变粗糙
+1. 从 [Poly Haven](https://polyhaven.com/textures) 或 [ambientCG](https://ambientcg.com/) 获取允许使用的木地板贴图包，并保留来源和许可证信息。
+2. 将文件放入 `Assets/Textures/WoodFloor/`。
+3. 对法线文件设置 `Texture Type = Normal map`，点击 Apply。
+4. 创建材质 `Mat_Floor_Wood`。本节 PC、Built-in 管线对照使用 `Standard`；移动版另按目标 Shader 支持的通道配置。
+5. 将颜色图放入 Albedo，将法线图放入 Normal Map。
+6. Metallic 设为 `0`、Smoothness 先设为 `0.4`，Normal Strength 从 `1` 开始比较。
+7. 把 `Mat_Floor_Wood` 赋给测试地板，在 Mesh Renderer 的 Materials 槽中核对引用。保留原地板材质，便于还原；只创建材质而未赋值不会改变场景表面。
 
-Normal Map（法线贴图）记录的是「这个表面上每一点的朝向」。同一张平面 Mesh，配上 Normal Map 后光照会按贴图里的朝向算明暗，看起来像有凹凸。
+Normal Map 改变光照中的表面方向，不会使地板的轮廓、碰撞或几何高度改变。贴图包若同时提供 DirectX / OpenGL 法线版本，需核对其 Y 通道约定和 Shader 要求。
 
-注意是「看起来」。模型几何上还是平的，玩家从极近距离贴上去看，仍然能看出是平面。但在正常视距下，Normal Map 能把一面光秃秃的墙变成「砖墙」。
+## Tiling 与 Offset
 
-### 给地板加一张木纹 Normal
+Tiling 控制贴图按 UV 重复的次数，不直接指定现实米数。假设地板 UV 在整个表面覆盖 `0–1`，地板为 `8 × 8` 米，Tiling 设 `8, 8` 时，每次重复约占 `1 × 1` 米。
 
-第 9 章那个 `Mat_Floor_WarmGray` 现在还是纯色塑料感。给它加一张 Normal Map：
+如果模型 UV 本来已经重复，或者物体缩放改变，结果也会变化。用砖块、木板等已知尺寸的纹理细节核对比例。
 
-1. 找一张 wooden plank 木地板的 PBR 贴图集。免费来源：CC0Textures（[ambientcg.com](https://ambientcg.com/)）、Poly Haven（polyhaven.com）。下载 1K 或 2K 分辨率的「木地板」材质包。
-2. 解压会得到一组贴图，命名通常类似：
-   - `WoodFloor_color.jpg`（Albedo）
-   - `WoodFloor_normal.jpg`（Normal）
-   - `WoodFloor_roughness.jpg`（Roughness）
-   - `WoodFloor_AO.jpg`（Occlusion）
-3. 把这组文件拖到 Unity 的 `Assets/Textures/WoodFloor/`。
-4. 选中 `WoodFloor_normal.jpg`，Inspector 里 `Texture Type` 要改成 `Normal map`，然后 `Apply`。
+Offset 改变采样起点。调整相邻表面的 Offset 可以对齐纹理，但不能保证消除模型 UV 或法线接缝。同一材质资产上的修改会影响全部引用它的 Renderer。
 
-::::caution[Normal Map 的 Texture Type 一定要改]
-如果 Normal 贴图看起来发灰、发平，检查 Texture Type 是否设为 `Normal map`。若仍是普通 `Default`，Unity 会把它当彩色贴图导入。
+## Occlusion 与通道打包
 
-后果：贴上去之后表面看起来「带颜色」（紫蓝色 tint），凹凸反过来或者根本没效果。表现是「明明贴了 Normal 但没感觉」。
+AO 纹理提供缝隙和凹陷的遮蔽信息。使用 Standard Shader 时，将正确通道格式的纹理放入 Occlusion 槽，再调 Strength 比较效果。
 
-每张 Normal Map 都要单独把 Texture Type 改成 `Normal map`，Unity 会用专门的压缩格式（DXT5nm 或 BC5），按 X / Y 通道存方向。
-::::
+资源包中的 ORM 通常指 R=Occlusion、G=Roughness、B=Metallic，但必须查看资源说明。Unity Standard Shader 不直接采用这组打包约定：
 
-5. 选中 `Mat_Floor_WarmGray`，Inspector 里：
-   - `Albedo` 槽拖入 `WoodFloor_color.jpg`。这一步会覆盖之前的纯色，Albedo 显示成贴图。
-   - `Normal Map` 槽拖入 `WoodFloor_normal.jpg`。它出现在 Normal Map 字段后面。
-   - 调一下 `Normal Map` 强度（默认 `1`）。`0.5` 弱化效果，`2` 加强。
-6. 把 Smoothness 调到 `0.4` 左右（木地板比石头光滑，但比金属粗糙）。
+- Metallic 图的 R 通道存金属度
+- Smoothness 通常来自 Metallic 图的 Alpha，或按材质选项来自 Albedo Alpha
+- Occlusion 使用其输入纹理的 G 通道
 
-放回到房间里，开个全局光，地板现在不再是均匀塑料，而是有木纹纹理 + 微妙凹凸的木地板。
+因此需要重新打包、反转 Roughness 得到 Smoothness，或选择支持该格式的 Shader。换成 URP 不是导入 ORM 的通用办法；VRChat 世界项目不能为贴图格式随意更换渲染管线。
 
-### Tiling：让贴图重复
+## Metallic 与 Smoothness 分别控制什么
 
-地板贴图通常是 1m × 1m 的小块。一块 8m × 8m 的地板上贴一张 1 米的图，会被拉伸成马赛克糊掉。
+| 表面示例 | Metallic 起点 | Smoothness 起点 |
+| :--- | :--- | :--- |
+| 哑光油漆 | `0` | `0.1` |
+| 清漆木地板 | `0` | `0.7` |
+| 玻璃表面 | `0` | `0.95` |
+| 抛光金属 | `1` | `0.85` |
+| 哑面金属 | `1` | `0.4` |
 
-`Material` Inspector 底部有 `Tiling` 字段，默认 `1, 1`：把它改成 `8, 8`，贴图在 X 和 Y 方向各重复 8 次，1 米一格的纹理跟世界尺度对得上。
+这些只是对照值，不是材料测量标准。Smoothness 高不等于金属；它改变反射的清晰程度。金属度还影响漫反射与反射颜色。
 
-注意 Tiling 改的是材质，不是物体。同一个材质用在不同尺寸的物体上时，Tiling 会按 UV 重复。如果想让某个特定物体用不同 Tiling，要单独做一个材质副本。
+干净表面的金属度通常接近两端。混合像素、污渍、氧化和不同材料的过渡可能需要中间值，不能一概禁止。
 
-`Offset` 是贴图起点的偏移。一般保持 `0, 0`。在两块相邻地板有明显接缝时，给其中一块改一点 Offset，能错开接缝。
+## Detail Map
 
-## 第二节：Occlusion 加缝隙阴影
+大面积表面在近距离需要更多细节时，可以叠加较高频的 Detail Albedo 或 Detail Normal。
 
-Occlusion（环境光遮蔽）让模型缝隙、凹陷处自动变暗。木地板的板缝、砖墙的缝、衣服的褶皱，没有 Occlusion 就显得平。
+Standard Shader 的 Secondary Maps 包含：
 
-用法：
+- `Detail Albedo x2`：细节颜色
+- `Detail Normal Map`：细节法线
+- `Detail Mask`：控制细节出现范围
+- 独立 Tiling / Offset：控制细节重复频率
 
-1. 选中 `Mat_Floor_WarmGray`。
-2. `Occlusion` 槽拖入 `WoodFloor_AO.jpg`。
-3. 旁边的 `Strength` 默认 `1`，可保留。
+例如使用 `512 × 512` 的细节纹理，将 Tiling 设为 `10, 10` 与不使用细节纹理的版本比较。它增加纹理采样和资源开销，是否保留取决于实际可见收益。
 
-进世界看，地板的板缝处现在有了一点点变暗的感觉，不再是平面贴图。
+## Shader 的选择条件
 
-很多免费 PBR 包里 Occlusion 不单独提供，而是被打包到一张 ORM 图（Occlusion + Roughness + Metallic 三通道一张）。Unity Standard Shader 不直接支持 ORM，要用 URP（Universal Render Pipeline）或者社区 Shader。这时候选其中之一：
+### Standard
 
-- 把 ORM 拆成三张图（Photoshop 或 GIMP 拆通道）。
-- 换成支持 ORM 的 Shader。
+适用于 Built-in Render Pipeline 的 PBR 材质，可配合 Lightmap、Light Probe 和 Reflection Probe。检查需要的渲染模式与平台性能，不把它作为所有材质的唯一选择。
 
-实务上 VRChat 项目大多还在用 Built-in Render Pipeline（内置渲染管线），所以拆通道更稳妥。
+### Unlit 与 Toon
 
-## 第三节：Smoothness 决定金属还是布料
+Unlit 不按普通受光材质计算场景照明，适合需要固定显示颜色的界面或风格化表面。Toon 是一类风格化着色方法，不等于全部都由 Unlit 改成，也不代表完全不受光。
 
-第 9 章铺过 `Smoothness = 0.25` 当墙、`0.4` 当地板。这一章拆细：
+lilToon、Poiyomi 等社区 Shader 有各自的平台、功能与许可条件；采用前查发布者文档。Silent's Filamented 属于 PBR 方向，不能归到同一类 Toon 名单中。
 
-| 物体 | Metallic | Smoothness | 备注 |
-| :--- | :--- | :--- | :--- |
-| 油漆墙 | `0` | `0.1` | 较粗糙的乳胶漆墙 |
-| 石头 | `0` | `0.05` | 几乎看不见反光 |
-| 木地板（哑光） | `0` | `0.3` | |
-| 木地板（清漆） | `0` | `0.7` | 反射明显 |
-| 玻璃 | `0` | `0.95` | Metallic 也是 0 |
-| 抛光金属 | `1` | `0.85` | 高反射 |
-| 哑面金属 | `1` | `0.4` | 工业金属 |
-| 布料 | `0` | `0.05` | |
-| 皮革 | `0` | `0.2` | |
+### Mobile Shader
 
-这是经验起点，不是金科玉律。具体材质值得自己拨着试，每改 0.05 就 `Build & Test` 进去看一眼，几次之后会形成自己的直觉。
+Android 世界允许自定义 Shader，但需验证兼容性与开销；头像 Shader 的白名单不能套到世界上。SDK 的移动端 Shader 可作为简化材质的候选，具体支持哪些法线、反射和透明功能，应按所选 Shader 核对。
 
-`Metallic = 0` 的非金属物体，反射是「环境光的灰白部分」（无色彩反射），很普遍。`Metallic = 1` 的纯金属物体，反射会带 Albedo 的颜色（金的反射偏黄、铜的反射偏红）。中间值（`0.3`–`0.7`）现实里很少出现，避免使用。
+PC 与 Android 可以共享兼容材质，也可以维护两套。需要视觉差异或不同性能配置时再拆分，不能写成任何项目都必须两套。
 
-## 第四节：Detail Map：近距离细节
-
-玩家走到墙边贴脸看时，1K 贴图被放大到几乎一比一像素，会糊成一片色块。Detail Map（细节贴图）解决这件事：在 Albedo 之上叠一张高频细节贴图（细小划痕、布料纹理、墙面颗粒），按比 Albedo 高得多的 Tiling 重复。
-
-Standard Shader 里 `Secondary Maps` 区域：
-
-- `Detail Albedo x2`：细节色。
-- `Detail Normal Map`：细节法线。`Tiling` 设到 `10` 或更高。
-- `Detail Mask`：用一张遮罩控制 Detail 出现在哪些区域（不需要时全白即可）。
-
-Detail Map 的好处：用一张小贴图（512×512）就能让大面积墙在近距离看起来仍有质感，不增加多少内存。
-
-实际项目里 Detail Map 不是必需，但加一张会让贴脸观感提一档。
-
-::::tip[为什么 PBR 要分这么多张贴图]
-传统的「漫反射 + 高光」工作流（diffuse + specular）能做出还算好看的画面，但每个 Shader 对「光怎么反射」的假设不一样，做出来的金属换个引擎或换个光照可能就糊了。
-
-PBR 本质是约定一组**遵守物理规律**的输入：颜色、金属度、粗糙度、表面朝向、缝隙暗度。每张贴图都对应一个真实的物理量。引擎按公式算光照。这套约定让美术资产能跨引擎、跨光照都保持一致。
-
-所以分张数不是给作者添麻烦，是把「画一张美观的贴图」变成「描述一个物理表面」。后者更稳定。
-::::
-
-## 第五节：VRChat 里能用哪些 Shader
-
-Unity 自带几种 Shader：`Standard`、`Standard (Specular setup)`、`Unlit`，加上 URP 的一组。VRChat 世界对 Shader 没有强制限制（除了 Quest，下面会讲），但实务上常见的几类：
-
-### Standard（内置渲染管线）
-
-最稳的入门选择。所有 PBR 输入都有，能跟 Lightmap、Light Probe、Reflection Probe 配合。
-
-适合：第一次做 VRChat 世界，所有材质先全用 Standard，搭出来再考虑要不要换。
-
-### Unlit / Toon
-
-`Unlit` 系列不接受光照，物体表面颜色就是 Albedo（不带阴影、不带反射）。适合：发光招牌、UI 屏幕、纯装饰物体（Cube 当背景占位）。
-
-社区里基于 Unlit 改的卡通 Shader（Toon Shader）多得是，最有名的几个：
-- **lilToon**：日本社区主流，免费开源，参数极多。
-- **Poiyomi**：avatar 圈最流行，世界也能用，免费。
-- **Silent's Filamented**：注重 PBR 准确性，少参数。
-
-这些都属于社区 Shader，不在官方支持范围内，但 VRChat 世界默认允许使用（PC 版本）。
-
-### VRChat Mobile Shader（Quest 强烈建议）
-
-Quest 平台对 Avatar Shader 有严格白名单；对**世界**而言自定义 Shader 在技术上仍然可用，但移动 GPU 上性能/兼容性风险很大，官方文档也建议默认走 VRChat 自带的 Mobile 系列。在 Inspector 里 Shader 下拉菜单选 `VRChat/Mobile/...`：
-
-- `VRChat/Mobile/Diffuse`：最简单，Albedo + 烘焙光。
-- `VRChat/Mobile/Bumped Diffuse`：加 Normal Map。
-- `VRChat/Mobile/Standard Lite`：简化版 PBR。
-- `VRChat/Mobile/Lightmapped`：专为烘焙世界设计，性能最好。
-
-PC 平台不强制 Mobile Shader，但用 Mobile 也能跑（性能更好）。
-
-::::caution[在 Standard Shader 上调好的世界换到 Mobile 不一定一样]
-做了一个 PC 世界，全部 Standard Shader，画面打磨得满意。要做 Quest 版本时把所有 Material 的 Shader 换成 `VRChat/Mobile/Lightmapped`，常常发现：
-
-- 颜色看起来变了（不同 Shader 对色彩管理不一样）
-- 反射没了（Mobile Shader 不支持 Reflection Probe）
-- Normal Map 强度变弱
-
-第 39 章会展开 Quest 适配。这里只先警告：PC 和 Quest 不能完全同一份 Material，至少要做两套。
-::::
-
-### 项目内做选择
-
-实务起点：
-
-1. **PC only 世界**：Standard Shader 全套，需要发光物体用 Standard 的 Emission（不切 Unlit）。
-2. **PC + Quest 世界**：PC 版用 Standard 或社区 Toon，Quest 版用 VRChat Mobile。两套 Material 要分开维护。
-3. **极致性能 PC 世界**：直接全用 VRChat Mobile，PC 端绰绰有余。
-
-## 第六节：贴图导入设置
-
-Project 面板选中一张贴图，Inspector 顶部一组关键字段：
+## 贴图导入设置
 
 ```text
-Texture Type        Default / Normal map / Sprite ... 
-sRGB (Color Texture) ✓  （只有 Albedo / Detail Albedo 勾，其他不勾）
-Generate Mip Maps   ✓
-Mip Map Filtering   Box (默认)
-Anisotropic Level   1
-Wrap Mode           Repeat (地板 / 墙) / Clamp (UI / Decal)
-Filter Mode         Bilinear (默认) / Trilinear (有重复 + 远视距时)
-
-Default
-├─ Max Size          2048
-├─ Format            Automatic
-└─ Compression       Normal Quality
-
-Android (Quest 标签)
-├─ Max Size          1024  ← Quest 强烈建议 1K 上限
-└─ Format            ASTC 6×6 (默认即可)
+Texture Type        Default / Normal map / Sprite
+sRGB                颜色图通常开启；数值图按 Shader 要求关闭
+Generate Mip Maps   3D 场景表面通常开启
+Wrap Mode           Repeat（重复表面）/ Clamp（边缘不重复）
+Filter Mode         Bilinear / Trilinear，按实际远景效果选择
+Max Size            按观看距离和设备预算设置
+Android Override    按平台设置尺寸与格式
 ```
 
-几个常被忽略的字段：
+Mip Maps 使用逐级缩小的纹理，有助于远处采样稳定。完整二维 mip 链的像素总量约增加三分之一，不应笼统说成只占「一点点」内存。
 
-- **`sRGB`**：Albedo / Detail Albedo 勾上（颜色感知用 sRGB 空间）；Normal / Metallic / Smoothness / AO **不勾**（这些是物理量，要用线性空间）。
-- **`Generate Mip Maps`**：保持开。能避免远处贴图闪烁，运行时只多一点点内存。
-- **`Max Size`**：尽量小。512 能用就别用 1024，1024 能用就别用 2048。每翻一倍内存翻 4 倍。
-- **Android 标签**：单独设 Quest 平台的 Max Size 1K。
+保持格式相同时，贴图边长翻倍约使像素数量变为四倍。Android 上 1K 是官方优化建议，并非所有纹理的硬上限。检查构建结果与运行时内存。
 
-## 自己做一面砖墙
+## 砖墙对照练习
 
-挑一个练习：把一面墙做成砖墙。
+1. 获取砖墙贴图并核对使用许可。
+2. 在 PC、Built-in 管线中创建使用 Standard 的 `Mat_Wall_Brick`，配置 Albedo、Normal 和 Occlusion，并赋给一面测试墙的 Mesh Renderer。
+3. 从 Metallic `0`、Smoothness `0.15`、Normal Strength `1` 开始。
+4. 根据墙尺寸和 UV 调 Tiling，使砖块大小符合设计。
+5. 若改变了参与间接光的材质，按第 36 章流程重新检查烘焙。
+6. 在同一相机位置比较仅 Albedo、加入 Normal、加入 AO 的版本。
 
-1. 从 Poly Haven 或 ambientcg.com 下载 `Brick Wall` 的 PBR 包（1K 或 2K）。
-2. 把贴图导入 Unity，按上文的 Texture Type 设置。
-3. 新建材质 `Mat_Wall_Brick`：Shader = Standard，Albedo / Normal / Occlusion 全部贴上，Smoothness `0.15`，Metallic `0`，Normal 强度 `1.5`。
-4. Tiling 设到 `4, 3`（让砖块尺寸合理）。
-5. 烘焙 Lighting（接第 36 章）。
+这三版使用同一块墙、同一 Albedo、同一光照与观察位置。先让 AO Strength 为 `0`、Normal Strength 为 `0` 记录基线，只把 Normal Strength 改为 `1` 记录第二版，再只把 AO Strength 改为 `1` 记录第三版。以正确格式导入并放入贴图槽，数值变化才有对应输入。AO 的可见程度还取决于环境光与 Shader，不保证任意直射光下都明显。
 
-烘焙完之后，墙面会有：
-- 砖缝处的暗角（Occlusion）
-- 砖块表面的颗粒细节（Normal）
-- 接受了房间的光（Lightmap）
+再做两个比较：把同一材质的 Tiling 依次设为 `1, 1`、`4, 4`、`12, 12`，记录同一块墙上砖块的实际大小；新建一个使用 Standard 材质的球，Metallic 固定为 `1`，在同一光照和已烘焙的 Reflection Probe 下把 Smoothness 依次设为 `0.2`、`0.6`、`0.95`。每次只改变一项参数，不复制到不同站位同时比较。需要独立调一面墙时复制材质，不直接改仍被其他墙共用的资源。
 
-把房间环境光降到很低（夜晚状态），单靠一盏暖色 Point Light 照过来，砖墙的纹理会显出强烈的明暗对比。这就是 PBR 的力量。
+## 检查清单
 
-## 一份发布前材质检查
-
-- [ ] Albedo / Detail Albedo 勾了 sRGB
-- [ ] Normal / Metallic / AO 没勾 sRGB
-- [ ] 所有 Normal Map 的 Texture Type = Normal map
-- [ ] 所有贴图 Max Size 设到「够用就好」（不是默认 2048）
-- [ ] Quest 版本贴图单独设 Android 1K
-- [ ] 同一物体不混用 PBR Standard 和 Unlit（容易出色调割裂）
-- [ ] 重复使用的材质用同一个材质资产，不要复制十份
-
-## 自己改三组对比
-
-挑一个或几个改：
-
-- 一面墙做两个材质副本：一个只有 Albedo，一个 Albedo + Normal + Occlusion。烘焙完对比。
-- 把同一个材质 Tiling 从 `1` 改到 `4` 再改到 `12`，看墙面尺度感的变化。
-- 给金属球做三个 Smoothness 版本：`0.2`、`0.6`、`0.95`。在同一光照下对比反射感。
-
-::::note[不同世界不同活法]
-- **休闲世界**用 PBR 真实材质，Normal + Occlusion 加在所有大面积上。
-- **风格化 / 卡通世界**用 Toon Shader（lilToon、Poiyomi），不用 PBR。卡通材质往往只有 Albedo + 几张光照分层。
-- **科幻 / 工业世界**重视 Metallic / Smoothness 对比和 Reflection Probe，让金属表面真的反光。
-- **极简 / 极抽象世界**反过来用 Unlit + 纯色，强调几何形状，不强调表面。
-::::
+- [ ] 颜色图、数值图和 Normal map 的导入方式正确
+- [ ] 通道打包与所用 Shader 一致
+- [ ] Tiling 对应实际表面尺度
+- [ ] Normal、Height 与几何的作用没有混淆
+- [ ] 重复使用的材质引用明确，未无意创建大量副本
+- [ ] 平台构建中材质正常显示，资源开销经过检查
+- [ ] 贴图与 Shader 的来源和许可已保留
 
 ## 本章参考
 
-- [Unity Manual：Standard Shader](https://docs.unity3d.com/Manual/StandardShaderMaterialParameters.html)
-- [Unity Manual：Materials, Shaders & Textures](https://docs.unity3d.com/Manual/Shaders.html)
-- [Unity Manual：Texture Import Settings](https://docs.unity3d.com/Manual/class-TextureImporter.html)
-- [VRChat Creator Docs：Quest Content Optimization · Shaders](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
-- [Poly Haven · Free PBR Textures](https://polyhaven.com/textures)
-- [ambientcg.com · CC0 Textures](https://ambientcg.com/)
+- [Unity 2022.3 Manual：Standard Shader 参数](https://docs.unity3d.com/2022.3/Documentation/Manual/StandardShaderMaterialParameters.html)
+- [Unity 2022.3 Manual：Metallic 与 Smoothness](https://docs.unity3d.com/2022.3/Documentation/Manual/StandardShaderMaterialParameterMetallic.html)
+- [Unity 2022.3 Manual：Texture Import Settings](https://docs.unity3d.com/2022.3/Documentation/Manual/class-TextureImporter.html)
+- [VRChat Creator Docs：Android Content Optimization](https://creators.vrchat.com/platforms/android/quest-content-optimization/)
+- [Poly Haven：PBR Textures](https://polyhaven.com/textures)
+- [ambientCG：CC0 资源](https://ambientcg.com/)

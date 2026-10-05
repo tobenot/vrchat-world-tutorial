@@ -1,19 +1,13 @@
 ---
 title: 理解章 C：代码是怎么跑起来的
 chapterType: concept
-difficulty: 新手
-description: 从写下的字到屏幕上灯亮起来，中间到底发生了什么。把 UdonSharp、Udon Assembly、Udon VM、Unity API 这几层串起来。
+difficulty: 基础
+description: 区分 C# 源码、Udon Assembly、程序资产、世界构建和客户端事件执行。
 sidebar:
   order: 4
 ---
 
-第 10 到 12 章学了写脚本的语法和一组让人头疼的限制。这一章不教新写法，回头把那条没说清的链条补上：写下的那段字，到底怎么变成屏幕上灯亮的那一帧画面。
-
-理解这条链条之后，前面那些「为什么不能这么写」「为什么这条 API 调不到」的问题会自然有答案。
-
-## 一段脚本要走过的几道关
-
-设想最简单的一段脚本：
+[基础 C# 章](/programming/csharp-just-enough/)中的灯光操作是：
 
 ```cs
 public override void Interact()
@@ -22,120 +16,97 @@ public override void Interact()
 }
 ```
 
-从写下这几行字，到玩家在 VRChat 里按下按钮看见灯亮，中间这段路实际有四五道关。一道一道走一遍。
+这是方法片段，假定类中已声明并配置 `targetLight`。它要产生效果，需要经历编译、程序关联、构建、加载与事件执行。
+
+## 执行链路
 
 ```text
-[ 1. 写在 Unity 里的 .cs 文件 ]
-            │
-            │  UdonSharp 编译器
-            ▼
-[ 2. Udon Assembly 字节码 + ProgramAsset ]
-            │
-            │  Unity 打包过程把它塞进场景资源里
-            ▼
-[ 3. .vrcw 世界包 ]
-            │
-            │  上传到 VRChat CDN，玩家客户端下载
-            ▼
-[ 4. Udon 虚拟机在玩家电脑上加载 ]
-            │
-            │  运行时按帧执行
-            ▼
-[ 5. Udon VM 调用 Unity 引擎 API ]
-            │
-            │  Unity 负责真正改 Light 状态
-            ▼
-[ 6. 屏幕上灯亮了 ]
+C# 源文件
+    → UdonSharp 检查与编译
+    → Udon Assembly / Udon 程序资产
+    → 场景中的 Udon Behaviour 及其字段配置
+    → SDK 构建世界资源
+    → VRChat 客户端加载
+    → 符合条件的交互触发 Interact
+    → Udon 执行程序，调用开放的 Light API
+    → Unity 根据新状态计算画面
 ```
 
-每一步都不是凭空过的。下面把第 1 到第 5 步分别看清。
+本地 `Build & Test` 直接加载本机结果。上传后的版本由 VRChat 向有访问权限的客户端下载，两种入口都需要实际构建结果。
 
-## 第 1 步：写下来的字
+## 源码与编译
 
-最开始的那段 C# 是给人读的。`public override void Interact()` 这一行能让其他作者看懂这段代码在做什么、什么时候会被执行、它属于哪个类。
+`.cs` 文件保存 C# 文本。UdonSharp 按语言规则分析声明和表达式，检查类型及受支持调用，再生成 Udon Assembly 等程序内容。
 
-但电脑读不懂这堆字。每个英文单词对它来说只是字符序列。要让它跑起来，必须先翻译成它认识的形式。
+**Udon Assembly 是汇编形式的表示，Udon VM 执行的是编译后的程序。** 两者有关联，但不是把一份 C# 文本直接交给虚拟机逐行解释。
 
-## 第 2 步：UdonSharp 编译器把它翻译成字节码
+UdonSharp 的自动编译与 Unity 的资源刷新、配置有关。若关闭了自动编译，或仍存在编译错误，保存文件不代表新程序已成功生成。应检查 Console 与当前程序资产状态。
 
-打开 Unity 编辑器、导入 UdonSharp 包之后，每次保存 `.cs` 文件，UdonSharp 编译器会自动跑一遍。它做的事大致是：
+创建 U# 脚本时，工具会生成 `.cs` 和配套 `UdonSharpProgramAsset`。程序资产关联源码，场景中的行为则关联程序与序列化字段。仅有源码文件、不挂到对象上，不会自动产生一个接收交互的场景行为。
 
-1. **解析**：把那段字按 C# 语法规则切成树形结构，识别出哪是类、哪是方法、哪是赋值。
-2. **检查**：用到的每个名字（变量、方法、类型）能不能在白名单里找到？方法签名对不对？类型匹不匹配？
-3. **生成**：把检查通过的代码翻译成一段 **Udon Assembly**。
+## 为什么使用 Udon
 
-Udon Assembly 是 VRChat 自己设计的字节码格式。它的指令是「把变量 A 的值压栈」「调用某个 API」「跳到第 17 行」这种非常基础的动作，每条都很简单。一行 C# 通常对应几条到十几条 Udon Assembly。
+[C#、.NET 和 Unity 的关系](/getting-started/about-vrchat/)区分了语言、类库与运行环境。普通 Unity 脚本能使用的能力，并不全部开放给上传世界。
 
-编译产物会被存进 Unity 项目里的一个特殊资产文件，叫 **UdonProgramAsset**（图标是个紫色小卷轴）。每个 UdonSharpBehaviour 类对应一个 ProgramAsset。
+Udon 给世界脚本提供受限的执行环境，只允许使用开放的 API。它限制的是世界程序的能力，不能描述为替换掉整个 Unity 或 VRChat 客户端的 .NET 环境。
 
-:::tip[为什么是这样？]
-直接把 C# 编进 IL（普通 .NET 程序的字节码）也能跑得很快，但 IL 里能调几乎所有 .NET API，想限制权限几乎做不到。VRChat 选择自定义一套字节码，让编译器只接受白名单里的 API、让虚拟机只执行字节码里允许的指令，这样陌生世界的脚本就从根上没法越权。
+脚本能否编译，还同时受 UdonSharp 语言实现范围影响。一个功能不可用可能是 API 未开放，也可能是语法暂不支持；仅凭编译失败不能推断唯一原因。
 
-代价是 Udon VM 比 .NET 运行时慢得多。VRChat 官方的性能页里给出的量级是 **同一段逻辑跑在 Udon 里通常比直接跑 C# 慢 200 到 1000 倍**（具体倍数取决于做的事）。这是数量级上的差距，不是常数项。在 VRChat 里写脚本要刻意保守：不要在 `Update()` 里跑大循环，不要每帧调用一堆 API，能缓存的字段尽量缓存。
-:::
+## 场景配置与打包
 
-## 第 3 步：打包进世界
+构建时，SDK 准备世界所需的场景资源和 Udon 程序。字段中指定的 Light 引用也属于场景配置的一部分。
 
-按下 Build & Test 或 Build & Publish 时，Unity 会把整个场景（GameObject、组件、材质、贴图、模型、音频、Udon 程序集）打包成一个 `.vrcw` 文件。
+同一个脚本类的两个实例可以引用不同灯光：代码相同，字段配置不同，因此交互结果不同。更改 Inspector 引用需要保存场景或 Prefab，并使用包含该修改的新构建。
 
-这个文件本质上是 Unity 的 AssetBundle 加上 VRChat 的元数据。它带着场景里每个物体的位置、属性、材质引用，以及每个 UdonSharpBehaviour 对应的 Udon 字节码。
+世界名称、可见性等上传记录与运行资源相互关联，但不是所有平台元信息都写在同一个程序文件中。本地测试也不会把结果加入公开世界搜索列表。
 
-Build & Test 模式下，这个文件被存到玩家本机的 VRChat 缓存目录，启动 VRChat 之后能在「最近上传的世界」里看到。Build & Publish 模式会把它发到 VRChat 的 CDN，玩家通过世界搜索就能找到。
+## 客户端中的事件执行
 
-到这一步，写下的那段 C# 已经被压缩进了一个二进制包里。
+客户端加载场景与程序后，Udon Behaviour 在相应生命周期和事件条件下执行。`Start` 用于开始运行时的初始化；`Update` 在行为运行时每帧调用；`Interact` 在本地玩家与相应对象交互时触发。
 
-## 第 4 步：玩家客户端加载
-
-玩家在 VRChat 里进入这个世界时，客户端做的事大致是：
-
-1. 从 CDN 下载 `.vrcw`（如果本地缓存没有）。
-2. 让 Unity 加载里面的场景资源，按预设的位置摆好所有 GameObject。
-3. 给每个挂了 UdonSharpBehaviour 的 GameObject 启动一个 **Udon 虚拟机实例**，把对应的 Udon 字节码装进去。
-4. 调用每个虚拟机里的 `Start()` 方法（如果定义了的话）。
-
-到这一步，世界出现在玩家眼前。每个挂了脚本的物体身边，都有一个小型虚拟机在等下一条指令。
-
-## 第 5 步：Udon VM 运行字节码
-
-玩家走过来按 Use 键。Unity 检测到交互发生，VRChat 的接入层告诉对应的 Udon 虚拟机：「调一下你那段叫 `Interact` 的代码。」
-
-虚拟机找到 `Interact` 方法在字节码里的入口，开始一条条执行：
+下面是操作示意，不是实际 Udon 汇编指令：
 
 ```text
-LOAD_VARIABLE   targetLight
-GET_PROPERTY    Light.enabled
-PUSH_BOOL       true
-COPY            (顶部值放回 enabled)
-RETURN
+接收 Interact 事件
+读取 targetLight 引用
+通过开放接口把 Light.enabled 设为 true
+结束本次事件处理
+Unity 使用当前灯光状态渲染场景
 ```
 
-执行到「调用 Light.enabled = true」这一条时，虚拟机翻出白名单，确认这是允许的调用，然后真的去 Unity 引擎那边把那盏灯的 enabled 设为 true。下一帧 Unity 渲染场景时，那盏灯就亮了。
+程序通过开放接口调用 Light 的设置方法。可调用接口和虚拟机指令属于不同层面，具体指令形式以编译产物为准。
 
-整个过程中，每一条字节码 Udon VM 都比对一次白名单，确认可以执行才执行。这是沙箱真正在发挥作用的地方。
+即使赋值成功，也不保证画面立刻有明显变化。例如，Light 本来已经启用、范围没覆盖目标、Shader 不受该光源影响，或它只是 Baked Light 的组件状态，这些都需要单独检查。
 
-## 几个心智上的换算
+## 从现象定位环节
 
-理解了这条链路，几件事会更容易对上号。
+### 编译错误
 
-**为什么 Update 里写复杂逻辑会让世界卡。** Update 一秒会被调几十到上百次（桌面端约 60 次/秒，VR 模式约 90 次/秒），每帧虚拟机都要把整段字节码再走一遍。每条指令比直接 C# 慢很多（按 VRChat 官方的量级估算，是 200 到 1000 倍那一档），循环里写得越复杂，越容易把帧率拖下来。需要在 Update 里反复用的值，能缓存到字段就缓存。
+检查错误位置、类型和完整信息，再判断是 C# 语法、类型不匹配、API 未开放还是编译器不支持。程序未成功编译时，不应只改场景交互设置。
 
-**为什么 `LINQ`、`async`、`reflection` 这些用不了。** 它们要么依赖白名单外的 API，要么生成的字节码模式 UdonSharp 编译器还没支持。沙箱和编译器同时在拦。
+### 事件没有触发
 
-**为什么 public 字段能在 Inspector 里调。** 字段值会被 Unity 序列化到场景文件里，而不是写死在字节码里。打包成 `.vrcw` 时一起带过去，虚拟机启动时把场景里存的值塞回字段。Inspector 里改这些值，是在改场景文件，下次加载时虚拟机会拿到新的值。
+确认程序确实挂在目标对象上、对象与行为可运行、Collider 和交互距离满足条件。在事件入口记录日志，可以区分未进入事件与事件内部出错。
 
-**为什么 `[UdonSynced]` 字段能在多人之间同步。** 这是 Udon 虚拟机的另一项扩展能力。后面第六部会展开。
+### 事件执行但没有预期结果
 
-## 把链路压缩成一句话
+检查字段是否指向目标组件、值是否真的改变，以及目标组件生效所需的条件。赋值只修改属性，画面结果还依赖渲染配置。
 
-整段链路压缩到一句话：
+### 运行开销过高
 
-> 写的 C# 被翻译成 Udon 字节码，被 VRChat 客户端里的 Udon 虚拟机一条条执行，必要时由虚拟机调 Unity API 改场景。
+`Update` 每帧运行，循环次数和跨行为调用会重复发生。官方性能文档指出，一些等价代码在 Udon 中可能比普通 C# 慢约 200–1000 倍；这不是每种 API 的固定倍数，也不能直接推算世界帧率。应测量具体工作量与频率，缓存可复用引用，并考虑已有组件或动画。参见 [官方性能建议](https://creators.vrchat.com/worlds/udon/udonsharp/performance-tips/)。
 
-再看自己写过的 `targetLight.enabled = true`，可以从这行字追到 Inspector 字段、编译、虚拟机执行、Unity 把灯点亮。
+### 其他玩家没有看到变化
 
-## 参考资料
+Udon 在各客户端执行，本地属性赋值不自动成为网络消息。共享结果需要相应同步字段、网络事件或 SDK 同步组件，具体机制必须与需求匹配。
 
-- [UdonSharp 官方文档](https://udonsharp.docs.vrchat.com/)
-- [UdonSharp Random Tips & Performance Pointers](https://udonsharp.docs.vrchat.com/random-tips-&-performance-pointers/)
-- [VRChat Creator Docs：Udon](https://creators.vrchat.com/worlds/udon/)
+## 一次状态修改涉及哪些对象
 
+对 `targetLight.enabled = true`，可以依次核对：源码中的字段声明、Inspector 引用、编译后的程序、事件入口日志、运行时 Light 值和受光表面。每一项都有独立证据，不需要从一张画面猜测全部执行过程。
+
+## 本章参考
+
+- [UdonSharp 官方文档](https://creators.vrchat.com/worlds/udon/udonsharp/)
+- [Udon 程序与汇编说明](https://creators.vrchat.com/worlds/udon/vm-and-assembly/)（官方站点上的社区撰写技术说明）
+- [UdonSharp 性能建议](https://creators.vrchat.com/worlds/udon/udonsharp/performance-tips/)
+- [调试 Udon 项目](https://creators.vrchat.com/worlds/udon/debugging-udon-projects/)

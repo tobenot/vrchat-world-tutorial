@@ -7,35 +7,33 @@ sidebar:
 
 import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
-「世界跑得好」是一种独立的能力，跟「世界看着好」是两件事。这份清单把第 36 / 37 / 38 / 39 章里散落的性能项汇到一处，可以直接对着场景勾。
+本清单汇总光照、材质、渲染、脚本与跨平台测试项，供记录基线和验证改动。
 
 附录 G 的服务对象是两类时刻：
 
-- **优化中**：FPS 卡住，照着 G.1 → G.7 一节一节排，多数瓶颈不在第一直觉里。
+- **优化中**：帧率未达目标时，按测量结果选择相关检查项。
 - **上传前**：场景做完准备 `Build & Publish`，照 G.9 那一份完整清单一次扫完。
 
-不打算抠的项可以跳过。但 [VRChat 官方提交页](https://creators.vrchat.com/worlds/submitting-a-world-to-be-made-public/) 反复强调的「不可让世界严重影响玩家性能」是底线——单人出生点 PC 上至少 45 FPS，否则上线后会被运营关注。
+按目标设备、人数和场景填写本清单，不适用项标记原因。[官方公开世界建议](https://creators.vrchat.com/worlds/submitting-a-world-to-be-made-public/)提出单人 VR 出生点至少 45 FPS；这是测试建议，不能据此断言低于该数值就必然受处罚。
 
 ## G.1 测量先于优化
 
-> 第 38 章第一句话：测量先于猜测。
-
-凭感觉优化的最大代价不是没效果，是花两小时改 X、结果真正慢的是 Y。
+固定设备、分辨率、观察位置、人数与图形设置，再比较改动前后耗时。
 
 - [ ] 跑 Stats 窗口（Game 视图右上角 `Stats` 按钮）记下基线：FPS / Batches / SetPass calls / Tris / Verts / Shadow casters。
 - [ ] 跑 Profiler（`Window` → `Analysis` → `Profiler`）按一帧看 CPU 各类工作的占比，确认瓶颈是 Rendering / Scripts / Physics / GPU 哪一块。
 - [ ] **优化任何一项之前**，先记下当前数。优化一项之后再记一次。两份数对比，确认改动真的让数下降了。
 - [ ] 编辑器里的数只是参考，最终以 `Build & Test` 之后的真实运行时数为准（编辑器有 overhead）。
 
-相关章节：[第 38 章 · 第一节 Stats 窗口](/placeness/performance/#第一节stats-窗口)、[第 38 章 · 第二节 Profiler 找具体瓶颈](/placeness/performance/#第二节profiler-找具体瓶颈)、[第 38 章 · 第九节 性能优化的优先级](/placeness/performance/#第九节性能优化的优先级)。
+相关章节：[第 38 章 · Stats：快速查看渲染统计](/placeness/performance/#stats快速查看渲染统计)、[第 38 章 · Profiler：定位具体耗时](/placeness/performance/#profiler定位具体耗时)、[第 38 章 · 按测量结果确定优化顺序](/placeness/performance/#按测量结果确定优化顺序)。
 
 ## G.2 通用性能预算
 
-下面是社区共识的「不太会塌」预算，不是 VRChat 官方硬阈值。把它当工作起点，最终以多人 + 真实头像下的实测为准。
+下列 PC 数字是本书示例的初始预算，不是社区统一标准或上传硬阈值。记录目标硬件与实测结果后调整；Draw Call、面数与帧率之间没有固定换算关系。
 
 ### G.2.1 数字预算（PC）
 
-- [ ] FPS（VR 顺滑下限）：≥ **90**
+- [ ] 示例目标帧率：**90 FPS**，应按所测设备刷新率调整
 - [ ] Batches（Draw Call 批次）：< **200**
 - [ ] SetPass calls（Shader 切换次数）：< **100**
 - [ ] Tris（三角面数）：< **500k**
@@ -44,7 +42,7 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 ### G.2.2 数字预算（Quest / Android）
 
-第 38 章预算打 **1/4 ~ 1/3 折扣**：
+Android / Quest 需单独测量，不按 PC 预算的固定比例推算。以下仅是记录起点：
 
 - [ ] FPS：≥ **72**
 - [ ] Batches：< **100**
@@ -55,140 +53,136 @@ import { LinkCard, CardGrid } from '@astrojs/starlight/components';
 
 ### G.2.3 共性事项（PC + Quest 都看）
 
-- [ ] 所有不动的物体勾了 **Static**（让 Static Batching / Occlusion / Lightmap 同时生效）。
+- [ ] 为适用物体分别设置 Batching Static、Occluder/Occludee Static、Contribute GI；不把全部 Static 标记当作同一功能。
 - [ ] 烘焙了 **Occlusion Culling**（`Window` → `Rendering` → `Occlusion Culling` → `Bake`）。改了场景结构（拆墙、加房间）后要重烘。
-- [ ] 所有 Material 勾了 **Enable GPU Instancing**（这是性价比最高的一步，100 棵相同的树从 100 个 Draw Call 降到 1 个）。
-- [ ] 透明物体（Transparent Render Queue）数量最少化。能用 Alpha Cutoff 的不用 Transparent。
+- [ ] 对使用相同 Mesh / Material 且 Shader 支持的重复物体启用 GPU Instancing，并用 Frame Debugger 验证是否合批。
+- [ ] 透明物体（Transparent Render Queue）数量最少化。需要半透明时保留 Transparent；只需硬边透明遮罩时可比较 Alpha Cutoff。
 - [ ] `Edit` → `Project Settings` → `Player` → `Other Settings` → `Static Batching` 默认勾上，确认没被关掉。
 
-相关章节：[第 38 章 · 第一节](/placeness/performance/#第一节stats-窗口)、[第 38 章 · 第三节 Draw Call 是怎么变多的](/placeness/performance/#第三节draw-call-是怎么变多的)、[第 38 章 · 第四节 Occlusion Culling 烘焙](/placeness/performance/#第四节occlusion-culling-烘焙)、[第 38 章 · 第六节 透明物体](/placeness/performance/#第六节透明物体alpha)。
+相关章节：[第 38 章 · Stats：快速查看渲染统计](/placeness/performance/#stats快速查看渲染统计)、[第 38 章 · 批处理与 GPU Instancing](/placeness/performance/#批处理与-gpu-instancing)、[第 38 章 · Occlusion Culling](/placeness/performance/#occlusion-culling)、[第 38 章 · 透明、阴影与画面覆盖](/placeness/performance/#透明阴影与画面覆盖)。
 
 ## G.3 灯光与烘焙
 
-烘焙做对了，运行时几乎不算光；做不对，烘焙做了等于没做。
+烘焙把适用的静态光照计算保存为贴图或探针数据。实时直接光、动态阴影和采样仍有成本。
 
-- [ ] 主光源 = **Mixed**，装饰光 = **Baked**，开关灯 = **Realtime**。
-- [ ] 实时光（Realtime + Mixed 中走实时部分）总数 ≤ **4**（Quest 上推荐 = 0）。
-- [ ] 实时光大多数关了 `Cast Shadows`（保留烘焙阴影即可）。只有一两盏「核心戏剧化效果灯」开阴影。
-- [ ] 不必要的小物体 Mesh Renderer 的 `Cast Shadows` 设成 **Off**（装饰小物件不投影没差）。
-- [ ] Lightmap UVs 在所有静态 Mesh 上勾 `Generate Lightmap UVs`（fbx Import Settings）。
+- [ ] 按是否需要运行时改变照明选择 Baked / Mixed / Realtime；关掉 Light 不会自动移除已烘焙的照明。
+- [ ] 记录实际启用的实时光、覆盖范围和阴影；移动端优先使用烘焙，保留实时灯时单独测量。
+- [ ] 只为确有动态阴影需求的光源启用 Shadows，并比较开关前后的帧耗时。
+- [ ] 不必要的小物体 Mesh Renderer 的 `Cast Shadows` 设成 **Off**（确认关闭后不影响必要的空间信息）。
+- [ ] 参与光照烘焙的 Mesh 有有效 Lightmap UV；导入资产已提供合适 UV 时不必重复生成。
 - [ ] 撒了一组 Light Probe，覆盖玩家会走的所有空间（避免动态物体 / 玩家头像发灰）。
-- [ ] 每个独立空间至少一个 Reflection Probe（金属感强的世界必备；纯卡通可以省）。
+- [ ] 需要环境反射的空间配置 Reflection Probe，并检查覆盖范围、接缝与材质支持。
 - [ ] 烘焙完没有明显的 UV 缝、亮斑、漏光。
-- [ ] Quest 版本 Lighting Mode 切到 **Subtractive**，重新烘 Lightmap（Quest 的 Lightmap 是 per-platform 的，必须切平台后单独烘）。
+- [ ] Android 构建核对 Shader 与 Mixed Lighting 模式兼容性；变更光照配置后重烘，并在目标设备检查结果。
 
-相关章节：[第 36 章 · 烘焙发布前检查清单](/placeness/light/#一份烘焙发布前检查清单)、[第 38 章 · 第七节 阴影投射数量](/placeness/performance/#第七节阴影投射数量)、[第 39 章 · 第三节 Lighting Mode 要换成 Subtractive](/placeness/pc-and-quest/#第三节lighting-mode-要换成-subtractive)。
+相关章节：[第 36 章 · 对照练习与检查清单](/placeness/light/#对照练习与检查清单)、[第 38 章 · 透明、阴影与画面覆盖](/placeness/performance/#透明阴影与画面覆盖)、[第 39 章 · 灯光配置](/placeness/pc-and-quest/#灯光配置)。
 
 ## G.4 材质与贴图
 
-最容易让 Draw Call 失控的不是 Mesh 数量，而是材质数量。Unity 的批处理是按**材质**分组的：100 个 Mesh 用 1 种材质 = 1 批；1 个 Mesh 用 50 种材质 = 50 批。
+材质、子网格、Shader Pass、可见性和批处理条件都会影响 Draw Call。共享材质有助于合批，但不保证任意一组 Mesh 只用一个批次。
 
-- [ ] **材质合并**优先：从 Blender 导入的角色 / 道具检查一下是不是每个零件一个独立材质。先合材质，再合 Mesh。
+- [ ] **材质合并**优先：从 Blender 导入的角色 / 道具检查一下是不是每个零件一个独立材质。根据绘制统计判断是否适合合并，保留所需的独立剔除与交互。
 - [ ] 重复使用的材质用同一个材质资产，不要复制十份。
-- [ ] 所有 Material 勾了 `Enable GPU Instancing`。
+- [ ] 适用的重复物体启用 GPU Instancing，并确认实际合批。
 - [ ] Albedo / Detail Albedo 勾了 sRGB；Normal / Metallic / AO 没勾 sRGB。
 - [ ] 所有 Normal Map 的 Texture Type = **Normal map**（不是 Default）。
 - [ ] 所有贴图 Max Size 设到「够用就好」（不是默认 2048）。装饰用的 512、墙面用的 1024、关键近景才上 2048。
-- [ ] Quest 版本贴图全部 Android Max Size = **1024**（Texture Inspector 里 `Android` 标签下单独设）。
-- [ ] Quest 版音频压缩格式 = **Vorbis** 或 **MP3**，不要用 WAV。
-- [ ] 同一物体不混用 PBR Standard 和 Unlit（容易出色调割裂）。
+- [ ] Quest 贴图按视觉需求与内存预算设置 Android Max Size，可从 1024 或更低开始；这不是世界贴图硬上限。
+- [ ] 按音频时长、播放方式和平台设置导入压缩；源文件扩展名不等于运行时编码与内存占用。
+- [ ] 混用受光与 Unlit 材质时检查不同照明条件下的结果是否符合需求。
 
-相关章节：[第 37 章 · 一份发布前材质检查](/placeness/surfaces/#一份发布前材质检查)、[第 38 章 · 第三节](/placeness/performance/#第三节draw-call-是怎么变多的)、[第 39 章 · 第四节 纹理和包体限制](/placeness/pc-and-quest/#第四节纹理和包体限制)。
+相关章节：[第 37 章 · 检查清单](/placeness/surfaces/#检查清单)、[第 38 章 · 批处理与 GPU Instancing](/placeness/performance/#批处理与-gpu-instancing)、[第 39 章 · 纹理、音频与包体](/placeness/pc-and-quest/#纹理音频与包体)。
 
 ## G.5 镜子、视频器、特效
 
-镜子和视频器是单独算账的——一面镜子 = 多渲一次场景，Stats 里 Batches 几乎翻倍。开多个镜子线性叠加。
+镜子增加反射渲染，视频播放器增加解码、纹理和音频等开销；两者成本不同，不是固定的翻倍关系。
 
 ### G.5.1 镜子
 
 - [ ] 默认 `enabled = false`，玩家手动开关（按按钮 / 走进区域才生效）。
-- [ ] `Reflect Layers` 只勾 **Player**（包括 PlayerLocal 和 Player）。其他层不反射，省掉墙壁、家具的二次渲染。
-- [ ] `Mirror Resolution` ≤ **1024**（`Auto` 也可以；`Unlimited` 在 Quest 上会卡死）。
-- [ ] `Disable Pixel Lights` 勾上，镜中实时灯不算。
+- [ ] 只需头像时，在 `Reflect Layers` 保留 **Player** 与 **MirrorReflection**；后者用于镜中的本地玩家。其他所需层按用途添加，分别核对自己、他人与场景的反射。
+- [ ] 测试镜面分辨率与反射内容，1024 可作为试验起点；更高分辨率增加开销，不保证某个值必然卡死。
+- [ ] 按需要启用 Disable Pixel Lights，将镜中逐像素点光 / 聚光降为顶点光照。
 - [ ] 同一房间内同时开镜数量 ≤ **1**（多个镜子只允许装在不同房间，避免叠加渲染）。
 
 ### G.5.2 视频播放器
 
-- [ ] 默认关闭 / 静默状态（不主动播放，等玩家点）。
+- [ ] 播放与静音的初始状态符合用途，且进入场景时的负载和音量已验证。
 - [ ] 同一房间视频播放器数量 ≤ **1**。
-- [ ] 长视频用低分辨率（720p 已经够用）。
+- [ ] 按屏幕尺寸、观看距离与设备解码能力选择视频分辨率。
 
 ### G.5.3 特效（粒子 / Cloth / Post Processing）
 
-- [ ] PC 上粒子量克制（屏占比 ≤ 1/4 屏）；Quest 上粒子最少化。
+- [ ] 测量粒子数量、屏幕覆盖率和透明叠加；移动端单独验证填充成本。
 - [ ] **Quest 上 Cloth = 0**（必须）。
 - [ ] **Quest 上 Post Processing = 0**（必须，Android 版 SDK 不支持）。
-- [ ] 透明物体（玻璃 / 烟雾 / 粒子）多层叠加避免——两层重叠的玻璃就是双倍 Fillrate。
+- [ ] 透明物体（玻璃 / 烟雾 / 粒子）多层叠加避免——重叠区域可能被重复着色，具体成本取决于 Shader 与屏幕覆盖率。
 
-相关章节：[第 38 章 · 第五节 镜子和视频播放器是单独算账的](/placeness/performance/#第五节镜子和视频播放器是单独算账的)、[第 39 章 · 第五节 Quest 的几条硬规矩](/placeness/pc-and-quest/#第五节quest-的几条硬规矩)。
+相关章节：[第 38 章 · 镜子与视频播放器](/placeness/performance/#镜子与视频播放器)、[第 39 章 · 分清硬限制与建议](/placeness/pc-and-quest/#分清硬限制与建议)。
 
 ## G.6 Quest / Android 专项
 
-Quest 是渲染预算远低于 PC 的 Android 设备。下面这些分成两类：官方 Android 文档写明的硬限制，以及移动端性能预算下的强烈建议。
+Quest 是独立运行 Android 的头显，性能预算需按具体设备测量。下面这些分成两类：官方 Android 文档写明的硬限制，以及移动端性能预算下的强烈建议。
 
-### G.6.1 必须项（违反会被退回 / 不能上传）
+### G.6.1 包体限制与禁用组件
 
-- [ ] **包体 ≤ 100 MB**（Estimate Build Size 在 Builder 面板里看）。
-- [ ] **Cloth 组件 = 0**。
-- [ ] **Post Processing = 0**。
+- [ ] 构建压缩后的 Android 世界包不超过官方 **100 MB** 限制，并核对 SDK 实际结果。
+- [ ] 不依赖 Android / Quest 禁用的 Cloth 组件。
+- [ ] 不依赖 Android / Quest 禁用的后处理。
 
-### G.6.2 强烈建议项（违反能上传，但跑起来会塌）
+### G.6.2 性能建议项
 
-- [ ] 实时光数量 = **0**（全部 Mode = Baked）。
+- [ ] 优先烘焙静态光照；保留的实时光逐项记录成本。
 - [ ] 单世界三角面 ≤ **250,000**（官方 Android 优化文档建议给世界预留的预算）。
-- [ ] 贴图最大尺寸 ≤ **1024**。
+- [ ] 贴图以 1024 或更低为预算起点，必要例外经设备测试确认。
 - [ ] 所有 Material Shader 优先换成移动端友好 Shader。官方文档推荐世界使用 `Mobile/VRChat/Lightmapped` 并烘焙光照；也可以按画面需要选 `VRChat/Mobile/...` 系列。
-- [ ] 透明物体几乎为 **0**（移动 GPU 上半透明像素的代价远高于桌面 GPU）。
-- [ ] 烘焙了 Occlusion Culling。
-- [ ] 所有 Material 勾了 GPU Instancing。
-- [ ] Skinned Mesh 数量低（玩家头像已经吃掉一份预算，世界自身少留几份）。
+- [ ] 减少大面积、多层透明叠加，并在目标设备测量。
+- [ ] 适合遮挡剔除的空间已烘焙 Occlusion Culling，并验证实际收益。
+- [ ] 符合条件的重复物体启用 GPU Instancing，并验证绘制结果。
+- [ ] Skinned Mesh 数量低（玩家头像已经吃掉一份预算，记录世界内容与头像各自的成本）。
 - [ ] 用 [VRWorld Toolkit](https://github.com/oneVR/VRWorldToolkit) 跑过 `Quick Audit` 没红字。
 
 ### G.6.3 维护一份工程做两个版本
 
 - [ ] 同一个 Unity 工程，PC 和 Quest 共享 Hierarchy。
-- [ ] Quest 不需要的物体（复杂粒子、装饰）打 `Tag = EditorOnly`，构建时被剥离。
+- [ ] 平台专用物体使用明确的分平台构建配置；EditorOnly 会在所有平台构建中被剥离，并非 Android 专用开关。
 - [ ] 关键资源用 per-platform 设置（贴图分别设 Default / Android Max Size）。
-- [ ] **从一开始就考虑 Quest 适配**，不要「先做 PC 版、发布后再做 Quest 版」——后者多数会变成「重新搭一份」。
+- [ ] 确认 PC 与 Android 的对象、引用和同步标识一致；平台差异只修改有记录的资源与表现。
 
-相关章节：[第 39 章 · 第五节 Quest 的几条硬规矩](/placeness/pc-and-quest/#第五节quest-的几条硬规矩)、[第 39 章 · 第七节 维护一份工程做两个版本](/placeness/pc-and-quest/#第七节维护一份工程做两个版本)、[第 39 章 · Quest 发布前清单](/placeness/pc-and-quest/#一份-quest-发布前清单)。
+相关章节：[第 39 章 · 分清硬限制与建议](/placeness/pc-and-quest/#分清硬限制与建议)、[第 39 章 · 一份工程里的平台差异](/placeness/pc-and-quest/#一份工程里的平台差异)、[第 39 章 · 发布前清单](/placeness/pc-and-quest/#发布前清单)。
 
 ## G.7 脚本（UdonSharp）性能
 
-UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级。`Update` 里的开销会被放大。
+UdonSharp 程序通过 Udon 执行，有额外调度与调用成本。性能比例随操作而变，按实际脚本测量。
 
-- [ ] `Update` 里**没有** `GetComponent` / `FindObjectOfType`（这两个调用每次遍历场景，每帧 60 次直接拖卡）。改成 `Start` 一次性获取并存到 `public` 字段。
-- [ ] `Update` 里**没有**字符串拼接 / `new` 数据类（触发 GC，UdonSharp 的 GC 比标准 C# 慢）。
-- [ ] `Update` 里**没有**大循环（100 个物体每帧每个查一次直接成性能瓶颈）。
+- [ ] 避免每帧重复查找不变的引用；GetComponent 查询对象组件，FindObjectOfType 涉及场景查找，两者范围不同。引用可在 Inspector 指定或初始化后缓存。
+- [ ] 检查高频字符串拼接与临时分配的耗时，不把 UdonSharp 描述成另有一套更慢的 GC。
+- [ ] 测量循环规模与每次处理成本；可按需减少频率或分帧处理。
 - [ ] 不必要的 `Update` 删掉——脚本只在玩家点击时做事，就只放在 `Interact` 里。
 - [ ] 用事件（`Interact` / `OnPlayerTriggerEnter`）或定时器（`SendCustomEventDelayedSeconds`）替代不必要的轮询。
 - [ ] 引用槽用 `public` 字段在 Inspector 里指定，不靠运行时查找。
 
-相关章节：[第 38 章 · 第八节 脚本性能](/placeness/performance/#第八节脚本性能)、[附录 D · UdonSharp 限制 · D.4 性能层](/appendix/udonsharp-limits/#d4-性能层量级与高成本写法)。
+相关章节：[第 38 章 · Udon 脚本性能](/placeness/performance/#udon-脚本性能)、[附录 D · UdonSharp 限制 · D.4 性能层](/appendix/udonsharp-limits/#d4-性能层量级与高成本写法)。
 
 ## G.8 多人 + 真实头像下测一遍
 
-第 38 章那句反复强调的话：
-
-> 单人空场景里看着流畅的世界，不代表多人 + 真实头像下也流畅。
-
-玩家头像可能是 100k+ 顶点带粒子带动态骨骼的复杂模型。10 个玩家进来光头像就吃掉几万顶点几十个 Draw Call。世界自身的预算要给玩家头像让路。
+头像、人数、镜子与图形设置都会改变实际负载。保留单人基线，再逐步加入代表性的头像和人数，区分世界内容与头像产生的成本。
 
 - [ ] 用第二个 VRChat 账号 + 一个常用复杂头像进自己的世界，加上自己一共两人。
 - [ ] 邀请 3–5 个朋友各带自己常用头像进来，看 FPS。
 - [ ] VRChat 客户端按帧率显示快捷键（具体快捷键以版本为准）开 Stats 浮窗，实时看帧率。
-- [ ] 如果发现「单人 80 FPS、5 人 30 FPS」，世界自身预算太紧，回头继续压。
+- [ ] 多人帧率下降时，分别测试头像隐藏、镜子关闭和场景简化，定位具体负载来源。
 - [ ] 用 **Quest 头显**（或 Android 客户端）实测一次。手头没 Quest 设备的话，找个有的朋友帮忙测一次。
 
-相关章节：[第 38 章 · 第十节 测试一定要在多人 + 真实头像下做](/placeness/performance/#第十节测试一定要在多人--真实头像下做)、[第 41 章 · 第五节 Quest / Android 必须单独测一遍](/surviving/testing-your-world/#第五节quest--android-必须单独测一遍)。
+相关章节：[第 38 章 · 确定测试条件](/placeness/performance/#确定测试条件)、[第 41 章 · 第六节：Android / Quest](/surviving/testing-your-world/#第六节android--quest)。
 
 ## G.9 上传前最后一遍（一页纸版）
 
-`Build & Publish` 之前最后扫一眼。每条都能勾上再按 Upload。
+`Build & Publish` 之前最后扫一眼。完成适用项并记录不适用项的原因。
 
 **测量与基线**
 
-- [ ] Stats 显示 FPS ≥ 90（PC）/ ≥ 72（Quest）
+- [ ] 在目标设备上记录帧时间与所选刷新率预算；编辑器 Stats 读数作为辅助
 - [ ] Profiler 跑过，CPU 各类工作占比无明显异常
 - [ ] Batches < 200（PC）/ < 100（Quest）
 - [ ] SetPass calls < 100（PC）/ < 50（Quest）
@@ -196,30 +190,30 @@ UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级
 
 **烘焙与场景**
 
-- [ ] 所有不动的物体已 Static
+- [ ] 适用对象的 Static 子标记已分别配置
 - [ ] 烘焙了 Occlusion Culling
 - [ ] 烘焙了 Lightmap，没有明显 UV 缝 / 亮斑 / 漏光
 - [ ] 撒了一组 Light Probe
-- [ ] 实时光 ≤ 4（PC）/ = 0（Quest），多数关 `Cast Shadows`
+- [ ] 实时灯与阴影的必要性、成本已实测
 
 **材质与贴图**
 
-- [ ] 所有 Material 勾了 GPU Instancing
+- [ ] 适用重复物体的 GPU Instancing 已验证
 - [ ] 重复材质合并到同一份资产
 - [ ] 贴图 Max Size 不是默认 2048（按需降到 1024 / 512）
-- [ ] Quest 版贴图 Android Max Size = 1024
-- [ ] 同一物体不混用 PBR Standard 和 Unlit
+- [ ] Quest 纹理尺寸和压缩符合项目预算
+- [ ] 材质组合在目标照明条件下符合需求
 
 **镜子与视频**
 
-- [ ] 镜子默认关，玩家可开关
-- [ ] 镜子 `Reflect Layers` 只勾 Player
+- [ ] 按所选方案配置镜子初始状态，提供本地开关并比较开启前后的性能
+- [ ] 镜子 `Reflect Layers` 包含所需的 Player / MirrorReflection 等层，不遗漏本地玩家反射
 - [ ] `Mirror Resolution` ≤ 1024
 - [ ] 视频播放器单房间不超过 1 个
 
 **Quest 专项**
 
-- [ ] 切到 Android 平台，重新烘 Lighting（Subtractive）
+- [ ] Android 光照与 Shader 兼容，变更后的烘焙已验证
 - [ ] 所有 Material Shader 优先换成移动端友好 Shader
 - [ ] 没有 Cloth / Post Processing；Realtime Light 尽量为 0
 - [ ] Build Estimate ≤ 100 MB
@@ -235,7 +229,7 @@ UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级
 - [ ] 多人 + 真实头像测过（≥ 3 人，常用复杂头像）
 - [ ] 用 Quest 头显或 Android 客户端实测过 FPS
 
-每一项都能勾上，再考虑上传。
+不适用或未通过的项目记录原因、影响范围和测试结果。
 
 ---
 
@@ -243,15 +237,15 @@ UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级
 
 | 节 | 主源 | 辅源 |
 |---|---|---|
-| G.1 测量先于优化 | 第 38 章 § 1、§ 2、§ 9 | — |
-| G.2 通用预算 | 第 38 章 § 1、§ 3、§ 4、§ 6 | 第 39 章 § 5 |
-| G.3 灯光与烘焙 | 第 36 章 检查清单、第 38 章 § 7 | 第 39 章 § 3 |
-| G.4 材质与贴图 | 第 37 章 检查清单、第 38 章 § 3 | 第 39 章 § 4 |
-| G.5 镜子 / 视频 / 特效 | 第 38 章 § 5、§ 6 | 第 16 章 镜子默认关 |
-| G.6 Quest 专项 | 第 39 章 全章 | 附录 G.4、G.5 |
-| G.7 脚本性能 | 第 38 章 § 8 | 附录 D · D.4 |
-| G.8 多人 + 真实头像 | 第 38 章 § 10、第 41 章 § 5 | 第 41 章 § 6 |
-| G.9 一页纸 | 上面八节汇总 | — |
+| G.1 测量先于优化 | [测试条件与测量](/placeness/performance/#确定测试条件) | [Profiler](/placeness/performance/#profiler定位具体耗时) |
+| G.2 通用预算 | [性能与测量](/placeness/performance/) | [跨平台限制与建议](/placeness/pc-and-quest/#分清硬限制与建议) |
+| G.3 灯光与烘焙 | [灯光检查](/placeness/light/#对照练习与检查清单) | [平台灯光配置](/placeness/pc-and-quest/#灯光配置) |
+| G.4 材质与贴图 | [材质检查](/placeness/surfaces/#检查清单) | [纹理与包体](/placeness/pc-and-quest/#纹理音频与包体) |
+| G.5 镜子 / 视频 / 特效 | [镜子与视频](/placeness/performance/#镜子与视频播放器) | [镜子设置](/come-alive/sit-mirror-teleport/#第二节做一面可开关的镜子) |
+| G.6 Quest 专项 | [PC 和 Quest](/placeness/pc-and-quest/) | 本清单的材质、镜子与视频项 |
+| G.7 脚本性能 | [Udon 脚本性能](/placeness/performance/#udon-脚本性能) | [UdonSharp 限制](/appendix/udonsharp-limits/) |
+| G.8 多人 + 真实头像 | [测试你的世界](/surviving/testing-your-world/) | [测试条件](/placeness/performance/#确定测试条件) |
+| G.9 一页纸 | 本清单各节汇总 | — |
 
 ## 外部参考
 
@@ -273,11 +267,11 @@ UdonSharp 编译到 Udon 字节码上跑，效率比原生 C# 慢一个数量级
   <LinkCard
     title="附录 H · 发布检查清单"
     href="../release-checklist/"
-    description="性能预算只是发布前一半的功课，另一半在 H 里：元数据、可见性、平台标记、TOS。"
+    description="元数据、可见性、平台标记与内容合规的检查项。"
   />
   <LinkCard
     title="附录 F · 报错排查"
     href="../errors/"
-    description="性能撑不住时常伴随报错（halted、GC spike），F.5 节给了对应排查路径。"
+    description="运行异常与低帧率需分别定位；F.2 和 F.5 提供排查路径。"
   />
 </CardGrid>

@@ -1,7 +1,7 @@
 ---
 // 覆盖 Starlight 默认 PageTitle：
 //  · 保留 H1 与 #_top 锚点（不破坏返回顶部 / 滚动监听）
-//  · 在标题正下方追加「阅读时间 / 难度 / 章节类型」元信息条
+//  · 在标题正下方追加「阅读时间 / 内容层次 / 章节类型」元信息条
 //
 // 读者价值：阅读时间是「读之前的判断」，应当出现在开始读之前；
 // 把它放在 Footer 与"读完"动作混在一起会失去这个意义。
@@ -57,7 +57,7 @@ const title = (data as any).title as string;
     )}
     {difficulty && (
       <span class={`vrc-meta__chip vrc-meta__chip--diff vrc-meta__chip--diff-${difficulty}`}>
-        难度：{difficulty}
+        内容：{difficulty}
       </span>
     )}
     {chapterType && chapterTypeLabel[chapterType] && (

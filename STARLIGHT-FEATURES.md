@@ -14,7 +14,7 @@
 | 让代码块更帅 | [Expressive Code](#expressive-code-代码块) |
 | 画流程图 | [Mermaid 图](#mermaid-图) |
 | 给页面加封面 / Hero | [Splash 与 Hero](#splash-模板与-hero) |
-| 章节阅读时间 / 难度 | [章节元数据](#章节元数据) |
+| 章节阅读时间 / 内容层次 | [章节元数据](#章节元数据) |
 | 反馈 / Issue 入口 | [底部反馈条](#底部反馈条) |
 | 本地开发与构建 | [本地命令](#本地命令) |
 | Cloudflare Pages 部署 | [部署到-cloudflare-pages](#部署到-cloudflare-pages) |
@@ -204,7 +204,7 @@ flowchart LR
 
 ```mdx
 ---
-title: 第一部 · 先站进去再说
+title: 第一部 · 工具与第一个世界
 description: 一句话副标题
 template: splash
 hero:
@@ -227,12 +227,12 @@ sidebar:
 
 ### 6.1 「减法」处理前言（重要）
 
-`preface.mdx` 不走 splash 路线。前言的钩子是文字本身，加装饰会破坏「客观视角钩子」原则。这里反过来用减法——抽掉默认的"文档构件"，让正文回到读者面前：
+`preface.mdx` 不走 splash 路线。前言使用普通正文布局，隐藏目录、编辑入口和更新时间：
 
 ```yaml
 ---
 title: 前言：打开一扇门
-description: 这本 VRChat 世界开发教程写给谁，以及它会怎样带你入门。
+description: 本书的内容范围、使用条件与阅读方式。
 tableOfContents: false   # 前言不需要右侧目录
 pagefind: false          # 不参与全文搜索（避免被切碎当结果出现）
 editUrl: false           # 前言上不显示「修改本页」
@@ -248,7 +248,7 @@ sidebar:
 ---
 ```
 
-效果：页面只剩 `title` + 正文 + 底部"下一章"按钮，读起来像一封信而不是一篇文档。这套写法适用于任何「以文字为主体、不希望被文档样式干扰」的页面（前言、致谢、结语）。
+效果：页面保留 `title`、正文和底部导航按钮。这套写法适用于任何「以文字为主体、不希望被文档样式干扰」的页面（前言、致谢、结语）。
 
 ### 6.2 部入口页
 
@@ -261,19 +261,19 @@ sidebar:
 - `tableOfContents: false` + `pagefind: false`：入口页本身不需要被搜索，搜到具体章节即可
 - 用 `<CardGrid>` + `<LinkCard>` 列出该部所有章节，配 `description` 让读者扫一眼能选
 
-部入口页之间互相用相对链接 `../workbench/` 跳转，末尾留一两句过渡，让一部读完能自然进下一部。
+部入口页之间可用相对链接 `../workbench/` 导航。卡片描述仅概括目标页内容，不在正文末尾追加未来章节预告。文风与引用规范统一见 [README 写作公约](./README.md#本书写作公约)。
 
 ---
 
 ## 7. 章节元数据
 
-写新章时，建议给 frontmatter 加这几个字段——本书的 `Footer.astro` 会自动渲染对应徽章。
+写新章时，建议给 frontmatter 加这几个字段——本书的 `PageTitle.astro` 会在标题下渲染对应徽章。
 
 ```md
 ---
 title: 4. 你的第一个世界
 description: …
-difficulty: 新手           # 新手 / 进阶 / 硬核
+difficulty: 基础           # 基础 / 进阶 / 专题；描述内容范围
 estimatedMinutes: 30       # 预估手把手时间。不写则按字数自动估。
 chapterType: hands-on      # hands-on / concept / creator-view
 requiresSDK: true          # 是否需要 VRChat SDK 已就绪
@@ -281,7 +281,7 @@ summary: 给 RSS / 卡片用的简短摘要
 ---
 ```
 
-字段约束在 `src/content.config.ts` 里用 zod 强校验：写错难度档值或单位错误，构建会直接报错。
+字段约束在 `src/content.config.ts` 里用 zod 强校验：写错内容层次值或单位错误，构建会直接报错。
 
 ---
 
@@ -292,7 +292,7 @@ summary: 给 RSS / 卡片用的简短摘要
 - **提个 Issue**：跳到 GitHub Issues，标题与内容已预填该页路径。
 - **直接改文档**：跳到该页源文件的编辑界面（基于 frontmatter 的 `editLink.baseUrl`）。
 
-实现在 `src/overrides/Footer.astro`，覆盖了 Starlight 默认 Footer，并在它下面追加章节元信息条 + 反馈条 + Mermaid 运行时。
+实现在 `src/overrides/Footer.astro`，覆盖了 Starlight 默认 Footer，并在它下面追加反馈条与 Mermaid 运行时。
 
 要改 Issue 模板或反馈文案，编辑该文件即可。
 
@@ -384,7 +384,8 @@ GIT_DEPTH = 0
 
 | 组件 | 文件 | 改了什么 |
 | :--- | :--- | :--- |
-| `Footer` | `src/overrides/Footer.astro` | 在默认页脚下追加：① 阅读时间 / 难度 / 章节类型徽章 ② 「提 Issue / 直接改文档」反馈条 ③ Mermaid 客户端运行时（懒加载）|
+| `PageTitle` | `src/overrides/PageTitle.astro` | 标题下显示阅读时间、内容层次与章节类型 |
+| `Footer` | `src/overrides/Footer.astro` | 默认页脚、反馈条与 Mermaid 客户端运行时 |
 
 要改样式，看 `Footer.astro` 末尾的 `<style is:global>` 块；色板继承 `src/styles/custom.css` 里的 `--vrc-*` token。
 
@@ -396,7 +397,7 @@ GIT_DEPTH = 0
 
 frontmatter 字段写错了。常见：
 
-- `difficulty` 只接受 `新手 / 进阶 / 硬核` 三个值。
+- `difficulty` 只接受 `基础 / 进阶 / 专题` 三个值。
 - `estimatedMinutes` 必须是正整数，写 `30 分钟` 会失败。
 - `chapterType` 只接受 `hands-on / concept / creator-view`。
 

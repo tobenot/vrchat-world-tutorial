@@ -1,473 +1,261 @@
 ---
 title: 45. 赞助、商品和创作者经济
-description: VRChat Creator Economy 的 Products / Listings / Subscriptions / Stores 四件套怎么落地。Tilia 入驻、Authorized Seller 资质、20,000 earned Credits 提现门槛、收入分成结构。Creator Economy SDK 在世界里检查购买状态、打开商店。Creator Economy 跟 Booth / Patreon 这些外部平台怎么搭配。
-difficulty: 进阶
+description: Creator Economy 的产品、Listing、订阅、商店、卖家入驻、提现和 Udon 权益状态处理。
+difficulty: 专题
 estimatedMinutes: 35
 chapterType: concept
 requiresSDK: true
-summary: 第 25 章把商业世界的设计哲学讲过。这一章把 VRChat 官方的 Creator Economy 系统拆开看：四类组件怎么组合、卖家资质怎么申请、Tilia 提现门槛是多少、SDK 怎么在世界里检查购买状态。结尾给一份「先做哪一步」的落地路径，以及怎么跟 Booth、Gumroad、Patreon 这些外部平台分工。具体数值随官方政策变动，所有金额和门槛以官网当前文档为准。
+summary: 世界内权益通过 Udon Product 表示，加载、购买与到期是不同事件。订阅当前不自动续费；提现按官方 Payout 页的 earned Credits 条件办理。商品说明、第三方许可和站外销售规则需要分别核对。
 sidebar:
   order: 2
 ---
 
-世界发布之后过几周，常驻群体开始稳定。Discord 频道里每天有几个人来打卡，有人会发「这世界做得真好，能不能赞助你」这种留言。
+VRChat Creator Economy 提供平台内的商品与订阅交易。用户使用 Credits 购买，卖家在符合条件后申请提现。[第 25 章](/world-types/commercial-world/)中的商品范围与设计检查，在这里对应到平台对象、账号配置和 Udon 事件。
 
-「能不能赞助」这个问题在 VRChat 里以前的标准答案是：丢一个 Patreon 链接，或者挂一个 Booth 商店。这两个方案现在依然在用，但 VRChat 自己也在 2024 年起逐步上线了 Creator Economy：玩家在世界里直接花 VRChat Credits 买东西，创作者通过 Tilia 把 Credits 换成美元打到 PayPal。
+本章不预测收益，也不提供个人税务结论。政策核对日期为 2026-10-05；申请、定价和提现以实际官方页面为准。
 
-第 25 章讲过 Commercial World 的设计哲学：免费用户拿到完整核心体验、付费内容是锦上添花、不用 dark pattern（诱导用户做不利选择的界面设计）。这一章把另一半讲完：Creator Economy 这套系统具体由什么组成，怎么用，跟外部平台怎么分工。
+## 第一节：产品、销售项与商店
 
-::::tip[这一章不是必读]
-没打算让世界产生收入的话，这一章可以跳。多数 VRChat 世界创作者从来没接 Creator Economy，仍然能活得很好。
+Product 定义权益，Listing 或 Subscription 定义如何销售，Store 提供展示入口。当前体系还包含 Avatar Products；世界功能使用的是 Udon Products，不应把世界教程中展开的子集写成全部产品类型。
 
-适合读这一章的几种情况：
-- 世界已经有稳定的常驻群体（30 人以上），想试试可持续创作。
-- 在做 Tool World / Gallery，世界本身有「卖东西」的位置。
-- 在跑常驻 Event，想给会员制找一个 VRChat 内置实现。
-- 单纯好奇 Creator Economy 是怎么运作的。
-::::
-
-## 第一节：四件套结构
-
-VRChat Creator Economy 的官方文档把整个系统分成四块。理解了这四块的关系，剩下的都是配置细节。
-
-```text
-                 Creator Economy
-                       │
-        ┌──────────────┼──────────────┐
-        ▼              ▼              ▼
-    Products      Listings       Subscriptions
-    （内容）       (一次性买)     (周期性付)
-        │              │              │
-        ▼              ▼              ▼
-   Udon Products    World Store    Group Store
-   Subscription     卖 Listings    卖 Subscriptions
-   Role Products
-                       │              │
-                       └──────┬───────┘
-                              ▼
-                          买家拥有
-                              │
-                              ▼
-                         Udon SDK 检查
-                              │
-                              ▼
-                       世界里解锁内容
-```
-
-### Products（产品）
-
-买家最终拿到的「东西」。两类：
-
-| 类型 | 用途 | 例子 |
+| 销售方式 | 持有方式 | 实现检查 |
 | :--- | :--- | :--- |
-| **Udon Products** | 在世界里解锁功能或内容 | 头顶的支持者标识、VIP 区入场资格、特殊 Pickup 物品、皮肤 |
-| **Subscription Role Products** | 群组里的特殊角色和权限 | 订阅会员的群组角色、专属频道访问 |
+| Permanent Listing | 产品不按时长到期 | 重入后恢复已有权益 |
+| Temporary Listing | 设定期限内持有 | 加载、到期与显示同步 |
+| Instant Listing | 即时发放效果，不作为持续持有权益 | 确认新购买、数量与重复处理 |
+| Subscription | 购买期限内获得群组角色及所含产品 | 角色权限、权益到期和延期 |
 
-Products 本身不能直接卖。要打包成 Listings 或 Subscriptions 才能放进商店。
+订阅包含一个群组角色产品，也可加入 Udon Products。World Store 用于世界的 Listings，Group Store 用于订阅。商品类型、数量和价格范围以创建页面为准。
 
-### Listings（一次性商品）
+当前订阅不会到期自动续费，用户可以主动延期。多月订阅的卖家收入按平台规则分期结算，取消也影响未结算月份；不要把“按月计价”直接写成自动循环扣费。
 
-一次性付费，三种持续期：
+## 第二节：卖家与 Tilia 入驻
 
-| Listing 类型 | 持续 | 适合什么 |
-| :--- | :--- | :--- |
-| **Instant** | 单次使用 | 一次性消耗品（解一道谜题、一次抽奖、单场活动入场） |
-| **Temporary** | 限定时间 | 限时内容（一周内有效的特殊房间通行证） |
-| **Permanent** | 永久 | 终身解锁（永久 VIP 标识、永久解锁的高级皮肤） |
+从 [Creator Economy 官方入口](https://creators.vrchat.com/economy/)进入申请，并检查当前资格、支持地区及项目规则。不要以“常驻 30 人”“月活百人”或固定审核周数作为没有官方依据的申请门槛。
 
-最低售价 **100 VRChat Credits**（约 0.5 美元）。一个 Listing 可以打包多个 Products。
+获得对应访问资格后，在 VRChat 网站的 My Store / Storefront 中进入 Tilia 验证。按页面提交所需资料，核对法律姓名、地区、身份和收款要求，并阅读协议。只向官方流程提供身份与支付信息，不把证件或税号放进项目、脚本或公开反馈贴。
 
-### Subscriptions（订阅）
+入驻审核与提现审核是两个流程。结果和补件要求以账号页面及官方邮件为准；地区税务申报或收款限制需要向当地专业人士和收款服务核实。
 
-按月度权益结算的访问权。订阅本质上是「Subscription Role Product 的周期性版本」：玩家订阅之后被自动加进卖家群组、获得指定群组角色、保留这个角色直到订阅期结束或取消。
+## 第三节：提现与费用
 
-订阅常见用途：
+截至核对日，官方 [Payout](https://creators.vrchat.com/economy/payout/) 页列出的要求包括：账号符合资格、至少 20,000 earned Credits、没有正在处理的提现、距离上次申请至少 24 小时。购买和促销所得 Credits 不计入门槛。
 
-- VIP 区进入权（用群组角色作为门禁）。
-- 专属频道访问（创作者的 Discord 替代品）。
-- 实例优先排队权（Capacity 满时订阅者能挤进去）。
+收款可选 PayPal 或适用国家的银行转账。费用因目的地而异；PayPal 页面列约 1.5%，非 USD 账户可能另有转换费。填写金额后，以最终确认页面显示的费用和到账总额为准。
 
-::::caution[订阅不会自动续期]
-官方 `economy/subscriptions/` 文档明确写：到期之后**不会自动续费**，只在临近到期时给玩家发通知。玩家可以在到期前主动延期一次（比如还剩 7 天时再买 12 个月，就续到 12 个月 + 7 天）。
+官方概览的收入分配约为平台 30%、创作者 50%、VRChat 及合作方 20%，属于完整资金流程的近似比例，不是把商品 Credits 再简单减半的公式。不要将用户购买 Credits 的价格直接当成卖家到账价，也不要对已显示的净额重复扣费。
 
-意味着创作者别假设「订阅一签就一直续」，运营上要在到期前给出提醒入口（Discord 公告、世界内挂牌都行）。
-::::
+较旧的 Welcome 页仍出现 30,000 Credits，较新的专项 Payout 页列 20,000。本章采用专项页数值，并保留日期；办理时仍需核对账户实际条件。
 
-### Stores（商店）
+## 第四节：建立 UdonProduct 引用
 
-发现 + 购买入口。两种：
+在网站建立 Udon Product 后，在 Unity 使用 `VRChat SDK → Utilities → UdonProducts Manager` 取得对应资产，或通过 `Assets → Create → VRChat → UdonProduct` 手动创建并填入真实 Product ID。
 
-| 商店类型 | 关联 | 卖什么 |
-| :--- | :--- | :--- |
-| **World Store** | 一个 VRChat 世界 | Listings |
-| **Group Store** | 一个 VRChat 群组 | Subscriptions |
+至少一个场景中的 UdonBehaviour 必须引用对应 UdonProduct，上传世界才能接收该产品的购买事件。监听脚本保持启用，不能和待解锁对象一起被禁用。
 
-商店通过两条渠道访问：
-1. 在 VRChat 官网（`vrchat.com`）的世界页 / 群组页上有商店面板，玩家直接打开购买。
-2. 在世界里通过 Udon SDK 调用，开一个 VRChat 内置的商店 UI 让玩家买。
+Product ID 与 Listing ID 用途不同：前者用于查询权益，后者用于打开销售项。不要因两者都属于商店数据就混用。
 
-World Store 和 Group Store 的分工不只是建议，是**官方文档里明确写的硬限制**：
+官方 Example Central 提供 Udon Product Toggle 等预制体。选择本地或实例范围的版本，指定 Product、Targets 和默认状态，再测试加载、购买与到期。拖入预制体不等于商品已经建立或发布。
 
-- World Store **不能**挂 Subscriptions（要卖订阅得用 Group Store）。
-- Group Store **不能**挂 Listings（Listings 走 World Store，或通过 Udon 直接打开）。
+## 第五节：权益加载、查询与回调
 
-背后的逻辑跟两类内容的特性差异有关：World 内容是「这个空间里的东西」，跟具体世界绑定，一次性买（Listing）很自然；Subscription 的卖点是「持续的会员关系」，跟具体某座世界没必然关联，挂在 Group 上让会员可以横跨创作者旗下所有世界、专属频道、活动。
+常用接口的用途：
 
-## 第二节：卖家资格怎么拿
-
-要参与 Creator Economy 不是注册账号就能开。流程上要走完几道关。
-
-### 基础门槛
-
-- **18 周岁及以上**。VRChat 不接受未成年人作为卖家，无例外。
-- VRChat 账号**没有违规历史**。被警告 / 临时封号过的账号在申请时会被拒。
-- 账号**已经有发布过的世界**，且世界本身访客数据稳定（具体阈值 VRChat 没公开，社区观察是月活百人量级以上）。
-
-### 申请流程
-
-VRChat 官方文档把流程分成几步（具体页面在 `creators.vrchat.com/economy/`）：
-
-1. **提交 Authorized Seller（授权卖家）申请**。VRChat 会人工审核账号、世界质量、社群活跃度。
-2. **完成 Tilia 入驻**。Tilia 是 VRChat 用的第三方支付服务商，承担身份验证和资金流转。要提交：
-   - 身份证件（护照 / 驾照 / 国民身份证）。
-   - 银行账户或 PayPal 信息。
-   - **税务文件**：美国卖家提交 W-9，国际卖家提交 W-8BEN。
-3. **等待审核**。通常 2 - 6 周。期间 VRChat 可能要求补充材料。
-4. **通过之后开通卖家面板**，可以开始创建 Products / Listings / Stores。
-
-::::caution[国际卖家的银行收款现实]
-W-8BEN 表格是美国 IRS 给非美国居民的预提税表，填这个表的目的是让 Tilia 知道按哪国税率代扣。
-
-Tilia 实际打款用的是 **PayPal**。这意味着：
-- 国家或地区的 PayPal 服务必须能正常收款（中国大陆 PayPal 可以收外币，但提现到银行卡有外汇限制）。
-- 当地的所得税申报责任在卖家自己（VRChat 只代扣美国境内适用的税）。
-- 收款币种是 USD，按当时汇率结算。
-
-中国大陆创作者比较常见的做法是：开 PayPal 个人账户、绑大陆银行卡、按月或按季提现到银行卡（PayPal 会扣一道汇率差，约 2-3%）。日本卖家则有 Wise 等更便宜的中转方案。
-
-具体合规细节请咨询当地税务专业人士。这一段只是说明大致路径。
-::::
-
-### 卖家级别和限额
-
-新通过的卖家有初始限额（每月最多卖出多少 Credits、单笔交易上限），随时间和销售记录逐步放宽。具体阈值 VRChat 没公开数字，社区观察是「头三个月有一定上限，过了之后基本不限」。
-
-## 第三节：收入分成和提现
-
-钱是怎么从玩家钱包进到创作者账户的。这一节的数字以官方 `creators.vrchat.com/economy/payout/` 当前版本为准——**SDK 与政策都会变，提现前请回查官网**。
-
-### 玩家端
-
-玩家在 VRChat 里用 USD（或其他法币）买 VRChat Credits。Credits 进玩家账户，再花掉买 Listing 或开通 Subscription。
-
-### 三段费用结构
-
-官方 Payout 文档把整个链路拆成三段，每一段各扣一道费：
-
-| 阶段 | 谁扣 | 大致比例 |
-| :--- | :--- | :--- |
-| 玩家**买** Credits | Steam / Meta 等平台 + 当地 VAT | 总购买费 ~40%（不含 VAT） |
-| 玩家在创作者商店**花** Credits | VRChat + 支付处理 | 交易费 ~15.3% |
-| 创作者**提现** Credits | Tilia / PayPal | PayPal 通道 ~1.5% |
-
-最终到创作者手里的 USD 跟玩家充 Credits 时付的金额相比，分成大致是：**平台 ~30% / 创作者 ~50% / VRChat + 处理 ~20%**（数字四舍五入，不含 VAT）。
-
-平台那 30% 流向取决于玩家**第一次充 Credits 时用了哪个平台**：Steam 买的 Credits 抽给 Steam；Meta Quest Store 买的抽给 Meta；网页 + 信用卡的抽给信用卡处理方。同一个 Listing，玩家是 Quest 用户买的还是 PC 用户买的，创作者最终拿到的金额是一样的，30% 流向不同。
-
-### 提现门槛与流程
-
-官方文档当前写的几条硬规则：
-
-- 钱包里**有至少 20,000 earned VRChat Credits** 才能申请 payout。**earned 不含**通过购买或促销获得的 Credits。
-- 账户必须 in good standing、完成 Tilia onboarding、当前没有处理中的 payout。
-- 24 小时内最多申请一次 payout。
-- 提现走 Tilia → PayPal，PayPal 通道 ~1.5% 手续费。约 **200 earned Credits ≈ 1 USD**（兑换前估算）。
-
-到手大致估算（以达到门槛的 20,000 earned Credits 为例）：
-
-```
-20,000 earned Credits   →  ~$100   （按 200 Credits = 1 USD）
-PayPal 通道 ~1.5%        →  -~$1.5
-最终到 PayPal            →  ~$98.5
-```
-
-PayPal 提到银行卡再扣 2-3% 汇率差（中国大陆场景），最终落地大致 $95 上下。如果 PayPal 账户币种不是 USD，PayPal 还会再扣一道币种转换费，这道不在 1.5% 提现费里。
-
-::::caution[这些数字是会变的]
-最低提现门槛、Credits 美元汇率、各段抽成在 VRChat 平台扩张过程中已经调整过几次。开始走 Creator Economy 之前一定回查官方 `creators.vrchat.com/economy/payout/` 当前版本，再跟这本书的数字交叉核对。
-::::
-
-::::caution[预期管理：从 0 到第一次提现要多久]
-一座 Public 世界一个月稳定有 5,000 访客，付费转化率 1%，就是 50 笔购买。每笔 100 Credits（最低单价）的话每月毛入账 5,000 Credits；扣掉商店端 ~15.3% 之后约 4,200 earned Credits / 月，到达 20,000 earned Credits 提现门槛大致要 4 - 5 个月。
-
-这个估算偏乐观：1% 是 VRChat 上比较好的转化率（第 25 章讲过付费墙容忍度低），多数世界达不到。
-
-意味着：Creator Economy 不是「上线就有钱」的系统。前几个月主要是建立卖家资质、调试商品组合、积累常驻群体。把它当作长期事业的一部分，不是短期变现。
-
-如果对收益时效有要求（比如靠这个补贴 Unity 资产购买开支），Booth 或 Gumroad 在抽成（约 5-10%）和提现门槛（基本无）上更友好。第六节会展开。
-::::
-
-## 第四节：在 Udon 里跟 Creator Economy 对话
-
-世界里要根据玩家是否买了某个 Product 切换功能（比如 VIP 区开门、显示头顶标识），靠 Creator Economy SDK。所有相关方法和事件都在 `Store` 命名空间下。具体函数名以官方文档为准（`creators.vrchat.com/economy/sdk/udon-documentation/`）：
-
-```cs title="常用 Store 方法（基于当前官方 Udon Documentation）"
-// 检查某个玩家是否拥有指定 Udon Product
-bool hasProduct = Store.DoesPlayerOwnProduct(player, udonProduct);
-
-// 异步列出某个 Udon Product 的所有持有者（事件回调里拿到 string[] 用户名）
-// 需要在 VRChat 网站上为这个 Product 启用 "Owner Names in Udon"
-Store.ListProductOwners(targetUdonBehaviour, udonProduct);
-
-// 打开当前世界关联的 World Store 页面
+```cs title="Store 调用片段（变量由所在脚本提供）"
+bool ownsProduct = Store.DoesPlayerOwnProduct(player, product);
 Store.OpenWorldStorePage();
-
-// 打开指定群组的 Group Store 页面
 Store.OpenGroupStorePage(groupId);
-
-// 直接打开某个已发布 Listing / Subscription 的购买界面
 Store.OpenListing(listingId);
 ```
 
-事件回调是写在 `UdonSharpBehaviour` 上的 override，常用两个：
+`DoesPlayerOwnProduct` 不能在 `Start` 后立即被当成最终答案，因为购买数据可能尚未到达。以 `OnPurchasesLoaded` 区分“未加载”与“加载后没有权益”。
 
-- `OnPurchaseConfirmedMultiple`：玩家购买被加载和确认时触发。包括玩家进世界时旧购买的「补登」也会触发，靠回调里的 `bool isJustPurchased` 区分是「刚买」还是「补加载」。
-- `OnPurchaseExpired`：到期失效时触发（用于 Temporary Listing / Subscription）。
+以下示例的命名空间与回调签名按 Worlds SDK 3.10.5 核对。完整示例显示本地已购内容，并用交互打开当前世界商店；用于持续持有的 Product，不适用于 Instant 消耗品：
 
-::::caution[别用单数版 OnPurchaseConfirmed]
-官方文档已把单数版 `OnPurchaseConfirmed` 标记为 deprecated，且不支持 quantity purchase。新代码统一用 `OnPurchaseConfirmedMultiple`，两者别在同一个脚本里同时用，否则同一笔购买可能被检测两次。
-::::
-
-典型用法骨架（UdonSharp 写法，骨架以官方示例为参考）：
-
-```cs title="VipDoor.cs"
+```cs title="LocalProductAccess.cs"
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
-using VRC.Economy;        // Store / IProduct 等类型在这一命名空间
-using VRC.SDK3.Economy;   // UdonProduct 资产
+using VRC.Economy;
 
-public class VipDoor : UdonSharpBehaviour
+public class LocalProductAccess : UdonSharpBehaviour
 {
-    [Tooltip("VIP 通行证对应的 UdonProduct 资产，从 Project 里拖进来")]
-    public UdonProduct vipProduct;
+    public UdonProduct product;
+    public GameObject unlockedContent;
+    private bool purchasesLoaded;
 
-    [Tooltip("门的开启动画 Animator")]
-    public Animator doorAnimator;
+    private void Start()
+    {
+        if (unlockedContent != null)
+            unlockedContent.SetActive(false);
+    }
+
+    public override void OnPurchasesLoaded(IProduct[] products, VRCPlayerApi player)
+    {
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        purchasesLoaded = true;
+        RefreshAccess();
+    }
+
+    public override void OnPurchaseConfirmedMultiple(
+        IProduct purchased, VRCPlayerApi player, bool isJustPurchased, int quantity)
+    {
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        if (purchasesLoaded) RefreshAccess();
+    }
+
+    public override void OnPurchaseExpired(IProduct expired, VRCPlayerApi player)
+    {
+        if (!Utilities.IsValid(player) || !player.isLocal) return;
+        if (purchasesLoaded) RefreshAccess();
+    }
+
+    private void RefreshAccess()
+    {
+        if (product == null || unlockedContent == null) return;
+        VRCPlayerApi player = Networking.LocalPlayer;
+        if (!Utilities.IsValid(player)) return;
+        unlockedContent.SetActive(Store.DoesPlayerOwnProduct(player, product));
+    }
 
     public override void Interact()
     {
-        var player = Networking.LocalPlayer;
-        if (player == null) return;
-
-        // 检查本地玩家是否拥有 VIP Product
-        bool isVip = Store.DoesPlayerOwnProduct(player, vipProduct);
-
-        if (isVip)
+        if (!purchasesLoaded)
         {
-            // 有通行证，开门
-            doorAnimator.SetBool("IsOpen", true);
+            Debug.Log("[Store] Purchase data is not loaded");
+            return;
         }
-        else
-        {
-            // 没有，弹出本世界的商店页面
-            Store.OpenWorldStorePage();
-        }
+        Store.OpenWorldStorePage();
     }
 }
 ```
 
-::::note[UdonProduct 资产和场景引用]
-Creator Economy SDK 不只是几个 API：每个 Udon Product 在工程里要有一个对应的 `UdonProduct` 资产（通过 `VRChat SDK > UdonProduct Manager` 创建或同步），并且在场景里至少被一个 UdonBehaviour 引用一次，世界才能接收这个 Product 相关的购买事件。具体步骤以官方 `economy/products/udon/` 和 `economy/sdk/` 当前版本为准。
-::::
+脚本挂在始终启用的交互对象上，`unlockedContent` 指向另一个对象，不能指向监听脚本自己或其父物体。填入 Product 引用，确认世界商店存在；面向玩家的版本还应有清晰的加载和错误提示。
 
-这套 API 跟前面章节学的 UdonSharp 风格一致：检查 → 分支 → 调用方法。骨架借鉴第 17 章的状态机。
+`OnPurchaseConfirmedMultiple` 也会在恢复既有购买时触发，`isJustPurchased` 用于区分新购买，`quantity` 表示本次购买数量。不要同时实现已弃用的单数版和 Multiple 版处理同一奖励。
 
-::::tip[为什么 Product 检查不在客户端「假装通过」]
-Creator Economy 的购买状态不是写在玩家本地的，是写在 VRChat 服务器上的。`Store.DoesPlayerOwnProduct` 在调用时由 VRChat 客户端向服务器查当前玩家的所有权清单。
+### 列出商品持有者
 
-意味着：玩家端没法用 Mod（修改客户端的非官方改件）篡改本地数据来「假装拥有」一个 Product。Mod 改了客户端内存里的 bool 没用，下一次跟服务器同步时就被驳回。
+`Store.ListProductOwners` 异步返回某个产品的持有者显示名，范围包括不在当前实例的人；它不等于查询某位在场玩家的权益。只有需要展示这类名单时才使用，也不要用显示名作账号标识或门禁判断。
 
-这跟第 28 章讲的「同步变量信任问题」是一个原理：服务器是单一真实来源，客户端只是显示。
-::::
+在 VRChat 网站 `Marketplace → Storefront → My Products` 编辑对应 Udon Product，启用 `Owner Names in Udon` 并保存；Udon 接口页也把它写作 `Owners Names in Udon`。没有启用时，官方说明该回调不会触发。产品说明应让购买者知道名单的展示用途。
 
-### 跟 PlayerData 持久化的关系
+以下小例把返回结果显示到 TMP 文本，最多显示前 20 个名字。它们按返回顺序排列，不表示消费排名：
 
-第 28 章讲过 VRChat PlayerData：在玩家自己的账号里存几个 bool/int/string，跨世界 / 跨实例都能读到。
+```cs title="ProductOwnersBoard.cs"
+using UdonSharp;
+using UnityEngine;
+using TMPro;
+using VRC.Economy;
 
-PlayerData 跟 Creator Economy 是**两条独立的系统**：
+public class ProductOwnersBoard : UdonSharpBehaviour
+{
+    public UdonProduct product;
+    public TMP_Text namesText;
+    private float nextRequestTime;
 
-| 系统 | 用途 | 谁能读 / 写 |
-| :--- | :--- | :--- |
-| PlayerData | 玩家在某座世界里的进度、偏好、状态 | 该世界 / 关联世界的 Udon 脚本能读写 |
-| Creator Economy Products | 玩家买了什么数字商品 | 任何世界的 Udon 都能读，但写（购买）只能通过 VRChat 的商店面板 |
+    public override void Interact()
+    {
+        if (product == null || namesText == null)
+        {
+            Debug.LogError("[Owners] Missing product or namesText");
+            return;
+        }
+        if (Time.time < nextRequestTime) return;
+        nextRequestTime = Time.time + 10f;
+        namesText.richText = false;
+        namesText.text = "正在请求名单；尚未收到结果";
+        Store.ListProductOwners(this, product);
+    }
 
-实际项目里两者经常配合用：
+    public override void OnListProductOwners(IProduct result, string[] owners)
+    {
+        if (result == null || product == null || namesText == null) return;
+        if (result.ID != product.ID) return;
+        if (owners == null)
+        {
+            namesText.text = "未取得名单数据";
+            return;
+        }
 
-- Creator Economy 的 Product 表示「玩家有 VIP 资格」（不可被篡改、跨实例可信）。
-- PlayerData 表示「玩家选了哪个 VIP 皮肤、调成什么颜色」（玩家自定义偏好）。
+        string display = "返回的持有者数：" + owners.Length + "\n";
+        int count = Mathf.Min(owners.Length, 20);
+        for (int i = 0; i < count; i++)
+            display += owners[i] + "\n";
+        if (owners.Length > count) display += "本面板仅显示前 20 名";
+        namesText.richText = false;
+        namesText.text = display;
+    }
+}
+```
 
-关系：「能不能用 VIP 区」靠 Product 检查，「VIP 区里的个性化」靠 PlayerData 存。
+建立一个带 Collider 的交互对象，只挂这一份 Udon 脚本，保持对象启用；同对象多份 UdonBehaviour 可能影响此接口。另建 TMP 文本并拖入 `namesText`，把产品资产拖入 `product`；回调接收者 `this` 就是发起请求的脚本。10 秒间隔只减少本地重复请求，不是接口速率保证。
 
-## 第五节：合规守则
+先在 ClientSim / 本地测试交互，预期显示 `VRCat`、`Fred`、`VRRat` 这组占位姓名，不能据此证明真实持有者名单已加载。再用已上传的测试版本核对真实结果，比较产品 ID、网站开关和回调内容；没有回调时保留“尚未收到”的状态，不能当成零持有者。回调确实返回空数组时才显示数量 0。每台客户端各自请求，名单不会因为写入 TMP 就自动同步。
 
-第 25 章列过几条硬线，这里展开 VRChat 官方 Creator Economy Guidelines 的核心要求：
+## 第六节：持久化、共享效果与安全边界
 
-### 只卖自己有权分发的内容
+Creator Economy 记录购买权益；PlayerData 记录该玩家在该世界的选择或进度，例如选择的装饰颜色。PlayerData 不自动跨世界共享，也不应以一个普通 bool 替代购买验证。
 
-- 自己原创的 Pickup、Avatar、Shader 没问题。
-- 从 Booth / Asset Store 买的素材，要看授权是否允许在 VRChat Creator Economy 里**二次销售**。多数素材授权允许「在自己的世界里使用」，但不允许「打包再卖」。混了授权就违规。
-- 用了 Substance Painter / Quixel 等订阅工具生成的资产，看订阅协议是否允许商用。
+本地 `SetActive` 不会自动让其他玩家看到相同结果。公共效果需要自己的同步状态。对于仅允许持有者发起的产品事件，可以核对官方 `Store.SendProductEvent` / `OnProductEvent`；平台在该事件路径中执行产品校验。
 
-### 用户买的是什么必须明确
+购买记录来自平台，不代表世界中的所有客户端逻辑都无法被绕过。不要承诺一个本地 Animator 门或布尔分支具有服务端级访问安全。
 
-每个 Listing 的 Description 里要写清楚：
+## 第七节：商品合规与外部销售
 
-- 持续期（永久 / 限时多久 / 一次性）。
-- 包含的具体内容（不能写「VIP 体验」这种模糊表述，要写「VIP 区进入权 + 头顶标识 + 专属 Pickup 套件 5 件」）。
-- 适用平台（PC / Quest / 两者）。
-- 是否可退（默认不可退，说清楚就行）。
+根据当前 Content Guidelines 检查：
 
-写不清楚的 Listing 容易被 VRChat 下架，玩家也容易投诉。
+- 有权销售和分发所含内容，第三方许可覆盖实际用途。
+- 商品名称、价格、期限、平台差异和使用世界清楚，没有误导预览。
+- 不采用虚假倒计时、诱导或其他暗黑模式。
+- 不用 Credits 作为募捐渠道。
+- 同等世界权益在平台内可以实现时，按规则同时提供 Creator Economy 购买。
+- 不把平台内商品说明用于宣传站外更低价购买或引导退款后改用其他支付方式。
 
-### 禁止 Dark Patterns（暗黑模式）
+Booth、Gumroad 或其他服务可用于其允许的源文件等交易，但费用、退款、授权和交付条件各不相同。不要以固定抽成表代替当前条款核对，也不把“支持创作者”文案当成所有商品与募捐限制的例外。
 
-VRChat 官方明令禁止的几种典型暗黑模式：
-
-- 强制订阅（一旦订阅没法在 VRChat 设置里取消）。
-- 隐藏的取消按钮 / 复杂的取消流程。
-- 虚假倒计时（「限时优惠 24 小时」实际上永远显示 24 小时）。
-- 误导性宣传（「限量 100 个」实际上无限发）。
-- 在主流程里强制弹付费墙（玩家进世界第一秒就被挡）。
-
-违反 Dark Patterns 守则一般直接下架内容，重复违规可能取消 Authorized Seller 资格。
-
-### 禁止用 Credits 募捐
-
-VRChat Credits 在 VRChat 官方法律意义上是**商品交易代币**，不是捐款工具。
-
-意味着：「我要为某某筹款 / 给乌克兰捐款 / 给小动物保护组织募捐」这种用途，不能通过 Creator Economy 收钱。需要走外部募捐平台（GoFundMe、PayPal 募捐、Patreon 等）。
-
-赞助创作者本人的开发是允许的（这就是 Creator Economy 设计的初衷之一），但不能挂在「为第三方募捐」的旗号下。
-
-## 第六节：Creator Economy vs 外部平台
-
-VRChat Creator Economy 不是唯一变现路径，多数严肃创作者会**组合使用**多个平台。各自适合的场景：
-
-| 平台 | 抽成 | 提现门槛 | 适合卖什么 |
-| :--- | :--- | :--- | :--- |
-| **VRChat Creator Economy** | ~50%（含平台 30%） | 20,000 earned Credits（约 $100） | 世界内体验型功能：VIP 区、专属皮肤、活动票务、Subscription 会员 |
-| **Booth.pm** | ~5-10%（含手续费） | 低（500 円起提） | 重型资产：Avatar、3D 模型、Shader 包、纹理包 |
-| **Gumroad** | 10% + 支付处理费 | 低（$10 起提） | 同上，英文圈替代品 |
-| **Patreon** | ~8-12% | 低 | 长期赞助型粉丝订阅，跟具体世界关联弱 |
-| **爱发电 / 用爱发电** | ~5% | 低 | 中文圈 Patreon 替代 |
-| **VRChat Group Boost** | — | — | 不直接出 Credits，是社群激励的辅助系统 |
-
-组合策略示例：
-
-- **重型 3D 资产** → Booth / Gumroad（抽成低，VRChat 圈核心买家在那里）。
-- **世界内的 VIP 区 / 专属功能** → VRChat Creator Economy（在世界里直接买，体验流畅）。
-- **长期赞助** → Patreon / 爱发电（粉丝按月支持，跟世界本身解耦）。
-- **群组激励** → VRChat Group Boost（积分系统，不变现但促活）。
-
-各取所长。VRChat Creator Economy 的强项是**世界内购买体验流畅 + 自动续费支持**，不是抽成低。
-
-## 第七节：先做哪一步的实操路径
-
-打算认真开 Creator Economy 的话，按这个顺序走最稳：
+商品说明示例：
 
 ```text
-[T+0]  世界已发布、有稳定常驻群体（30+）、月活百人以上
-   ↓
-[T+1 周]  申请 Authorized Seller，提交 Tilia 入驻材料
-   ↓
-[T+1-6 周]  等审核（期间继续运营世界、积累访客）
-   ↓
-[T+审核通过]  设计第一个简单 Listing：Permanent VIP 标识，100-200 Credits
-   ↓
-[T+1-2 周]  在世界里加一个低调的「赞助」入口：物理上是一个角落里的小盒子，
-            按下去打开 Store.OpenWorldStorePage()
-   ↓
-[T+1 个月]  观察转化率和反馈。常驻群体接受度如何？有没有人抱怨「商业化太重」？
-   ↓
-[T+收到第一笔]  第一次提现要在 20,000 earned Credits 之后。多数世界 4-6 个月才到这个量
+名称：观景室装饰套装
+内容：三组指定装饰，可在个人设置中切换
+范围：<世界名与链接>
+期限：<Listing 实际持有方式>
+平台：<经测试的平台与差异>
+价格：<商店显示的 Credits>
+售后：<官方取消/退款规则与问题反馈入口>
 ```
 
-第一个 Listing 做最简单的版本。一个 100-200 Credits 的「Permanent 支持者标识」，挂在世界角落，让常驻群体里愿意支持的人有地方付费。Listing 复杂度跟设计成本和合规风险成正比，先用最简单的版本验证「有没有人愿意买」这件事再说。
+## 首件商品的实施顺序
 
-::::caution[Creator Economy 解决不了「世界没人来」]
-反复出现的反模式：「我做一座 Commercial World，靠订阅赚钱来支撑长期开发。」
+可先选一个范围明确的 Permanent Listing，例如一件可选的本地装饰；这是缩小测试范围的方案，不是平台要求。
 
-现实是：Creator Economy 收益强烈正相关于世界本身的人气。**没人来的世界加多少订阅都没用**。订阅来自常驻群体的支持，常驻群体来自世界本身的吸引力。
+1. 从官方入口核对资格并申请；按[卖家与 Tilia 入驻](#第二节卖家与-tilia-入驻)完成账号步骤。等待期间可在工程副本准备装饰、说明和测试清单，不预估审核完成日。
+2. 获得权限后，在网站建立 Udon Product；到 `Storefront → My Listings → Create Listing` 选择 Permanent、加入该 Product、填写名称、价格与准确内容，先保存为草稿。Listing 的期限类型创建后不能更换，创建前确认选择。
+3. 按[建立 UdonProduct 引用](#第四节建立-udonproduct-引用)取得资产，完成 `LocalProductAccess` 或官方 Product Toggle 的接线。把商品区的 Collider、监听脚本和待解锁对象分开，确认实际变化符合商品说明。
+4. 使用 [Testing Udon Products](https://creators.vrchat.com/economy/sdk/testing/) 的 ClientSim 测试面板切换持有状态，执行[集成验收](#集成验收)。随后上传测试版本，核对 Product 引用与回调；记录哪些只做了模拟、哪些已在客户端确认。商店尚未发布时，把购买入口记为待验，不把打不开草稿算成权益脚本错误。
+5. 确认内容、许可与说明后发布 Listing。在网站 Store Manager 选择 `Set Up New Store → World Store`，选中目标世界并创建商店，加入已发布的 Listing，再发布商店。按[World Stores 官方步骤](https://creators.vrchat.com/economy/store/world-store/)核对世界关联，进客户端验证入口、已购重入与两个账号权益差异。保存发布记录和反馈入口，遇到说明不符先处理对应功能。
 
-正确顺序：先做一座有人愿意来的世界 → 看它能不能形成常驻 → 等常驻群体到一定规模再考虑 Creator Economy。
+官方测试页说明，本地测试或以世界／群组作者身份测试时不会扣除 Credits；本地购买会在 60 秒后模拟到期，不能用来判断 Permanent 的线上期限。其他账号执行真实购买前，应确认实际费用与由谁承担；免费测试不验证结算和提现。
 
-跳过前两步直接做 Commercial 几乎不会成功。第 25 章那条规则在这里继续生效。
-::::
+购买入口的可选布置：小屋中放有“装饰商品”标识的展示台；展厅在相关作品旁放“查看商品内容”按钮；游戏在结算页放可关闭的商品入口。都应说清出售内容，让玩家主动打开商店，不把邮筒或“支持”字样包装成无明确商品的募捐，也不预判这些位置的转化率。
 
-## 第八节：商业元素的位置和氛围
+## 集成验收
 
-第 25 章已经讲过设计自律。这里只补充几条跟 Creator Economy 具体相关的：
+分别测试：未持有、数据尚未加载、已持有后进入、新购买、到期、离开再进入，以及两个玩家权益不同的情况。使用官方测试工具模拟交易；模拟通过不等于真实购买、结算和提现已经验证。
 
-### 把购买入口物理化
-
-购买入口放在世界里的实体物体上，避免 UI 弹窗式付费墙：
-
-- Chill 世界：一个角落里的小邮筒、一只装钱的陶罐、一本留言簿。
-- Gallery：每幅画旁边有「了解更多」按钮，按了之后打开包含购买信息的 World Store。
-- Game World：游戏完结时的「支持开发者」屏幕。
-- Event World：入口处的「VIP 通道」标识。
-
-物理化的好处：玩家在世界里走路时**自然碰到**这个入口，不被打断。比 UI 弹窗的转化率低（因为没那么显眼），但口碑好得多。
-
-### Listing Description 里写人话
-
-```
-✗  Premium VIP Membership - Unlock exclusive content!
-✗  尊贵 VIP 会员 - 解锁专属内容！
-
-✓  永久 VIP 通行证（Permanent）
-   包含：
-   - 主屋二楼的 VIP 阳台进入权
-   - 头顶显示一只支持者小猫图标
-   - 随机出现的 5 套主题装饰（春夏秋冬 + 节庆）
-   - 永久有效，账号绑定
-
-   售价：300 Credits（约 1.5 美元）
-   平台：PC + Quest
-   不可退款。
-```
-
-后者卖得动的概率高得多。原因是它给了**具体可验证的清单**，玩家能拿这个清单决定值不值。
-
-### 跟世界氛围一致
-
-这条第 25 章讲过，复用骨架不展开：商业元素的视觉风格要跟世界整体的光照、材质、UI 字体一致。一座赛博朋克世界用 Unity 默认 UI 弹付费窗，违和感会让常驻群体退订。
-
-## 这一章的脑子里留下来的
-
-走 Creator Economy 这条路要带走的：
-
-- 系统由 Products / Listings / Subscriptions / Stores 四件套组成。
-- 卖家资质要走 Authorized Seller + Tilia + 税务文件，2-6 周审核。
-- 收入分成约 50%（创作者）/ 30%（平台）/ 20%（VRChat + 处理），最低提现门槛 20,000 earned Credits（约 $100），走 Tilia → PayPal，PayPal 通道 ~1.5% 手续费。
-- Creator Economy SDK 在 `Store` 命名空间下提供 Product 检查、商店打开和购买事件回调，跟世界里其他 Udon 逻辑可以无缝组合。
-- 合规硬线：版权、明确购买内容、禁止 Dark Patterns、不能用于募捐。
-- 跟外部平台（Booth / Gumroad / Patreon）组合用更灵活。
-- Creator Economy 不能解决「世界没人来」的问题，先把世界本身做扎实。
-
-跟第 25 章的关系：第 25 章给设计哲学和叠加层定位，这一章给具体技术实现和资质门槛。两章合起来覆盖 Commercial 这条路从「想这件事」到「实际跑起来」的整段。
-
-商业化跑起来之后，世界进入一个新的状态：常驻群体、版本迭代、商品维护、玩家反馈，全都开始持续发生。
+版本更新时，把商品说明与实际解锁内容再次比对。停止或改变服务前，核对对已购用户的义务与平台规则。
 
 ## 本章参考
 
-- [VRChat Creator Docs：Economy 入口](https://creators.vrchat.com/economy/)
+- [VRChat Creator Docs：Udon Product（名单开关）](https://creators.vrchat.com/economy/products/udon/)
 - [VRChat Creator Docs：Listings](https://creators.vrchat.com/economy/listings/)
+- [VRChat Creator Docs：Testing Udon Products](https://creators.vrchat.com/economy/sdk/testing/)
 - [VRChat Creator Docs：Subscriptions](https://creators.vrchat.com/economy/subscriptions/)
-- [VRChat Creator Docs：Products（Udon Products / Subscription Role Products）](https://creators.vrchat.com/economy/products/)
-- [VRChat Creator Docs：Stores（World Store / Group Store）](https://creators.vrchat.com/economy/stores/)
-- [VRChat Creator Docs：Payout（Tilia 流程与门槛）](https://creators.vrchat.com/economy/payout/)
-- [VRChat Creator Docs：Guidelines（合规守则）](https://creators.vrchat.com/economy/guidelines/)
-- [DeepWiki：VRChat Creator Economy 结构整理](https://deepwiki.com/vrchat-community/creator-docs/5-creator-economy)
-- [VR Creators：Creator Economy Subscriptions Guide（社区整理）](https://vrcreators.net/docs/vrchat/creator-economy-subscriptions)
+- [VRChat Creator Docs：Getting Started With Tilia](https://creators.vrchat.com/economy/getting-started/)
+- [VRChat Creator Docs：Payout](https://creators.vrchat.com/economy/payout/)
+- [VRChat Creator Docs：Udon Documentation](https://creators.vrchat.com/economy/sdk/udon-documentation/)
+- [VRChat Creator Docs：Udon Product Toggle](https://creators.vrchat.com/economy/sdk/examples/product-toggle/)
+- [VRChat Creator Docs：Content Guidelines](https://creators.vrchat.com/economy/guidelines/)
+
+- [VRChat Worlds SDK 3.10.5（UdonSharpBehaviour 与 Economy 类型）](https://github.com/vrchat/packages/releases/tag/3.10.5)

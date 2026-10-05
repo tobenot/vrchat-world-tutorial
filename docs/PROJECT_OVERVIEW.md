@@ -31,7 +31,7 @@
 
 ### 写作背景
 
-作者在学习 VRChat 世界开发时，将官方文档、社区经验、视频教程和 AI 辅助整理的内容，沉淀为一条零基础可跟走的路线。本书定位为**学习笔记**，主要供作者复习，同时开放给有相同需求的读者。
+作者在学习 VRChat 世界开发时，整理官方文档、社区经验、视频教程和实践记录。制作过程包含 AI 辅助整理，此记录保留为真实来源说明。内容涵盖基础操作与专题。本书定位为**学习笔记**，主要供作者复习，同时开放给有相同需求的读者。
 
 ---
 
@@ -48,7 +48,7 @@
 - 做出一个能上传到 VRChat 的最小世界（地板、出生点、Scene Descriptor）
 - 完成基础交互范本：按钮、门、拾取物、触发区域
 - 排查多人同步问题（「自己看到、别人看不到」）
-- 检查空间体验，让场景读起来像一个地方
+- 检查空间布局、光照、声音、UI 可读性和运行性能
 - 了解发布、更新、维护的基本流程
 
 ### 教程涉及的技术（读者需自行安装）
@@ -65,120 +65,129 @@
 
 ## 3. 内容结构：九部 + 附录
 
-全书约 **76 篇** MDX 章节，按九部正文 + 附录组织。侧栏顺序由各文件的 `sidebar.order` 控制。
+仓库包含 76 篇 MDX：75 篇读者页面与 1 篇组件演示页。侧栏由 `sidebar.order` 排序；页面地址使用稳定 slug。
 
-### 第一部 · 先站进去再说
+### 第一部 · 工具与第一个世界
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| — | 部入口 | 部入口 |
-| 1 | 一个玩家的好奇心 | 正文 |
-| 2 | VRChat 这家公司和这个引擎 | 正文 |
-| 理解章 A | 一个世界是怎么从你的电脑到达别人面前的 | 概念 |
-| 4 | 装好工具，准备出发 | 动手 |
-| 5 | 你的第一个世界 | 动手 |
+| 标题 | 源文件 |
+|---|---|
+| 第一部 · 工具与第一个世界 | [getting-started/index.mdx](../src/content/docs/getting-started/index.mdx) |
+| 1. 一个玩家的好奇心 | [getting-started/curiosity.mdx](../src/content/docs/getting-started/curiosity.mdx) |
+| 2. VRChat 这家公司和这个引擎 | [getting-started/about-vrchat.mdx](../src/content/docs/getting-started/about-vrchat.mdx) |
+| 4. 装好工具，准备出发 | [getting-started/tools.mdx](../src/content/docs/getting-started/tools.mdx) |
+| 5. 你的第一个世界 | [getting-started/first-world.mdx](../src/content/docs/getting-started/first-world.mdx) |
+| 理解章 A：一个世界是怎么从你的电脑到达别人面前的 | [getting-started/world-pipeline.mdx](../src/content/docs/getting-started/world-pipeline.mdx) |
 
-### 第二部 · 认识你的工作台
+### 第二部 · 场景物体与组件
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 6 | Unity 里的一切都是物体 | 正文 |
-| 7 | 组件，给物体装能力 | 正文 |
-| 8 | Prefab，把东西做成模具 | 正文 |
-| 9 | 材质和光的第一印象 | 正文 |
-| 理解章 B | 为什么一切都是空壳加零件 | 概念 |
-| 创作者视角 | 从模糊画面到具体清单 | 创作者视角 |
+| 标题 | 源文件 |
+|---|---|
+| 第二部 · 场景物体与组件 | [workbench/index.mdx](../src/content/docs/workbench/index.mdx) |
+| 6. Unity 里的一切都是物体 | [workbench/gameobjects.mdx](../src/content/docs/workbench/gameobjects.mdx) |
+| 7. 组件，给物体装能力 | [workbench/components.mdx](../src/content/docs/workbench/components.mdx) |
+| 8. Prefab，把东西做成模具 | [workbench/prefabs.mdx](../src/content/docs/workbench/prefabs.mdx) |
+| 9. 材质和光的第一印象 | [workbench/materials-light.mdx](../src/content/docs/workbench/materials-light.mdx) |
+| 理解章 B：为什么一切都是空壳加零件 | [workbench/unity-philosophy.mdx](../src/content/docs/workbench/unity-philosophy.mdx) |
+| 创作者视角：从模糊画面到具体清单 | [workbench/from-picture-to-list.mdx](../src/content/docs/workbench/from-picture-to-list.mdx) |
 
-### 第三部 · 学一点编程
+### 第三部 · C# 与 UdonSharp 基础
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 10 | 写给完全没编过程的你 | 正文 |
-| 11 | 刚好够用的 C# | 正文 |
-| 12 | UdonSharp，长得像 C# 但它有脾气 | 正文 |
-| 理解章 C | 代码是怎么跑起来的 | 概念 |
-| 创作者视角 | 编程让世界从静止变成活的 | 创作者视角 |
+| 标题 | 源文件 |
+|---|---|
+| 第三部 · C# 与 UdonSharp 基础 | [programming/index.mdx](../src/content/docs/programming/index.mdx) |
+| 10. 写给完全没编过程的你 | [programming/basics-no-code.mdx](../src/content/docs/programming/basics-no-code.mdx) |
+| 11. 刚好够用的 C# | [programming/csharp-just-enough.mdx](../src/content/docs/programming/csharp-just-enough.mdx) |
+| 12. UdonSharp 的支持范围与使用条件 | [programming/udonsharp-personality.mdx](../src/content/docs/programming/udonsharp-personality.mdx) |
+| 理解章 C：代码是怎么跑起来的 | [programming/how-code-runs.mdx](../src/content/docs/programming/how-code-runs.mdx) |
+| 创作者视角：按需求决定是否添加脚本 | [programming/programming-makes-it-alive.mdx](../src/content/docs/programming/programming-makes-it-alive.mdx) |
 
-### 第四部 · 让世界活过来
+### 第四部 · 交互与状态
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 13 | 按一下，灯亮了 | 动手 |
-| 14 | 走进去，事情发生了 | 动手 |
-| 15 | 拿起来，丢出去 | 动手 |
-| 16 | 坐下来，照镜子，走过去 | 动手 |
-| 17 | 门、机关和状态 | 动手 |
-| 理解章 D | 事件、条件、动作 | 概念 |
-| 创作者视角 | 你的世界现在会跟人说话了 | 创作者视角 |
+| 标题 | 源文件 |
+|---|---|
+| 第四部 · 交互与状态 | [come-alive/index.mdx](../src/content/docs/come-alive/index.mdx) |
+| 13. 按一下，灯亮了 | [come-alive/press-and-light.mdx](../src/content/docs/come-alive/press-and-light.mdx) |
+| 14. 走进去，事情发生了 | [come-alive/trigger-zones.mdx](../src/content/docs/come-alive/trigger-zones.mdx) |
+| 15. 拿起来，丢出去 | [come-alive/pickup-and-throw.mdx](../src/content/docs/come-alive/pickup-and-throw.mdx) |
+| 16. 坐下来，照镜子，走过去 | [come-alive/sit-mirror-teleport.mdx](../src/content/docs/come-alive/sit-mirror-teleport.mdx) |
+| 17. 门、机关和状态 | [come-alive/doors-and-states.mdx](../src/content/docs/come-alive/doors-and-states.mdx) |
+| 理解章 D · 事件、条件、动作 | [come-alive/event-condition-action.mdx](../src/content/docs/come-alive/event-condition-action.mdx) |
+| 创作者视角：交互的用途与检查范围 | [come-alive/world-speaks-back.mdx](../src/content/docs/come-alive/world-speaks-back.mdx) |
 
-### 第五部 · 你想做什么样的世界？
+### 第五部 · 世界类型与设计
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 18 | Chill World，让人愿意留下来的房间 | 正文 |
-| 19 | Game World，让规则跑起来 | 正文 |
-| 20 | Social Hub，给社群一个家 | 正文 |
-| 21 | Gallery，让作品被看见 | 正文 |
-| 22 | Narrative World，让玩家走进一段故事 | 正文 |
-| 23 | Event World，舞台、活动和聚会 | 正文 |
-| 24 | Tool World，做一个好用的工具 | 正文 |
-| 25 | Commercial World，商品、赞助和创作者经济 | 正文 |
+| 标题 | 源文件 |
+|---|---|
+| 第五部 · 世界类型与设计 | [world-types/index.mdx](../src/content/docs/world-types/index.mdx) |
+| 18. Chill World，让人愿意留下来的房间 | [world-types/chill-world.mdx](../src/content/docs/world-types/chill-world.mdx) |
+| 19. Game World，让规则跑起来 | [world-types/game-world.mdx](../src/content/docs/world-types/game-world.mdx) |
+| 20. Social Hub，给社群一个家 | [world-types/social-hub.mdx](../src/content/docs/world-types/social-hub.mdx) |
+| 21. Gallery，让作品被看见 | [world-types/gallery.mdx](../src/content/docs/world-types/gallery.mdx) |
+| 22. Narrative World，让玩家走进一段故事 | [world-types/narrative-world.mdx](../src/content/docs/world-types/narrative-world.mdx) |
+| 23. Event World，舞台、活动和聚会 | [world-types/event-world.mdx](../src/content/docs/world-types/event-world.mdx) |
+| 24. Tool World，做一个好用的工具 | [world-types/tool-world.mdx](../src/content/docs/world-types/tool-world.mdx) |
+| 25. Commercial World，商品、赞助和创作者经济 | [world-types/commercial-world.mdx](../src/content/docs/world-types/commercial-world.mdx) |
 
-### 第六部 · 和别人一起
+### 第六部 · 多人同步
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 26 | 你看到的，别人不一定看到 | 正文 |
-| 27 | 谁说了算，Ownership | 正文 |
-| 28 | 告诉别人发生了什么 | 正文 |
-| 29 | 后来的人怎么办 | 正文 |
-| 30 | 做一个多人小游戏 | 动手 |
+| 标题 | 源文件 |
+|---|---|
+| 第六部 · 多人同步 | [with-others/index.mdx](../src/content/docs/with-others/index.mdx) |
+| 26. 你看到的，别人不一定看到 | [with-others/you-see-others-dont.mdx](../src/content/docs/with-others/you-see-others-dont.mdx) |
+| 27. 谁说了算，Ownership | [with-others/ownership.mdx](../src/content/docs/with-others/ownership.mdx) |
+| 28. 告诉别人发生了什么 | [with-others/tell-everyone.mdx](../src/content/docs/with-others/tell-everyone.mdx) |
+| 29. 后来的人怎么办 | [with-others/late-joiners.mdx](../src/content/docs/with-others/late-joiners.mdx) |
+| 30. 做一个多人小游戏 | [with-others/multiplayer-mini-game.mdx](../src/content/docs/with-others/multiplayer-mini-game.mdx) |
 
-### 第七部 · 让世界变成一个地方
+### 第七部 · 空间、音画与性能
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 31 | 玩家进来的前三十秒 | 正文 |
-| 32 | 空间、比例和舒适 | 正文 |
-| 33 | 声音和氛围 | 正文 |
-| 34 | UI、提示和反馈 | 正文 |
-| 35 | 传送门和世界之间的连接 | 正文 |
-| 36 | 光 | 正文 |
-| 37 | 表面和材质 | 正文 |
-| 38 | 性能，跑得动才是好 | 正文 |
-| 39 | PC 和 Quest | 正文 |
+| 标题 | 源文件 |
+|---|---|
+| 第七部 · 空间、音画与性能 | [placeness/index.mdx](../src/content/docs/placeness/index.mdx) |
+| 31. 玩家进来的前三十秒 | [placeness/first-thirty-seconds.mdx](../src/content/docs/placeness/first-thirty-seconds.mdx) |
+| 32. 空间、比例和舒适 | [placeness/space-and-comfort.mdx](../src/content/docs/placeness/space-and-comfort.mdx) |
+| 33. 声音和氛围 | [placeness/sound-and-mood.mdx](../src/content/docs/placeness/sound-and-mood.mdx) |
+| 34. UI、提示和反馈 | [placeness/ui-and-feedback.mdx](../src/content/docs/placeness/ui-and-feedback.mdx) |
+| 35. 传送门和世界之间的连接 | [placeness/portals.mdx](../src/content/docs/placeness/portals.mdx) |
+| 36. 光 | [placeness/light.mdx](../src/content/docs/placeness/light.mdx) |
+| 37. 表面和材质 | [placeness/surfaces.mdx](../src/content/docs/placeness/surfaces.mdx) |
+| 38. 性能与测量 | [placeness/performance.mdx](../src/content/docs/placeness/performance.mdx) |
+| 39. PC 和 Quest | [placeness/pc-and-quest.mdx](../src/content/docs/placeness/pc-and-quest.mdx) |
 
-### 第八部 · 做着做着会撞上的事
+### 第八部 · 调试、测试与资源管理
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 40 | 坏了怎么办，调试的思路 | 正文 |
-| 41 | 测试你的世界 | 正文 |
-| 42 | 版本管理和备份 | 正文 |
-| 43 | 素材、插件和版权 | 正文 |
+| 标题 | 源文件 |
+|---|---|
+| 第八部 · 调试、测试与资源管理 | [surviving/index.mdx](../src/content/docs/surviving/index.mdx) |
+| 40. 坏了怎么办，调试的思路 | [surviving/debugging-mindset.mdx](../src/content/docs/surviving/debugging-mindset.mdx) |
+| 41. 测试你的世界 | [surviving/testing-your-world.mdx](../src/content/docs/surviving/testing-your-world.mdx) |
+| 42. 版本管理和备份 | [surviving/version-control.mdx](../src/content/docs/surviving/version-control.mdx) |
+| 43. 素材、插件和版权 | [surviving/assets-and-licenses.mdx](../src/content/docs/surviving/assets-and-licenses.mdx) |
 
-### 第九部 · 发出去，然后继续走
+### 第九部 · 发布与维护
 
-| 章号 | 标题 | 类型 |
-|------|------|------|
-| 44 | 发布你的世界 | 动手 |
-| 45 | 赞助、商品和创作者经济 | 正文 |
-| 46 | 维护一个世界 | 正文 |
-| 47 | 继续学习 | 正文 |
+| 标题 | 源文件 |
+|---|---|
+| 第九部 · 发布与维护 | [publishing/index.mdx](../src/content/docs/publishing/index.mdx) |
+| 44. 发布你的世界 | [publishing/submit-your-world.mdx](../src/content/docs/publishing/submit-your-world.mdx) |
+| 45. 赞助、商品和创作者经济 | [publishing/creator-economy.mdx](../src/content/docs/publishing/creator-economy.mdx) |
+| 46. 维护一个世界 | [publishing/maintaining-a-world.mdx](../src/content/docs/publishing/maintaining-a-world.mdx) |
+| 47. 继续学习 | [publishing/keep-learning.mdx](../src/content/docs/publishing/keep-learning.mdx) |
 
 ### 附录 · 速查与参考
 
-| 编号 | 标题 | 用途 |
-|------|------|------|
-| A | 术语表 | VRChat / Unity 常用术语 |
-| B | Unity 编辑器速查 | 快捷键与操作 |
-| C | SDK 与 Unity 组件速查 | 组件字段说明入口 |
-| D | UdonSharp 限制 | 语言子集与禁区 |
-| E | 网络同步决策表 | 同步方案选择 |
-| F | 报错排查 | 常见错误与处理 |
-| G | 性能检查清单 | 发布前性能核对 |
-| H | 发布检查清单 | 上传前核对项 |
-| J | 资料导航 | 外部资源链接汇总 |
+| 标题 | 源文件 |
+|---|---|
+| 附录 · 速查与参考 | [appendix/index.mdx](../src/content/docs/appendix/index.mdx) |
+| 附录 A · 术语表 | [appendix/glossary.mdx](../src/content/docs/appendix/glossary.mdx) |
+| 附录 B · Unity 编辑器速查 | [appendix/unity-shortcuts.mdx](../src/content/docs/appendix/unity-shortcuts.mdx) |
+| 附录 C · SDK 与 Unity 组件速查 | [appendix/components-cheatsheet.mdx](../src/content/docs/appendix/components-cheatsheet.mdx) |
+| 附录 D · UdonSharp 限制 | [appendix/udonsharp-limits.mdx](../src/content/docs/appendix/udonsharp-limits.mdx) |
+| 附录 E · 网络同步决策表 | [appendix/networking-decision.mdx](../src/content/docs/appendix/networking-decision.mdx) |
+| 附录 F · 报错排查 | [appendix/errors.mdx](../src/content/docs/appendix/errors.mdx) |
+| 附录 G · 性能检查清单 | [appendix/performance-checklist.mdx](../src/content/docs/appendix/performance-checklist.mdx) |
+| 附录 H · 发布检查清单 | [appendix/release-checklist.mdx](../src/content/docs/appendix/release-checklist.mdx) |
+| 附录 I · 资料导航 | [appendix/resources.mdx](../src/content/docs/appendix/resources.mdx) |
 
 ---
 
@@ -204,9 +213,9 @@
 | 功能 | 实现位置 | 说明 |
 |------|----------|------|
 | 侧栏自动生成 | `astro.config.mjs` | 按目录 `autogenerate`，新章只需加 MDX 文件 |
-| 章节元数据 | `src/content.config.ts` | 难度、预估时间、章节类型、是否需 SDK |
+| 章节元数据 | `src/content.config.ts` | 内容层次、预估时间、章节类型、是否需 SDK |
 | 顶栏书名 + 当前章 | `src/overrides/SiteTitle.astro` | 分享截图时可辨认位置 |
-| 阅读时间 / 难度徽章 | `src/overrides/PageTitle.astro` | 标题下方展示 |
+| 阅读时间 / 内容层次徽章 | `src/overrides/PageTitle.astro` | 标题下方展示 |
 | SEO / JSON-LD | `src/overrides/Head.astro` | 结构化数据 + 每页 OG 图 |
 | 底部反馈条 | `src/overrides/Footer.astro` | GitHub Issue 入口 + Mermaid 运行时 |
 | 首页字数统计 | `src/components/WordCount.astro` | 全站字数、阅读时长、文章数 |
@@ -221,7 +230,7 @@
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `difficulty` | `新手` / `进阶` / `硬核` | 难度档 |
+| `difficulty` | `基础` / `进阶` / `专题` | 章节内容层次，不评价读者能力 |
 | `estimatedMinutes` | 正整数 | 预估跟做时间（分钟） |
 | `requiresSDK` | 布尔 | 是否要求 VRChat SDK 已就绪 |
 | `chapterType` | `hands-on` / `concept` / `creator-view` / `part-intro` | 章节类型 |
@@ -288,11 +297,11 @@ npm run preview      # 预览构建产物
 
 `npm run build` 默认跑 `check:chapters:strict`，章号不一致会阻断构建。
 
-### 章号写作公约
+### 写作公约
 
-1. **frontmatter `title` 是唯一真源**：只在 `title:` 里写「N. 章名」
-2. **散文里能不写章号就不写**：用 slug 链接代替「第 N 章」
-3. **必须写章号时**：用 `[第 N 章 ...](slug)` 或 `<LinkCard>`，工具可自动同步
+统一遵循 [README 的本书写作公约](../README.md#本书写作公约)，包括机制与条件式表述、不预告、不评价读者能力、删除 AI 使用教学且保留制作来源，以及章节引用与元数据的一致性要求。
+
+`title` 是章名与章号的唯一真源。正文使用稳定 slug 链接；必须写章号时使用 Markdown 链接或 `<LinkCard>`，并运行 `check:chapters:strict`。
 
 ### 部署参数（Cloudflare Pages）
 
@@ -318,54 +327,20 @@ npm run preview      # 预览构建产物
 
 ---
 
-## 8. 资料导航审阅
+## 8. 资料导航与核查
 
-线上附录 J（[资料导航](https://vrchat-world-tutorial.pages.dev/appendix/resources/)）汇总了写书时校对过的外部资源。以下是对该文档的审阅结论。
+[附录 J：资料导航](https://vrchat-world-tutorial.pages.dev/appendix/resources/) 汇总 VRChat Creator Docs、UdonSharp、Unity、C# 和社区资料。技术行为优先核对官方原文；第三方翻译与旧 SDK 文档须标注适用版本。
 
-### 覆盖范围
+正文引用采用以下检查范围：
 
-| 分类 | 条目数 | 评价 |
-|------|--------|------|
-| VRChat 官方 | 11 | 覆盖 Creator Docs 主站、Worlds、Udon、Networking、Quest、发布、性能等核心入口 |
-| UdonSharp | 3 | 主文档、GitHub 仓库、API 参考 |
-| Unity 官方 | 3 | Manual、Scripting API、Learn |
-| 中文资料 | 2 | VRCZH 汉化、VRCD 社区文档 |
-| 社区资源 | 9 | Discord、论坛、GitHub、VRWorld Toolkit、DeepWiki 等 |
-| 资产平台 | 3 | Booth、Gumroad、Unity Asset Store |
-| C# 语言 | 2 | Microsoft Docs |
-| 视频与创作者 | 3+ | Bilibili 搜索、VRC School、个人创作者列表 |
-| 示例项目 | 3 | SDK 示例场景、GitHub 搜索、官方模板 |
-| 旧版文档 | 1 | SDK2 时代文档（附汉化镜像说明） |
+- 组件字段：核对 SDK 版本、字段名、默认值与平台差异
+- 脚本行为：区分 Unity API、Udon 暴露范围与客户端支持情况
+- 输入：区分 Interact、Pickup、Use、Drop，注明客户端和控制器绑定差异
+- 音频：区分播放条件、空间化与衰减，检查 Trigger、AudioSource 和 VRC Spatial Audio Source 的配置是否一致
+- 多人：区分本地事件、网络事件、同步变量、所有权和晚加入状态
+- 发布与许可：使用官方入口，标注公开权限、实例访问范围、素材来源及适用许可
 
-### 优点
-
-- **分类清晰**：按用途分块，每条条目附「用法」说明，读者可判断该不该点
-- **中英分工明确**：标注「中文翻译可能滞后，关键参数回英文原版核对」
-- **边界说明到位**：VRC School 标注为 Avatar 向；旧版文档标注哪些内容仍以旧站为准
-- **维护意识**：文首注明链接可能过期，引导读者提 Issue
-
-### 待改进项
-
-| 项目 | 现状 | 建议 |
-|------|------|------|
-| VCC 入口 | 未单独列出 | 可加 VRChat Creator Companion 下载页，第一部装工具章会用到 |
-| 链接时效 | 静态表格，无自动检测 | 定期人工核对，或考虑 `build:strict` 时抽检关键外链 |
-| 个人创作者 | 仅列 2 人 | 可随社区反馈增补，但需控制列表长度 |
-| 教程配图 | `src/assets/images/` 为空 | 正文截图/GIF 待补充，不影响资料导航本身 |
-| 附录编号 | 无附录 I | 编号跳过了 I，属有意留白或历史遗留，可在附录入口页注明 |
-
-### 与正文交叉引用
-
-资料导航与以下章节形成互补，审阅时确认引用关系完整：
-
-| 附录 / 章节 | 关联 |
-|-------------|------|
-| 附录 J · 资料导航 | 外部链接总入口 |
-| 附录 D · UdonSharp 限制 | C# 子集边界 |
-| 附录 E · 网络同步决策表 | 第六部多人同步 |
-| 第 43 章 · 素材、插件和版权 | 资产平台授权讨论 |
-| 第 4 章 · 装好工具 | 工具链安装实操 |
-| 第 47 章 · 继续学习 | 读完后的延伸方向 |
+网站构建能检查 MDX、schema、页面路由与站内链接，不能执行教程中的 Unity 或 UdonSharp 示例。客户端行为应通过已安装 SDK 对应的 Unity 工程和 VRChat Build & Test 验证，报告中单独注明是否实测。
 
 ---
 
@@ -396,4 +371,4 @@ npm run preview      # 预览构建产物
 
 ---
 
-*最后更新：2026-07-07*
+*最后更新：2026-10-05*

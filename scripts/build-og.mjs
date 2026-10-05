@@ -1,7 +1,7 @@
 // per-page 动态 OG 卡生成器（正式版）
 //
 // 它做的事：
-//   1. 用 satori（JSX-like → SVG）把每一页（按 frontmatter title/description/章节/难度/时长）
+//   1. 用 satori（JSX-like → SVG）把每一页（按 frontmatter title/description/章节/内容层次/时长）
 //      渲染成一张专属的 1200×630 OG 卡片。
 //   2. 用 @resvg/resvg-js 把 SVG 转 PNG，写到 public/og/<flat-slug>.png。
 //   3. 把首页卡同时复制成 public/social-card.png，作为兜底（旧链接、缺图回退）。
@@ -96,8 +96,8 @@ function ogFileName(urlPath) {
 // ============================== 模板元数据 ==============================
 
 const PART_LABELS = {
-  'getting-started': '第一部 · 先站进去再说',
-  'workbench': '第二部 · 认识你的工作台',
+  'getting-started': '第一部 · 工具与第一个世界',
+  'workbench': '第二部 · 场景物体与组件',
 };
 
 const CHAPTER_TYPE_LABELS = {
@@ -138,7 +138,7 @@ const SITE_FOOTER = '萝北来信 · vrchat-world-tutorial.pages.dev';
 const BOOK_NAME = '你的第一个 VRChat 世界';
 // 首页专用：主标题分两行呈现「正书名 + 副标题」，避免和右下角书名重复
 const HOME_TITLE_LINES = ['你的第一个 VRChat 世界', '从零到发布的完全手册'];
-// 首页徽章：站点级元信息，不与左上 eyebrow（面向新手 · 中文教程）撞语义
+// 首页徽章：站点级元信息，不与左上 eyebrow（基础操作 · 中文教程）撞语义
 // 阅读邀请：低门槛承诺（免费）+ 易读承诺（浅显易懂）+ 完成度承诺（从零到发布）
 const HOME_BADGES = ['免费阅读', '浅显易懂', '从零到发布'];
 
@@ -155,7 +155,7 @@ function template(meta) {
 
   // 顶部小标签
   const eyebrow = meta.isHome
-    ? '面向新手 · 中文教程'
+    ? '基础操作 · 中文教程'
     : meta.part ?? BOOK_NAME;
 
   // 徽章
@@ -164,12 +164,12 @@ function template(meta) {
     // 首页直接使用站点级徽章组，避免和 eyebrow 重复
     badges.push(...HOME_BADGES);
   } else {
-    if (meta.difficulty) badges.push(`难度：${meta.difficulty}`);
+    if (meta.difficulty) badges.push(`内容：${meta.difficulty}`);
     if (meta.minutes) badges.push(`约 ${meta.minutes} 分钟`);
     if (meta.chapterType && CHAPTER_TYPE_LABELS[meta.chapterType]) {
       badges.push(CHAPTER_TYPE_LABELS[meta.chapterType]);
     }
-    if (!badges.length) badges.push('面向新手 · 从零讲起');
+    if (!badges.length) badges.push('基础操作 · 从零讲起');
   }
 
   // 主标题块：首页双行（正书名 + 副标题），子页单行

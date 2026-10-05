@@ -5,7 +5,7 @@
 //  · 给所有外站链接补 target=_blank rel=noopener（含右上角 social）
 //  · 顺便注入 Mermaid 客户端运行时（按需懒加载）
 //
-// 注意：阅读时间 / 难度 / 章节类型 已挪到 PageTitle.astro，
+// 注意：阅读时间 / 内容层次 / 章节类型 已挪到 PageTitle.astro，
 // 因为那是「读之前的判断」，不该出现在文末。
 import Default from '@astrojs/starlight/components/Footer.astro';
 
@@ -162,7 +162,7 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
        后者在两种主题下都是 #1fd2c4，亮色主题白底上会过于扎眼。 */
     color: var(--sl-color-accent);
   }
-  .vrc-meta__chip--diff-新手 {
+  .vrc-meta__chip--diff-基础 {
     background: rgba(31, 210, 196, 0.08);
     color: var(--vrc-cyan);
     border-color: rgba(31, 210, 196, 0.3);
@@ -172,12 +172,12 @@ const editFullUrl = editPath ? `${repoBase}/edit/main/${editPath}` : repoBase;
     color: #ffb84d;
     border-color: rgba(255, 170, 60, 0.3);
   }
-  .vrc-meta__chip--diff-硬核 {
+  .vrc-meta__chip--diff-专题 {
     background: rgba(16, 185, 129, 0.08);
     color: #10b981;
     border-color: rgba(16, 185, 129, 0.3);
   }
-  :root[data-theme="light"] .vrc-meta__chip--diff-硬核 {
+  :root[data-theme="light"] .vrc-meta__chip--diff-专题 {
     background: rgba(16, 185, 129, 0.06);
     color: #047857;
     border-color: rgba(16, 185, 129, 0.2);

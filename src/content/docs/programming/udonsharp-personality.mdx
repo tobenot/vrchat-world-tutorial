@@ -1,169 +1,244 @@
 ---
-title: 12. UdonSharp，长得像 C# 但它有脾气
-description: UdonSharp 不是一门新语言，但也不完全等于 C#。一份给 VRChat 世界写脚本时一定会撞上的限制清单与真实踩坑案例。
+title: 12. UdonSharp 的支持范围与使用条件
+description: 核对 UdonSharp 的 API、语言特性、程序资产和运行条件，用可验证的替代方案处理限制。
 difficulty: 进阶
 chapterType: hands-on
 estimatedMinutes: 55
-summary: UdonSharp 把 C# 翻译成 Udon 字节码，跑在 VRChat 自己的虚拟机里。这套链条带来三类约束：白名单只放过一部分 .NET API、一些 C# 高级特性根本不支持、还有几条工程化层面的写法约束。这一章把这些内容铺开，并附上一份从真实项目里收集的踩坑实录。
+summary: UdonSharp 将受支持的 C# 编译成 Udon 程序。排查时区分 API 暴露、编译器支持、资产关联与运行配置，并使用引用检查、延迟事件和数据容器等方案。
 sidebar:
   order: 3
 ---
 
-第 11 章学的 C# 语法是标准的，能在任何 C# 项目里通用。但放进 VRChat 世界项目里，就会遇到一些奇怪现象：明明照着 C# 教程写的，编译报错；明明写法跟普通 Unity 项目一样，运行时行为不一样；明明项目里其它人都这么写过的工具方法，这里就是塞不进去。
+UdonSharp 使用 C# 写法，但并不实现某个 C# 语言版本的全部规范。普通 Unity 示例能编译，不代表放进 UdonSharp 后仍能使用同一套 API 和类型。
 
-这些不是读者的错，是 UdonSharp 自己的脾气。这一章把已知的脾气一条条摊开，写脚本时少一份惊吓。
-
-## 为什么会有这些限制
-
-[第 2 章](/getting-started/about-vrchat/)铺过沙箱的来历：VRChat 客户端要执行陌生人写的代码，必须把可调用的 API 限制在一个白名单上，否则任何一个公开世界里都可能藏着木马。
-
-这个白名单叫 **Class Exposure Tree**。写下的 C# 会先被 UdonSharp 编译器翻译成 **Udon Assembly**（一种字节码），再交给 VRChat 自己写的 Udon 虚拟机执行。它没有走普通 .NET 项目那条「直接编成 IL，跑在 .NET 运行时上」的路。这条多绕几道的路，正是「这段普通 C# 写不通」这类现象的源头。
-
-理解这条流水线之后，下面三类限制就有头绪了：
+[平台关系章](/getting-started/about-vrchat/)区分了 .NET、Unity 和 Udon。具体脚本问题可以分成四类：
 
 ```text
-1. .NET / Unity 的某些 API 不在白名单 → 调不到
-2. UdonSharp 编译器还没支持某些 C# 特性 → 编译报错
-3. 工程化层面的几条额外约束 → 写法上要绕一下
+API 是否开放            → 查 Class Exposure Tree
+语言特性是否支持        → 查 UdonSharp 文档和当前编译结果
+源码、程序和组件的关联  → 查 ProgramAsset 与场景配置
+运行条件是否满足        → 查事件、引用、状态和日志
 ```
 
-下面分别拆。
+## API 开放范围
 
-## 第一类：白名单里没有的 API
+Udon 开放了一部分 Unity、VRChat 和 .NET API。文件系统、任意网络访问、外部进程等能力不能按普通桌面 C# 程序的方式使用。
 
-VRChat 暴露的 API 大致是：`UnityEngine.*` 的常用部分（不是全部）、`VRC.*` 的世界 API、`System` 命名空间的少量基础类型。其余基本访问不到。
+| 普通 C# 中的需求 | Udon 中的处理边界 |
+| :--- | :--- |
+| 读取或写入任意本地文件 | 不应把 `System.IO` 当作世界脚本可用通道 |
+| 发起任意 HTTP 请求 | 使用 VRChat 支持的受限下载 API，并遵守其 URL 与信任设置 |
+| 启动外部进程 | 不属于世界脚本可用能力 |
+| 跨会话保存玩家数据 | 使用官方 Persistence 机制及其容量、加载时序和权限要求 |
+| 动态列表或字典 | 使用支持的数据容器，而不是直接移植 `List<T>` |
 
-以下是写脚本时大概率会撞上的，按重要性排：
+可用的受限外部数据方案包括 `VRCUrl` 与 `VRCStringDownloader`；它们不等于完整 `System.Net`，也不保证任何网址都能下载。具体请求条件见 [String Loading](https://creators.vrchat.com/worlds/udon/string-loading/)。玩家数据方案见 [Persistence](https://creators.vrchat.com/worlds/udon/persistence/)。
 
-```text
-不可用：System.IO.*       读写本地磁盘
-不可用：System.Net.*       发起网络请求
-不可用：System.Reflection 反射
-不可用：System.Diagnostics.Process 启动外部程序
-不可用：System.Threading   多线程、Task、async/await
-不可用：System.Linq        LINQ 查询语法
-不可用：System.Collections.Generic.List<T> / Dictionary<TKey, TValue> 等泛型集合
+### 检查一个成员能否调用
+
+1. 打开 Unity 菜单 `VRChat SDK → Udon Sharp → Class Exposure Tree`。
+2. 搜索目标类型，例如 `UnityEngine.Light`。
+3. 展开具体方法或属性，而不是只检查类型名。
+4. 绿色表示已暴露，红色表示未暴露；查继承成员时使用 `Show base members`。
+5. 对照当前项目 SDK 版本编译一个最小调用，记录实际错误。
+
+API 是否暴露与语言特性是否支持是两道检查。类存在不表示它的所有方法都可用，`using` 也不会扩大 Udon 权限。参见 [官方 Class Exposure Tree](https://creators.vrchat.com/worlds/udon/udonsharp/class-exposure-tree/)。
+
+## 语言特性需要逐项核对
+
+官方支持列表包含基础控制流、数组、用户方法与属性、静态用户方法、字符串插值、部分继承和 `ref/out` 等能力。不能把 `static`、属性或 `ref/out` 一律列为禁用。
+
+当前文档明确指出 `List<T>` 等通用泛型集合不能直接使用，支持数组和 VRChat 数据容器。自定义接口、泛型类型等高级用法不能从「基础语法相同」推断为完整支持。
+
+普通 C# 的 `async/await`、迭代器协程及异常捕获，不是本书 UdonSharp 示例采用的执行方式。等待动作使用延迟事件；空引用和输入错误在调用前检查。
+
+官方文档的部分历史 FAQ 与主支持列表仍有不同口径。遇到冲突时，记录所用 SDK 版本，核对主支持列表与编译器诊断，不依赖无版本的旧教程。参见 [UdonSharp 支持范围](https://creators.vrchat.com/worlds/udon/udonsharp/)。
+
+逐项写法与替代见 [API 清单](/appendix/udonsharp-limits/#d1-白名单层沙箱拦的)、[语言特性清单](/appendix/udonsharp-limits/#d2-编译器层udonsharp-还没支持的-c-特性)和 [替代写法对照](/appendix/udonsharp-limits/#d5-替代写法对照)。
+
+## 延迟执行：注册一个事件
+
+需要「一次交互后等待一秒执行」时，可以注册延迟自定义事件：
+
+```cs title="DelayedMessage.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class DelayedMessage : UdonSharpBehaviour
+{
+    private bool waiting;
+
+    public override void Interact()
+    {
+        if (waiting) return;
+
+        waiting = true;
+        Debug.Log("已登记延迟事件");
+        SendCustomEventDelayedSeconds(nameof(OnTimerFinished), 1f);
+    }
+
+    public void OnTimerFinished()
+    {
+        waiting = false;
+        Debug.Log("延迟事件执行");
+    }
+}
 ```
 
-文件、网络、外部进程访问不到，是沙箱的硬性边界。设计世界的逻辑时不要假设能读取本地文件、不要假设能调用外部 Web API。需要持久化数据用 VRChat 自己的 [Player Persistence API](https://creators.vrchat.com/worlds/udon/persistence/)（SDK 3.7.4 起），需要外部数据走 [VRCUrl + VRCStringDownloader](https://creators.vrchat.com/worlds/udon/string-loading/) 这套受限通道。
+将脚本挂到带 Collider 的可交互物体。交互后应先出现第一条日志，约一秒后出现第二条；等待期间再次交互不会重复登记，这是 `waiting` 判断的结果。
 
-判断某个 API 能不能调，最稳的是打开 `VRChat SDK Control Panel → Udon → Class Exposure Tree` 查。它列出 Udon 当前暴露的类、方法和属性。另一个办法是直接写进 UdonSharp 脚本里编译一次，编译器会告诉哪一行调用不在白名单上。
+`SendCustomEventDelayedSeconds` 登记的是另一次方法调用，不会暂停当前方法。目标方法需要是可被自定义事件调用的 public 方法。时间取决于事件调度与帧更新，不应拿它作高精度计时保证。
 
-:::tip[为什么是这样？]
-白名单不是临时凑的。它的核心是「这个 API 调用会不会让陌生世界访问到玩家电脑上不该访问的东西」。文件 IO 直接被禁；反射能绕开静态白名单，所以反射也禁；多线程会让 VRChat 客户端难以保证沙箱完整性，所以异步并发体系全禁。
+如果删除 `waiting` 限制，连续操作就可能排入多次回调。该方法也不等于一套可暂停、取消并恢复完整执行状态的协程。参见 [官方延迟事件说明](https://creators.vrchat.com/worlds/udon/graph/special-nodes/)。
 
-这些禁令的逻辑是「不禁就不安全」。文件 IO、反射、多线程任何一项松手，沙箱的完整性都会被打穿。
-:::
+## 调用前检查引用
 
-## 第二类：UdonSharp 编译器还没支持的 C# 特性
+UdonSharp 不支持用普通 `try / catch / finally` 捕获运行异常，编译器对此有明确诊断。空引用访问可能使 Udon Behaviour 停止执行，因此检查应发生在访问之前，而不是依赖下一次事件自行恢复。参见 [官方编译器实现](https://github.com/vrchat-community/UdonSharp/blob/master/Packages/com.vrchat.UdonSharp/Editor/Compiler/Binder/BinderSyntaxVisitor.cs)。
 
-这些不是沙箱阻拦，是 UdonSharp 编译器自身能力的边界。常见的有：
-
-```text
-不支持：自定义泛型类（class Foo<T> { ... }）和大部分自定义泛型方法
-不支持：interface（接口）
-不支持：try / catch / finally（异常处理）
-不支持：async / await
-不支持：yield return（即不能写迭代器、协程）
-不支持：event 关键字
-不支持：自定义 indexer（this[int i]）
-不支持：自定义 operator overload（== + - 等）
-不支持：UdonSharpBehaviour 上写 static 方法
-不建议：按普通 C# 的数据类思路 new 自定义 class
-受限：  ref / out 参数（基本场景可用，复杂场景仍可能编译失败）
-受限：  switch 表达式（C# 8 的 switch e => 写法）
-```
-
-普通 C# 教程很爱用的 LINQ（`list.Where(x => x > 0).Select(x => x.Name)`）和 async（`await Task.Delay(1000)`）在 UdonSharp 里都用不了。前者是因为 LINQ 内部依赖大量泛型和委托，后者是因为整个并发体系被禁。
-
-字符串内插 `$"score = {score}"` 在当前版本是可用的。早期版本不支持，老社区帖子可能写「不能用」，按当前 SDK 跑一下编译器就知道。
-
-VRChat 世界要做「等一秒之后做某事」，常用的写法是 `SendCustomEventDelayedSeconds`：
+下面是普通 C# 的异常处理对照，不能放进本例的 UdonSharp 脚本：
 
 ```cs
-SendCustomEventDelayedSeconds(nameof(OnTimerFinished), 1f);
-```
-
-这是 UdonSharpBehaviour 自己提供的方法，绕开了 .NET 的 Task / Coroutine 体系，在 Udon 虚拟机里实现「过 N 秒之后调你这个方法」。功能上等价于 Coroutine（普通 Unity 项目里写异步等待用的协程），写法不同。
-
-:::caution[踩坑预警]
-看到一篇普通 Unity 教程让你写 `IEnumerator MyCoroutine()` + `yield return new WaitForSeconds(1f)` + `StartCoroutine(MyCoroutine())`，**这套在 UdonSharp 里不能用**。原因是 UdonSharp 不支持 `yield`，写法本身没错。把它翻译成 `SendCustomEventDelayedSeconds` 才行。
-:::
-
-### 没有 try-catch，要靠提前判空
-
-普通 C# 里写「先尝试做某件事，出错了兜住」常用 `try-catch`：
-
-```cs
-// UdonSharp 里写不通
+// 普通 C# 对照；UdonSharp 不支持 try/catch
 try
 {
     target.SetActive(false);
 }
-catch (NullReferenceException)
+catch (System.NullReferenceException)
 {
-    Debug.Log("target 没填");
+    Debug.Log("Target 引用为空");
 }
 ```
 
-UdonSharp 不支持这个语法。运行时如果 `target` 是 `null`，脚本会抛 `NullReferenceException`，当前事件会中断，Console 里会留下红字。读者第一次撞上时常以为「按钮按了没反应」是交互没触发，其实是脚本执行到空引用那一行就停了。
+UdonSharp 的替代是先判断再调用：
 
-替代写法是**先判后用**：
+```cs title="SafeHide.cs"
+using UdonSharp;
+using UnityEngine;
 
-```cs
-if (target != null)
+public class SafeHide : UdonSharpBehaviour
 {
-    target.SetActive(false);
-}
-else
-{
-    Debug.Log("target 没填");
+    [SerializeField] private GameObject target;
+
+    public override void Interact()
+    {
+        if (target == null)
+        {
+            Debug.LogWarning("SafeHide：Target 未配置或对象已不存在");
+            return;
+        }
+
+        target.SetActive(false);
+    }
 }
 ```
 
-在调用之前加一行 `!= null` 检查，能把这类空引用挡在事件中断之前。
+创建 U# Script `SafeHide` 并挂到带 Collider 的独立按钮，把另一个可见 Cube 拖入 Target；按钮不能是被禁用的目标或它的子物体。提示设为 `隐藏目标 / Hide target`。在 ClientSim 中交互，检查两种输入：配置有效目标时，该对象被禁用；在测试副本中清空字段时，出现警告，事件结束。判空只处理对象引用无效，数组越界、类型不匹配等问题仍需要对应检查。
 
-### 普通 C# 的数据类思路在这里走不通
+## 用合适的数据结构保存多项数据
 
-普通 C# 里很常见的写法，是先写一个纯数据类，再 `new` 出许多个对象：
+普通 C# 可定义 `class Enemy { public string name; public int hp; }`，再调用 `new Enemy()` 保存一组数据。这与 `new MonoBehaviour()` 是两个不同问题：前者是纯数据对象，后者涉及 Unity 组件。不能把普通数据类实例化也视为当前 UdonSharp 已支持的通用工作流；本例使用数组明确保存对应的数据。
 
-```cs
-public class Enemy
+### 固定数量：数组
+
+新建 U# Script `ItemTable`：
+
+```cs title="ItemTable.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class ItemTable : UdonSharpBehaviour
 {
-    public string name;
-    public int hp;
-}
+    [SerializeField] private string[] itemNames;
+    [SerializeField] private int[] itemScores;
+    [SerializeField] private int selectedIndex;
 
-Enemy e = new Enemy();
+    public override void Interact()
+    {
+        PrintItem(selectedIndex);
+    }
+
+    private void PrintItem(int index)
+    {
+        if (itemNames == null || itemScores == null) return;
+        if (index < 0 || index >= itemNames.Length || index >= itemScores.Length)
+        {
+            Debug.LogWarning("ItemTable：索引超出已配置的数组");
+            return;
+        }
+        Debug.Log(itemNames[index] + ": " + itemScores[index]);
+    }
+}
 ```
 
-UdonSharp 官方文档明确支持的是自定义 `UdonSharpBehaviour` 之间互相引用、访问字段、调用方法；完整的普通 C# 对象模型不是它的基础工作流。本书不把「自己写数据 class 再 new 一堆实例」当成可用能力来教。需要表达一组数据时，三条路更稳：
+把脚本挂到带 Collider 的测试 Cube，Interaction Text 填 `输出条目 / Print item`。在 Inspector 将 Item Names 和 Item Scores 的 Size 都设为 2，分别填入 `钥匙、徽章` 与 `10、20`；Selected Index 设为 0。ClientSim 交互应输出「钥匙: 10」。退出 Play Mode，改为 1 再测试，应输出「徽章: 20」；在副本中改为 2，应输出越界警告。
 
-- **多个并行数组**代替一个对象数组：`string[] enemyNames; int[] enemyHps;`，索引对齐。简单粗暴但够用。
-- 把数据做成 **UdonSharpBehaviour 字段**，挂在场景物体上，通过 Inspector 引用。适合每个「实例」都对应一个真实 GameObject 的场景。
-- 用 VRChat SDK 提供的 **`DataList` 和 `DataDictionary`**（`VRC.SDK3.Data` 命名空间）。它们是 VRChat 给 Udon 准备的动态列表和字典，能装混合类型的数据，能当 `List<T>` / `Dictionary<TKey, TValue>` 的替代。
+两组数组的同一索引表示同一条目，长度与顺序需一起维护。边界检查只能阻止越界，不能发现「钥匙错误对应 20 分」这样的配置错误。Build & Test 的输出在对应客户端日志中查看。
 
-```cs
-// 用法示意
+### 场景对象数据：Behaviour 字段
+
+如果每组数据本来就对应一个场景对象，可以把字段写在 UdonSharpBehaviour 上，通过 Inspector 引用这些行为。这样对象配置有明确位置，但也会增加组件与跨行为调用，需要按需求选择。
+
+不能直接把普通 C# 中 `new` 一个 MonoBehaviour 的思路当成创建场景组件；组件的生命周期和场景关联由 Unity/SDK 管理。
+
+### 动态容器：DataList 与 DataDictionary
+
+VRChat 提供 `VRC.SDK3.Data` 命名空间中的动态容器。以下完整例子在 `Start` 创建列表并输出第一个整数：
+
+```cs title="ScoreListExample.cs"
+using UdonSharp;
+using UnityEngine;
 using VRC.SDK3.Data;
 
-DataList scores = new DataList();
-scores.Add(10);
-scores.Add(20);
-int first = scores[0].Int;   // 取出来时要从 DataToken 里解出原值
+public class ScoreListExample : UdonSharpBehaviour
+{
+    private DataList scores;
+
+    private void Start()
+    {
+        scores = new DataList();
+        scores.Add(10);
+        scores.Add(20);
+
+        DataToken first;
+        if (scores.TryGetValue(0, TokenType.Int, out first))
+        {
+            Debug.Log("第一项 = " + first.Int);
+        }
+    }
+}
 ```
 
-官方 UdonSharp 文档对集合的口径很直接：当前只支持数组 `T[]`，`List<T>` 还不能当作可用能力。需要动态列表或键值表时，优先用 `DataList` / `DataDictionary`。
+将 ScoreListExample 挂到一个启用的空 GameObject，进入 ClientSim 后查 Unity Console，应在启动时输出「第一项 = 10」。不需要 Collider，也不需要手动点击。
 
-## 第三类：工程化层面的几条额外约束
+容器元素使用 DataToken 表示，读取时要确认索引与类型。`.Int` 适用于整数 token，不能不检查地用于任意元素。容器的存在也不会自动提供网络同步或持久化；这些是另外的配置。参见 [官方数据容器](https://creators.vrchat.com/worlds/udon/data-containers/)。
 
-下面这几条来自工作流约束：UdonSharp 把 C# 文件组织进 Udon 程序资产时，对脚本布局和实例化方式有几条额外要求。它们不是语法报错，也不在白名单层面。第一次撞上会让人懵，知道之后绕开就好。
+## 源码与程序资产的关联
 
-### 纯静态类必须放在 Plugins/ 文件夹
+创建 U# 脚本时，工具会产生 `.cs` 和配套程序资产。普通 C# 辅助文件、Unity 编辑器工具与 Udon 程序资产不是同一种文件。
 
-只装常量、不继承 UdonSharpBehaviour 的纯 C# 类，比如：
+如果出现下面的错误：
 
-```cs
+```text
+Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset
+```
+
+应检查程序资产关联的源码是否确实定义了预期行为：
+
+1. 选中报错涉及的 UdonSharpProgramAsset，检查它引用的 `.cs`。
+2. 核对该文件是否声明了正确的 `UdonSharpBehaviour` 类，类名和文件名是否一致。
+3. 检查是否把纯辅助文件误关联为一个行为程序。
+4. 检查场景组件是否仍引用原有程序资产，避免替换正在被使用的关联。
+5. 修正后重新编译，并验证场景中的序列化字段。
+
+`Plugins` 目录不会自动把任意 C# 库变成 Udon 可执行代码，移动文件也不能代替修正错误的资产关联。跨文件组织应遵循当前 UdonSharp 与 Unity 程序集规则。
+
+### 多脚本共享编译期常量
+
+如果多个脚本需要相同的固定数值，可以把 `const` 放在一个辅助文件，使用类名访问。下面的数值只是样例配置，不设置世界人数上限或玩家的实际移动速度。
+
+在 `Assets/Scripts/WorldConstants.cs` 创建普通 C# 文件，文件内容替换为：
+
+```cs title="WorldConstants.cs"
 public static class WorldConstants
 {
     public const float DefaultWalkSpeed = 2f;
@@ -171,146 +246,161 @@ public static class WorldConstants
 }
 ```
 
-这种类如果直接放在 `Assets/Scripts/` 这类普通目录下，UdonSharp 编译器会报错：
+此文件不继承 UdonSharpBehaviour，不挂到场景，也不通过 `Create → U# Script` 给它创建程序资产。示例两个文件放在同一个默认程序集下，不引入自定义 asmdef 或 Plugins 目录。
 
-```text
-Script without UdonSharpBehaviour definition should not have an associated UdonSharpProgramAsset
-```
+另用 `Create → U# Script` 创建实际运行的读取者：
 
-解决办法是把这个文件移到 `Assets/Plugins/` 目录下。Plugins 是 Unity 的特殊目录，里面的脚本走另一条编译路径，UdonSharp 不会要求它必须是 UdonSharpBehaviour。这些类仍然可以被 UdonSharp 脚本正常引用、正常用 `WorldConstants.MaxPlayers` 取常量。
+```cs title="ConstantsProbe.cs"
+using UdonSharp;
+using UnityEngine;
 
-:::tip[为什么是这样？]
-UdonSharp 的工作流程是：扫描所有非 Plugins 区域的 C# 文件，把每个看作一个「待编译为 Udon 程序」的候选，然后给它配套一个 ProgramAsset。但纯静态类没有实例、不需要 ProgramAsset，配上之后变成一个空壳 Asset，编译器就抗议了。
-
-把这类文件挪到 Plugins，等于告诉 Unity「这是普通 C# 库代码，不要走 UdonSharp 编译流水线」，问题解决。
-:::
-
-### UdonSharpBehaviour 上的 static 方法不可用
-
-UdonSharp 不支持在 UdonSharpBehaviour 子类里写 static 方法：
-
-```cs
-public class Helper : UdonSharpBehaviour
+public class ConstantsProbe : UdonSharpBehaviour
 {
-    // 编译过不去
-    public static int Add(int a, int b) => a + b;
+    private void Start()
+    {
+        Debug.Log("样例速度 = " + WorldConstants.DefaultWalkSpeed);
+        Debug.Log("样例容量 = " + WorldConstants.MaxPlayers);
+    }
 }
 ```
 
-如果确实需要工具方法，两条路：
+把 ConstantsProbe 挂到启用的空 GameObject。保存并检查编译错误，再进入 ClientSim 查 Console，预期两项为 2 和 32。把 WorldConstants.MaxPlayers 改为 16，重新编译并重新进入 Play Mode，应读到 16；其他脚本也可用同一类名访问，不必各留一份数字。常量不在 Inspector 调整，也不会在运行时向其他客户端广播变化；修改后要重新编译和构建。
 
-- 把这些方法做成普通实例方法，通过场景里的某个 GameObject 上挂的脚本去调用。
-- 把这些方法挪到 `Assets/Plugins/` 下的纯静态类里（不继承 UdonSharpBehaviour）。
+此例的依据是 [Worlds SDK 3.10.5 官方包](https://github.com/vrchat/packages/releases/download/3.10.5/com.vrchat.worlds-3.10.5.zip)中 `BoundFieldAccessExpression.BindFieldAccess` 对 const 字段生成常量表达式的处理，以及 `FieldSymbol` 对 const 与可变 static 字段的区分。本轮完成的是源码核对，未执行 Unity/Udon 编译；上述步骤是项目内的验证入口，不是已通过测试的记录。它不证明任意静态状态或任意外部库可用。
 
-### 运行时不能 AddComponent UdonSharpBehaviour
+## static 不是统一禁用项
 
-普通 Unity 项目里写 `gameObject.AddComponent<MyBehaviour>()` 是常规做法。UdonSharp 项目里这条路在运行时走不通：UdonSharp 的脚本被打包成 Udon 程序资产，需要在编辑期就跟 GameObject 绑定好，运行时新加挂不上去。
+官方支持列表包含静态用户方法。下面的完整例子只计算两个整数的和，不使用实例字段：
 
-要做「按需出现的物体」的常见做法是：场景里预先放一个挂好脚本的物体，禁用着；用 `SetActive(true)` 启用即可。
+```cs title="StaticMathProbe.cs"
+using UdonSharp;
+using UnityEngine;
 
-## 一些惯用法上的小差别
+public class StaticMathProbe : UdonSharpBehaviour
+{
+    private void Start()
+    {
+        Debug.Log(Add(3, 5));
+    }
 
-除了上面三大类，还有一组细节差别，写脚本一两次就习惯了：
+    private static int Add(int a, int b)
+    {
+        return a + b;
+    }
+}
+```
+
+创建对应 U# Script，挂到启用的空物体，在 ClientSim 启动时检查 Console 是否输出 8。
+
+支持静态方法不代表可任意使用静态状态、外部 .NET 库或未开放 API。遇到相关错误时，应检查具体方法体与当前编译器支持，而不是把所有代码改放到某个目录。
+
+## 运行时对象与组件
+
+要让一个带行为的物体按需出现，可以在编辑阶段配置对象与程序，然后切换它的激活状态；也可以使用受支持的实例化或对象池方案。
+
+不能把 `gameObject.AddComponent<MyBehaviour>()` 当作运行时添加任意 UdonSharpBehaviour 的通用方式。Udon 程序、组件和序列化数据需要正确关联，普通 Unity 的动态组件示例不能直接照搬。
+
+对预放置物体使用 `SetActive(true)` 前，确认它不是承载唯一控制器的对象；禁用控制器自身可能使恢复操作失去事件入口。
+
+## 初始化与事件签名
 
 ```cs
-// 1. 初始化统一用 Start。
-//    字段初始化器会在编译时求值，只适合简单默认值。
-//    依赖场景对象、GetComponent、Inspector 引用的初始化逻辑放进 Start。
-private void Start() { ... }
-
-// 2. Unity 标准生命周期方法（Start / Update / FixedUpdate / LateUpdate 等）
-//    不写 override。UdonSharpBehaviour 里这几个不是基类里的虚方法。
-private void Update() { ... }
-
-// 3. UdonSharpBehaviour 自己定义的虚方法（Interact / OnPlayerJoined / OnPlayerLeft 等
-//    VRChat 专属事件）必须写 public override。
-public override void Interact() { ... }
-public override void OnPlayerJoined(VRCPlayerApi player) { ... }
-
-// 4. Inspector 上看见的 public 字段都会被序列化到场景里。
-//    不希望被外部修改的字段用 [SerializeField] private 替代。
+// 字段初始值用于默认配置
 [SerializeField] private float speed = 2f;
+private Transform cachedTransform;
 
-// 5. 跨脚本调用别的 UdonSharpBehaviour 上的方法，
-//    用 SendCustomEvent("方法名") 或者直接拿到引用调方法。
-//    SendCustomEvent 只能调用 public 方法；字符串名字写错了运行时才会报错。
-otherBehaviour.SendCustomEvent(nameof(OtherBehaviour.DoSomething));
+// 场景相关引用在行为开始运行时取得
+private void Start()
+{
+    cachedTransform = transform;
+}
+
+// Unity 生命周期方法不使用 override
+private void Update()
+{
+    // 每次调用只处理当前帧需要的有限工作
+}
+
+// UdonSharp 交互事件使用对应的基类签名
+public override void Interact()
+{
+    Debug.Log("收到交互");
+}
 ```
 
-「哪些写 override、哪些不写」这条规则最容易混：**Unity 自己的生命周期方法不写 override，VRChat 专属事件写 override**。看到老的代码风格不一样很正常，这本书里统一用上面这套。
+这是同一类内部的片段，不能作为独立文件直接编译。字段初始化器与 Inspector 序列化值还需区分：改了源码默认值，不保证覆盖已保存实例上的旧值。
 
-## 性能不是最后才管的事
+依赖其他场景对象的初始化放在 `Start` 等适当事件中。不同对象之间的启动顺序不能凭 Hierarchy 排列推断；如果初始化依赖外部数据到达，应检查对应完成条件。
 
-普通 Unity C# 里「先写出来，慢了再优化」常常说得通。UdonSharp 里这句话要谨慎。官方性能页给出的量级是：同一段逻辑跑在 Udon 里，可能比普通 C# 慢 200 到 1000 倍。零基础阶段不需要学复杂优化，但要先避开几种高成本写法：
+## 跨脚本调用与性能
 
-```text
-不要：在 Update 里遍历很多物体
-不要：在 Update 里反复 GetComponent
-不要：每帧跨 UdonBehaviour 调 SendCustomEvent
-不要：把一堆方法都写成 public
-可以：Start 里缓存组件引用
-可以：低频事件里处理逻辑
-可以：能用动画、Collider、现成组件解决的事先不用脚本
+持有其他 UdonSharpBehaviour 的引用后，可以调用受支持的方法，也可以使用 `SendCustomEvent`。自定义事件需要 public 入口；仅供本类使用的方法可设为 private。
+
+例如按钮调用另一个物体上的灯光控制器。分别创建两个 U# Script：
+
+```cs title="LightReceiver.cs"
+using UdonSharp;
+using UnityEngine;
+
+public class LightReceiver : UdonSharpBehaviour
+{
+    public Light targetLight;
+
+    public void ToggleLamp()
+    {
+        if (targetLight != null) targetLight.enabled = !targetLight.enabled;
+    }
+}
 ```
 
-`GetComponent` 尤其要注意。普通 Unity 里它已经不算便宜；在 UdonSharp 里获取另一个 `UdonSharpBehaviour` 时，背后还要额外检查 UdonBehaviour 和脚本类型。需要引用别的物体时，本书前面推荐的 Inspector 拖拽引用不是只为方便，也是为了少写运行时查找。
+```cs title="RelayButton.cs"
+using UdonSharp;
+using UnityEngine;
 
-`public` 方法也不是越多越好。`SendCustomEvent` 和 `SendCustomNetworkEvent` 能调用的目标方法必须是 `public`，所以真正要给外部调用的才设为 `public`；只在本脚本里用的工具方法设成 `private`。这样更清楚，也能少一点 Udon 查找开销。
+public class RelayButton : UdonSharpBehaviour
+{
+    public LightReceiver receiver;
 
-## 一份排坑顺序
-
-写脚本时撞墙了，按下面顺序排查能省不少时间：
-
-```text
-1. 看 Console 里有没有红字。
-   报错有：先按报错信息修。多数报错说人话。
-   报错没：进 2。
-
-2. 看脚本是否真的挂在了想要它执行的 GameObject 上。
-   GameObject 名字对、脚本拖错位置，都是常见的。
-
-3. 看 Inspector 里每个引用槽是否真的指向了目标物体。
-   槽位是 None 时调用会 NullReferenceException，
-   当前事件会中断，按按钮看起来就像没反应。
-
-4. 看用到的 API 是否在白名单。
-   打开 VRChat SDK Control Panel → Udon → Class Exposure Tree，
-   或在 UdonSharp 脚本里写一次让编译器告诉哪行不在白名单上。
-
-5. 看是否撞上 UdonSharp 的特性限制（async/yield/泛型/static/try-catch/...）。
-   撞上了换 SendCustomEventDelayedSeconds、判空、DataList 等替代写法。
-
-6. 看是否撞上工程化层面的约束（纯静态类没放在 Plugins/、运行时 AddComponent 等）。
-   按本章第三节的写法绕开。
-
-7. 都不是的话，加 Debug.Log 把变量值打出来。
-   `Debug.Log("到这了，值是 " + score);`
+    public override void Interact()
+    {
+        if (receiver == null) return;
+        receiver.SendCustomEvent(nameof(LightReceiver.ToggleLamp));
+    }
+}
 ```
 
-第 40 章会再展开一节关于调试的方法，那一节会专门讲怎么读 Console、怎么用 Debug.Log 拆问题。
+LightReceiver 挂到启用的空物体，Target Light 引用一盏实时灯；RelayButton 挂到带 Collider 的按钮，Receiver 拖入前一个物体上的 LightReceiver 组件。设置交互提示后在 ClientSim 或 Build & Test 连续点击两次，灯应切换并恢复。在测试副本中清空 Receiver，按钮不应改变灯。这里发送的是本机自定义事件，不是网络事件。
 
-:::tip[在 Unity 里直接试，不用每次 Build]
-排查脚本时不必每次都跑 Build & Test 进 VRChat 客户端。VRChat 官方提供了 [ClientSim](https://creators.vrchat.com/worlds/clientsim/)，它已经并入当前 VRChat SDK，正确入口是 Unity 的 Play 模式和官方 Creator Docs，不需要从 GitHub 仓库手动导入。ClientSim 能在 Unity 编辑器里模拟一部分 VRChat 世界环境，适合先检查 Interact、Pickup、UI、脚本变量和 `Debug.Log`。
+有具体类型引用时，也可把调用一行替换为 `receiver.ToggleLamp();`。这两个版本二选一，不要同时调用，否则同一次点击切换两次后会回到原状态。更多签名对照见 [附录的跨脚本与生命周期说明](/appendix/udonsharp-limits/#运行时行为差异)。
 
-它不是完整 VRChat 客户端模拟器。网络同步、平台差异、真实玩家客户端里的性能表现，最后仍要用 Build & Test 或上传测试确认。它的价值是把大量低级错误提前拦在 Unity 里：从「改 → Build → 等几十秒 → 进 VRChat 看效果」缩短到「改 → 按 Play → 先看一遍」。
-:::
+Udon 的执行开销依赖代码和调用方式，不能按普通 Unity C# 的耗时直接估算。可检查：
 
-## 参考资料
+- 是否每帧遍历了本可在事件发生时处理的数据
+- 是否重复查找同一个组件，而没有缓存引用
+- 是否把同一项工作拆成大量跨 Behaviour 调用
+- 是否已有组件或动画能够直接完成需求
+- 是否在目标客户端测过耗时，而不只是在编辑器看结果
 
-- [UdonSharp 官方文档](https://udonsharp.docs.vrchat.com/)
-- [UdonSharp Random Tips & Performance Pointers](https://udonsharp.docs.vrchat.com/random-tips-&-performance-pointers/)
-- [VRChat Creator Docs：Data Containers](https://creators.vrchat.com/worlds/udon/data-containers/)
-- [VRChat Creator Docs：Player Persistence](https://creators.vrchat.com/worlds/udon/persistence/)
-- [VRChat Creator Docs：String Loading](https://creators.vrchat.com/worlds/udon/string-loading/)
-- [VRChat Creator Docs：ClientSim](https://creators.vrchat.com/worlds/clientsim/)
+[执行链中的开销量级](/programming/how-code-runs/#运行开销过高)说明 200–1000 倍的适用边界，[性能清单](/appendix/udonsharp-limits/#d4-性能层量级与高成本写法)说明 UdonSharpBehaviour 类型匹配和 public 事件查找成本。
 
-## 这一章在脑子里留下来什么
+这些是减少不必要工作的方向，不是禁止使用 Update、循环或 public 方法。具体成本见 [官方性能建议](https://creators.vrchat.com/worlds/udon/udonsharp/performance-tips/)。
 
-第 10 到 12 章铺完之后，应该能拿到的：
+## 从编译到运行的检查顺序
 
-- 知道程序是按顺序执行的指令、由变量、判断、循环、函数、类组合而成。
-- 能看懂一段 UdonSharp 脚本：哪里是字段、哪里是方法、哪里在调用别的物体、什么时候会被执行。
-- 知道 UdonSharp 不是普通 C#，遇到「怎么不行」时大致能猜到方向。
-- 撞墙时不慌，知道按上面那份顺序排查。
+1. **编译**：保存脚本，查看第一条相关错误及完整信息；确认新程序确实生成。
+2. **关联**：检查组件、程序资产与 `.cs` 是否对应。
+3. **配置**：检查引用槽、数组长度、参数和对象激活状态。
+4. **事件**：在入口加一条日志，复现同一操作，判断有没有进入。
+5. **执行**：记录状态变化前后的值，定位中断或结果不符的语句。
+6. **环境**：区分 Unity ClientSim 与实际客户端，检查平台和网络条件。
 
-这一章里那份「白名单 / 编译器特性 / 工程化约束」三类清单是当字典用的。撞上具体怪现象时，知道大概去哪一类里翻，比把条目逐字记下来管用。
+ClientSim 已包含在 Worlds SDK 中；按本书的 VCC 项目配置不需要另从 GitHub 手动导入。打开世界场景，按 Unity 的 Play，在 Game 窗口操作，在 Console 查看编辑器日志。ClientSim 通过 Unity Play Mode 模拟一部分 VRChat 世界行为，可以检查交互、变量和日志，但不覆盖完整客户端及多人同步条件。网络、设备和实际性能问题需要相应客户端测试。参见 [ClientSim 官方说明](https://creators.vrchat.com/worlds/clientsim/)。
+
+## 本章参考
+
+- [UdonSharp：支持范围与创建方式](https://creators.vrchat.com/worlds/udon/udonsharp/)
+- [Class Exposure Tree](https://creators.vrchat.com/worlds/udon/udonsharp/class-exposure-tree/)
+- [自定义与延迟事件](https://creators.vrchat.com/worlds/udon/graph/special-nodes/)
+- [Data Containers](https://creators.vrchat.com/worlds/udon/data-containers/)
+- [UdonSharp 官方编译器源码](https://github.com/vrchat-community/UdonSharp/blob/master/Packages/com.vrchat.UdonSharp/Editor/Compiler/Binder/BinderSyntaxVisitor.cs)
+- [调试 Udon 项目](https://creators.vrchat.com/worlds/udon/debugging-udon-projects/)

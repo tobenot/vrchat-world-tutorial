@@ -1,126 +1,100 @@
 ---
 title: 5. 你的第一个世界
-description: 创建一个最小 VRChat 世界：地板、出生点、VRC Scene Descriptor、Build & Test。理解每一步在做什么。
-difficulty: 新手
+description: 创建地板、出生点和 VRC Scene Descriptor，用 Build & Test 验证最小 VRChat 场景。
+difficulty: 基础
 estimatedMinutes: 30
 chapterType: hands-on
 requiresSDK: true
-summary: 用一块地板、一个出生点、一个 VRC Scene Descriptor，做出能站进去走两步的最小世界。
+summary: 用带碰撞的地板、明确的出生位置和场景描述组件构建本地测试世界，并检查移动、碰撞和朝向。
 sidebar:
   order: 4
 ---
 
-这一章的目标很明确：把一个能站进去的世界搭出来。
+本章创建一个能在 VRChat 中进入和移动的最小场景：地板、出生点、场景描述组件、默认天空和方向光。结果是本地测试世界，不会因测试而自动上传或公开。
 
-场景会很空：一块地板、一个出生点、默认蓝天和一盏太阳灯。但在 VRChat 客户端里看到它、用键盘走在上面之后，Unity 里那些几何方块就成了一个真的可以走进去的空间。
+## 场景需要满足的条件
 
-## 一个最基础的世界要回答三件事
+1. **可以站立的表面**：地板具有启用的非 Trigger Collider。
+2. **出生位置和朝向**：Transform 标记玩家出现的位置与面向。
+3. **世界配置**：`VRC Scene Descriptor` 提供 SDK 所需的场景信息。
 
-VRChat 把玩家放进世界之前，必须先得到这三件事的答案：
-
-1. 玩家可以站在哪？需要一块带物理碰撞的地面，不然进来就掉。
-2. 玩家进来时落在哪个位置、面朝哪边？需要一个明确的出生点。
-3. 这个 Unity 场景到底是不是 VRChat 世界？需要一个叫 `VRC Scene Descriptor` 的描述组件。
-
-接下来的四步分别解决这三件事。
+本章把出生点和描述组件放在两个物体上，便于单独调整。SDK 也支持使用描述组件所在物体作为默认出生位置，独立 `Spawn` 并不是所有世界都必须采用的结构。
 
 ## 第一步：新建并保存场景
 
-打开上一章建好的 `MyFirstWorld` 项目。
+打开[工具安装章](/getting-started/tools/)创建的 `MyFirstWorld` 项目。
 
-菜单栏 `File` → `New Scene`，弹出的面板里选 `Basic`。然后按 `Ctrl+S`，把场景命名为 `MyFirstWorld`，保存到 `Assets/Scenes/` 目录下。如果这个目录不存在，右键新建一个。
+1. 选择 `File → New Scene`，使用内置渲染管线的 Basic 场景模板。
+2. 按 `Ctrl+S`，保存为 `Assets/Scenes/MyFirstWorld.unity`。目录不存在时先创建目录。
+3. 确认场景中有 `Directional Light`。保存的是当前场景，不是另一个同名项目。
 
-::::tip[为什么是这样？]
-Unity 场景里所有物体和灯光的信息都存在场景文件里。不保存就崩溃，搭的东西全没。VRChat SDK 打包测试时也需要场景文件路径——没保存的场景根本没法被打包出去。
-::::
+场景文件保存层级、组件配置和资源引用。尚未保存的编辑不会自动写入磁盘，构建前应保存当前修改。
 
-## 第二步：解决踩地（创建地板）
+## 第二步：创建地板
 
-左侧 Hierarchy 面板的空白处右键，`3D Object` → `Cube`。把新物体改名为 `Floor`。
+在 Hierarchy 空白处右键，选择 `3D Object → Cube`，命名为 `Floor`。在 Inspector 的 Transform 中填写：
 
-选中 `Floor`，右侧 Inspector 最上方找到 `Transform`，把参数改成：
+```text
+Position  0, 0, 0
+Rotation  0, 0, 0
+Scale     10, 0.2, 10
+```
 
-- **Position**：`0, 0, 0`
-- **Rotation**：`0, 0, 0`
-- **Scale**：`10, 0.2, 10`
+在默认比例下，它是一块 10 米见方、0.2 米厚的地板，上表面位于 Y = 0.1。保留默认 `Box Collider`，确认组件启用、`Is Trigger` 未勾选。
 
-原本的小方块变成一块 10 米见方、20 厘米厚的扁平地板。
-
-为什么用 Cube 不用 Plane？两层原因：
-
-- **渲染层面**：Unity 内置 Plane 是一张由两个三角形组成的薄片，法线朝上；标准着色器默认开启背面剔除（backface culling），从底面看时整张地板会直接消失。Cube 是封闭的六面体，从任何角度都不穿帮。
-- **碰撞层面**：Plane 默认挂的是 `Mesh Collider`（薄片网格碰撞），它本身没有厚度，玩家从边缘横向走过来、或者高速跳跃时，物理引擎容易出现「擦边漏检」，人直接掉穿地板。Cube 默认挂的是 `Box Collider`（盒子碰撞体），有完整体积，踩上去稳得多。
-
-简而言之：Plane 是给「装饰用平面」准备的，比如墙上一张海报；做能踩的地板，永远首选 Cube 拍扁。
+这里选择 Cube，是因为它同时提供有厚度的网格和简单的盒形碰撞体，尺寸便于核对。Plane 也能作为地板，其默认网格是细分平面；使用 Plane 时仍需检查碰撞和材质的背面显示规则。是否会穿透取决于具体碰撞配置和运动条件，不能仅凭模型类型判断。
 
 ## 第三步：标记出生位置
 
-需要告诉 VRChat：玩家进场景时，应该出现在哪儿、面朝哪边。
+1. 在 Hierarchy 空白处右键 `Create Empty`，命名 `Spawn`。
+2. Position 设为 `0, 0.2, 0`。
+3. Rotation 设为 `0, 0, 0`。
 
-Hierarchy 空白处右键，`Create Empty`，新物体改名 `Spawn`。
+这个点比地板表面高 0.1 米，避免放进地板内部。出生朝向由这个 Transform 的方向确定；改变 Y 轴旋转即可改变水平朝向。
 
-Inspector 里把 `Spawn` 的 Position 设为 `0, 0.2, 0`，Rotation 保持默认 `0, 0, 0`。
+## 第四步：添加场景描述组件
 
-地板厚度 0.2 米、中心在原点，上表面在 Y = 0.1。Y = 0 会让出生点落在地板内部；Y 比 0.1 略高一点（例如 0.2）即可贴地站立。
+1. 新建空物体 `WorldDescriptor`。
+2. 在 Inspector 点 `Add Component`，搜索并添加 `VRC Scene Descriptor`。
+3. 展开 `Spawns` 列表；如果没有元素，添加一个元素或将 Size 设为 `1`。
+4. 把 Hierarchy 中的 `Spawn` 拖入 `Element 0`。
+5. 为了按指定点测试，把 `Spawn Radius` 设为 `0`，`Spawn Orientation` 选择 `Align Player With Spawn Point`。
 
-## 第四步：给场景一张身份证
-
-Hierarchy 空白处右键，`Create Empty`，命名 `WorldDescriptor`。
-
-选中它，Inspector 最下面点 `Add Component`，搜索 `VRC Scene Descriptor`，从结果里点上它。
-
-加好后，在它的属性里找到 `Spawns` 字段，这是一个用来登记出生点的数组。把 Hierarchy 里的 `Spawn` 物体直接拖进 `Spawns` 下方的 `Element 0` 空槽。这样 VRChat 就知道该把玩家送到哪个位置了。
-
-::::tip[为什么是这样？]
-Unity 是通用三维引擎，它本身不区分这个项目是 VRChat 世界还是单机游戏。`VRC Scene Descriptor` 是这个 Unity 场景对 SDK 说的第一句话：「这是 VRChat 场景，把玩家带到这里。」没有它，SDK 控制面板上的测试按钮会是灰色的，根本点不动。
-::::
+场景只保留一个预期使用的 Scene Descriptor。如果模板场景已经包含它，使用现有组件，不再重复添加。SDK Builder 中的 `Add a VRCSceneDescriptor` 也是官方提供的添加入口。
 
 ## 第五步：Build & Test
 
-顶部菜单栏 `VRChat SDK` → `Show Control Panel`，打开 SDK 控制面板。如果还没登录，先登一下账号。
+1. 打开 `VRChat SDK → Show Control Panel`，在 Authentication 中登录 VRChat 账号。
+2. 在 Builder 页处理阻止构建的校验项，包括 Layers、Collision Matrix 和 Scene Descriptor 等设置。
+3. 选择 Windows 本地测试构建，客户端数量设为 `1`；使用键盘鼠标测试时开启 `Force Non-VR`。
+4. 按 `Ctrl+S`，选择 **Build & Test**。
+5. 等待构建完成和本机 VRChat 启动。
 
-`Builder` 标签页下面，找到 **Build & Test** 按钮，点。
+使用桌面模式时，以 `W`、`A`、`S`、`D` 移动，用鼠标转向。检查出生点是否在地板上、是否能停留而不下坠、转向和移动是否正常。
 
-Unity 会在后台打包并构建本地测试数据，一两分钟。打包完成后会自动唤起本机的 VRChat 客户端。
+SDK 账号没有世界上传权限时，仍可以进行本地构建测试。正式上传的账号条件与本地测试不同，见[官方创建指南](https://creators.vrchat.com/worlds/creating-your-first-world/)。
 
-画面加载好后，眼前是一个很空的世界：脚下灰白地板，四周默认蓝天，一盏太阳灯照着。
+:::caution[测试不符合预期时]
+- **SDK 菜单缺失**：检查 Worlds SDK 包和 Console 中的编译错误。
+- **缺少 Scene Descriptor**：确认当前打开场景中的目标组件存在，且没有误打开另一个场景。
+- **玩家下坠**：检查 `Floor` 的 Collider 是否启用、是否为非 Trigger，以及出生点是否在地板上方。
+- **客户端没有启动**：检查 SDK Settings 中的 VRChat Client 路径，以及 Builder 的客户端数量。
+- **客户端里仍是旧结果**：确认保存过场景，并执行了构建，而不是仅测试上一次构建。
+:::
 
-按 `W` `A` `S` `D` 走两步，晃一下鼠标看看天。
+## 参数对照测试
 
-这就是这一章要做出来的第一个世界。
+每次修改后保存场景，再重新构建，分别记录预期与实际结果：
 
-简陋，但它是从零搭起来的空间。回 Unity 改参数，再 Build & Test，新改动立刻就能进去看。「改 → 构建 → 进去看」这个循环，是 VRChat 世界开发的日常节奏。
+- 把 `Floor` Scale 改为 `20, 0.2, 20`，检查可站立区域是否扩大。
+- 把 `Spawn` Rotation Y 改为 `180`，检查出生方向是否反转。
+- 复制一个 Cube 放在地板上，保留 Collider，检查能否阻挡移动或站立在其上。
 
-::::caution[Build & Test 不工作时的检查清单]
-- **顶部菜单找不到 VRChat SDK**：回 VCC 检查项目模板是不是 World，Worlds SDK 包是不是装好了。
-- **SDK 面板报缺少 Scene Descriptor**：检查当前打开的场景里有没有 `WorldDescriptor` 物体，它身上是不是真的挂了 `VRC Scene Descriptor` 组件。
-- **进世界后一直往下掉**：看 `Floor` 身上的 `Box Collider` 是不是被删掉了，或者 `Spawn` 的 Y 值是不是落到地板下面去了。
-- **点了 Build & Test 没反应**：确认 SDK 控制面板里登录过账号，本机装了 VRChat 客户端（Steam 版或官方版都行）。
-::::
-
-## 整个骨架其实只有四件东西
-
-刚才一路下来，骨架其实很简单：
-
-- 一个场景文件 `MyFirstWorld.unity`，存所有空间数据。
-- 一块带物理碰撞的地板 `Floor`，解决玩家在哪站。
-- 一个空物体 `Spawn`，标记玩家进来的位置和朝向。
-- 一个挂了 `VRC Scene Descriptor` 的 `WorldDescriptor`，告诉 SDK 这是 VRChat 世界。
-
-后面世界做得再大、交互再复杂，最底下的骨架永远是这四样。
-
-## 自己改两个值看看
-
-回 Unity 改几样参数，重新 Build & Test 一次，把 Unity 和 VRChat 之间这条链条的直觉建立起来：
-
-- 把 `Floor` 的 Scale 改成 `20, 0.2, 20`，进去看看是不是变宽了。
-- 把 `Spawn` 的 Rotation Y 改成 `180`，进去看看出生方向是不是反了。
-- 复制（`Ctrl+D`）几个 Cube，缩小后错落摆在地板周围当凳子，进去试试能不能跳上去。
-
-「改一个参数 → 进去看效果」这个回路，比读十遍文档管用。下一章往里看一层：Unity 凭什么能让一块 Cube 当地板用。
+测试结束后，把地板恢复为 `10, 0.2, 10`，出生点 Rotation 恢复为 `0, 0, 0`。额外测试用 Cube 可以移出房间或删除，保留明确命名的基础对象。
 
 ## 本章参考
 
-- [创建你的第一个 VRChat 世界（官方）](https://creators.vrchat.com/worlds/creating-your-first-world/)
-- [VRC Scene Descriptor 字段详解](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)
-- [Build & Test 使用指南](https://creators.vrchat.com/worlds/udon/using-build-test/)
+- [创建你的第一个 VRChat 世界](https://creators.vrchat.com/worlds/creating-your-first-world/)
+- [VRC Scene Descriptor](https://creators.vrchat.com/worlds/components/vrc_scenedescriptor/)
+- [Build & Test](https://creators.vrchat.com/worlds/udon/using-build-test/)
+- [Unity 2022.3：基础物体](https://docs.unity3d.com/2022.3/Documentation/Manual/PrimitiveObjects.html)
